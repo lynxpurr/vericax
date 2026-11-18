@@ -1,6 +1,6 @@
 # 08 · Agent 接入契约
 
-状态：草案 v0.1（2026-11-18）· Phase 0 决策已记录（D1–D3 冻结；D4/D5 待定）
+状态：**已评审通过 v0.1**（2026-11-18 人类评审通过；D1–D5 全部已定，见 §2）
 
 ## 0. 设计立场
 
@@ -47,8 +47,8 @@ spec/03 目前使用 `agent` / `model` / `harness` 三个字段。本 spec 冻�
 | **D2a** | 沙箱传输用代理 CLI `vericax-sh`，不用 SSH | controller bash 通道已被 `audit_task.py` 实际使用；代理可做超时、日志、路径封禁，后端可换 | `VERICAX_SANDBOX` 是 `vericax-sh` 入口，不是 `ssh://` URL |
 | **D2b** | agent 跑隔离容器：不挂仓库、不直连 VM 端口、只暴露代理 | "agent 留宿主"会让它读到 `eval.py`/`ground_truth` 并直连 QEMU 转发端口，评分面分离失效 | Phase 1 需要容器 recipe + 代理 socket/端口 + 凭据注入 |
 | **D3** | Phase 1 串行 1 VM；验收 n=3；Phase 2 先 2 VM soak；每 run 独立 qcow2 overlay | spec/04 明确 2 VM 未验证；n≥3 是 spec/03 的发布纪律；overlay 是防串扰/反作弊要求 | `spec/09` 按串行实现；并发留到 Phase 2 |
-| D4 | 待定 | 发布时点影响商标检索与 org 占位 | 不阻塞 Phase 0/1 |
-| D5 | 待定 | 镜像策略影响第二求解器与 pins | 不阻塞 Phase 0/1；`spec/10` 留占位 |
+| **D4** | ✅ 已定（2026-11-18） | 发布时点：Phase 1 验收后开源代码/spec/任务包；公开榜单等 v0.5（≥2 栈 × n≥3）；开源前完成商标四连查与 org 占位 | 商标/组织动作进 spec/06 清单；不阻塞 Phase 1 |
+| **D5** | ✅ 已定（2026-11-18） | 镜像策略：v0/v0.5 沿用 EngiWorld 镜像；Phase 1 写构建 recipe 并产出一张自建镜像验证可复现；Phase 2 切换自建镜像并重跑审计（pins 与镜像绑定） | `spec/10` §3 执行；Phase 2 前不动现有 pins |
 
 ## 3. Episode 生命周期
 
@@ -249,10 +249,9 @@ Phase 2 加 opencode/hermes/openclaw 时，预期**只新增 adapter 和 conform
 
 ## 11. 待定与开放问题
 
-- `agent_error` 是否加入 spec/03 的 `error_category` 枚举（Phase 1 决定）。
-- `vericax-sh` 是否需要 session wrapper（controller 每次调用都是新 bash；`cd`/env 不保留）。
-- 代理认证：Unix socket vs 每 episode token；Phase 1 二选一。
-- `artifact_uri` 的形态：逐文件 + manifest，还是 tarball；需与 spec/03 对齐。
+- ~~`agent_error` 是否加入 spec/03 的 `error_category` 枚举~~ **已定（2026-11-18 评审）：加入**；spec/03 §2 已增补。
+- `vericax-sh` 是否需要 session wrapper（controller 每次调用都是新 bash；`cd`/env 不保留）——Phase 1 spike 决定；spike 候选方案是 proxy 侧用 VM 内 cwd 状态文件延续 `pwd`，不起持久进程。
+- ~~代理认证：Unix socket vs 每 episode token~~ **已定（2026-11-18 评审）：两者都用**——Unix socket 限定可达面，每 episode token 防同容器/网段内伪造；与 spec/09 §5 一致。
+- ~~`artifact_uri` 的形态~~ **已定（2026-11-18 评审）：逐文件 + `artifacts.json` manifest**；tarball 仅用于复现归档，评分只读解包目录。
 - 多 run 状态隔离的具体目录布局（HOME/config/session）。
 - Windows/macOS 宿主支持不在 v0 范围。
-- D4/D5 的发布与镜像决策（见 spec/10）。
