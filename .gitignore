@@ -1,0 +1,19 @@
+# evaluation outputs are per-run, never committed
+results/
+cache/
+download/
+
+# VM images and archives stay out of git (manifest + checksums only)
+*.qcow2
+*.qcow2.zst
+*.iso
+
+# local envs
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# secrets
+.env
+*.key

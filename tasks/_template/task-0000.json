@@ -1,0 +1,42 @@
+{
+  "id": "cae--cli--calculix--task-0000",
+  "schema_version": "0.1",
+  "snapshot": "CalculiX-2.21",
+  "interface": "cli",
+  "instruction": "TEMPLATE - replace me. Work from the template /home/user/Desktop/<template>.inp. Use /usr/bin/ccx for the solve. 1. ... 2. ... Save final artifacts to /home/user/Desktop/<artifact> and write <metric> to /home/user/Desktop/summary.txt in the format <field_a>, <field_b>.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {"local_path": "task-0000/init_file/template.inp", "path": "/home/user/Desktop/template.inp"}
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/solution.inp",
+    "/home/user/Desktop/solution.dat",
+    "/home/user/Desktop/summary.txt"
+  ],
+  "integrity_policy": {
+    "native_interface_only": true,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": ["numpy", "scipy"],
+    "forbid_read": ["ground_truth", "evaluator"]
+  },
+  "evaluator": {
+    "func": "exact_match",
+    "postconfig": [
+      {"type": "upload_file", "parameters": {"files": [{"local_path": "task-0000/eval.py", "path": "/scoring/eval.py"}]}}
+    ],
+    "result": {"type": "vm_command_line", "command": "python3 /scoring/eval.py", "shell": "true"},
+    "expected": {"type": "rule", "rules": {"expected": "True\n"}}
+  },
+  "limits": {"cli_max_steps": 100, "gui_max_steps": null, "active_time_seconds": 18000},
+  "related_apps": ["calculix"],
+  "splits": [],
+  "possibility_of_env_change": "low"
+}

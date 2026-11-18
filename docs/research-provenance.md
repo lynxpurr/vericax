@@ -1,0 +1,19 @@
+# Research Provenance
+
+本仓所有规格决策均可追溯到 2026-11-17/18 的 EngiWorld 实地调研，证据链：
+
+| 决策 | 证据 |
+|---|---|
+| 三资产结构（Tasks/Images/Runtime） | EngiWorld HF 双数据集 + GitHub runtime，实测 ModelScope 47s 拉 5.5GB |
+| task.json 字段集 | `engiworld-repo/task/` 实读（单软件 + 设计优化两种 evaluator 形态） |
+| 五层 verifier 范式 | verifier 解剖：CalculiX(80行)/FEniCS优化(332行)/OpenFOAM(305行)/跨软件(1205行,47函数) |
+| 反作弊规格（AST 校验/stealth 拒绝/通道隔离） | `engine/mm_agents/agent.py::_validate_pyautogui_cdata` + CLI system prompt 实读 |
+| 审计协议 | 论文 §verifier audit：96 参考解全收 + 替代解全收 + 21+21 负面全拒 |
+| 分数语义与 error 分离 | `local_eval.py`/`runner.py` 实读 + 3 题实测 summary.json |
+| 环境规格（KVM ACL/netfilter 坑/177s boot） | um890 实测 smoke-test（environment_ready） |
+| 失败模式设计输入 | t02 假提交（0 字节 dat）/ t03 调试死循环（100 轮 357K reasoning）实测 |
+| split 版本化纪律 | EngiWorld main-300/main-306 并存教训 |
+| 命名决议 | 联网查重：caX-bench 商标/EngiBench/FleetBench/CADTestBench 等，见 spec/06 |
+
+完整报告：`~/projects/engiworld-playground/engiworld-调研报告.md`（§4 verifier 解剖、§7 实测、§8 EngiOps 提案、§9 社区盘点）。
+实测轨迹：`~/projects/engiworld-playground/results/cae-batch/`。
