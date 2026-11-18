@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+"""Host-side convenience wrapper: run the vericax-sh client from this checkout.
+
+Inside the agent container the same file lives at
+/usr/local/bin/vericax-sh (copied there by the image recipe).
+"""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "vericax"))
+
+import sh_client  # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(sh_client.main())

@@ -1,0 +1,8 @@
+# Minimal agent image for scripted fake agents (harness regression, no model):
+# python3 + the vericax-sh client, nothing else.
+FROM python:3.12-slim
+
+COPY vericax-sh /usr/local/bin/vericax-sh
+RUN chmod 0755 /usr/local/bin/vericax-sh
+
+WORKDIR /vericax

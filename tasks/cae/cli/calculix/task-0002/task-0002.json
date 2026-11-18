@@ -54,6 +54,8 @@
   "limits": {"cli_max_steps": 100, "gui_max_steps": null, "active_time_seconds": 18000},
   "related_apps": ["calculix"],
   "capability": "design-optimization",
-  "splits": [],
+  "splits": [
+    "v0.1-cae-cli-pilot"
+  ],
   "possibility_of_env_change": "low"
 }
