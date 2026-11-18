@@ -1,0 +1,59 @@
+{
+  "id": "cae--cli--calculix--task-0002",
+  "schema_version": "0.1",
+  "snapshot": "CalculiX-2.21",
+  "interface": "cli",
+  "instruction": "Work from a CalculiX cantilever template `/home/user/Desktop/cantilever_template.inp` (uniform 10x10 mm beam). Use `/usr/bin/ccx` for the solve.\n\nMinimise the mass of a stepped cantilever under stiffness and strength constraints, and generate `/home/user/Desktop/solution.inp`:\n- Fixed mesh layout: 11 nodes at `(10*(i-1), 0, 0)`, i = 1..11, and 10 B31 elements where element e joins nodes `e` and `e+1`\n- Two design variables: the side `a1` (mm) of the square RECT section used by elements 1-5, and the side `a2` (mm) used by elements 6-10\n- Bounds: `6.0 <= a1 <= 12.0` and `4.0 <= a2 <= 10.0`\n- Keep the material (E=210000, nu=0.3), the clamped boundary at node 1 (dofs 1-6) and the tip load FY=-100 N at node 11 unchanged\n- Constraint 1 (stiffness): the vertical displacement at node 11 must satisfy `|uy| <= 0.35 mm`\n- Constraint 2 (strength): the outer-fibre bending stress anywhere in the beam must satisfy `sigma <= 140 MPa`, with `sigma = M*(a/2)/(a^4/12)` for the square section, M the internal bending moment (M = 10000 N*mm at the root, 5000 N*mm at the step). Do not use beam-element stress output for this check: CalculiX reports it at section Gauss points, not at the outer fibre.\n\nSubmit the job with `ccx` and produce `/home/user/Desktop/solution.dat`.\n\nWrite `/home/user/Desktop/summary.txt` as three comma-separated numbers: `a1, a2, tip_uy` where tip_uy is the vertical displacement of node 11.\n\nThe score is the relative mass reduction against the uniform 10x10 mm design: `1 - mass/mass_baseline`, with `mass = 50*a1^2 + 50*a2^2` and `mass_baseline = 10000`. A design that violates any bound or constraint scores 0.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {"local_path": "task-0002/init_file/cantilever_template.inp", "path": "/home/user/Desktop/cantilever_template.inp"}
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/solution.inp",
+    "/home/user/Desktop/solution.dat",
+    "/home/user/Desktop/summary.txt"
+  ],
+  "integrity_policy": {
+    "native_interface_only": true,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": ["numpy", "scipy"],
+    "forbid_read": ["ground_truth", "evaluator"]
+  },
+  "evaluator": {
+    "func": "quantified_score",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {"local_path": "task-0002/eval.py", "path": "/home/user/vericax/eval.py"}
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    },
+    "metric": {
+      "name": "normalized mass reduction",
+      "baseline_score": 0.0,
+      "direction": "maximize",
+      "output_field": "score"
+    }
+  },
+  "limits": {"cli_max_steps": 100, "gui_max_steps": null, "active_time_seconds": 18000},
+  "related_apps": ["calculix"],
+  "capability": "design-optimization",
+  "splits": [],
+  "possibility_of_env_change": "low"
+}

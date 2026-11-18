@@ -1,28 +1,42 @@
 #!/usr/bin/env python3
-"""Boot one evaluation VM, produce ground truth, and run the full audit suite.
+"""Generic VeriCAx audit harness (spec/02 section 4) for any task package.
 
-This is the VeriCAx audit harness (spec/02 section 4). A single VM boot does:
+Boot ONE evaluation VM, produce ground truth from the task's gold case, then run
+every case declared in the task's own `audit_cases.py` and check the verdict
+against its expectation.
 
-  reference   run the golden solution         -> ground_truth/ artifacts + pinned values
-  P1 positive ground-truth artifacts          -> expect True
-  P2 robust   same input, evaluator re-run    -> expect identical verdict
-  A1 alternative legal deck (order permuted,
-     extra output requests, BC stated w/o value) -> expect True
-  N1 empty delivery (no artifacts)            -> expect False
-  N2 fabricated summary numbers               -> expect False
-  N3 zero-byte .dat (solve failed, still submitted) -> expect False
-  N4 tampered sections (both 10x10)           -> expect False
+Task package contract (`audit_cases.py` next to the task json):
 
-Usage (uses the EngiWorld runtime venv python, which has the engine deps):
+    GOLD = r\"\"\"<bash script that builds the reference submission>\"\"\"
 
-    ~/projects/engiworld-playground/engiworld-repo/runtime/.venv/bin/python \
-        scripts/audit_task.py --task cae--cli--calculix--task-0001
+    CASES = [
+        ("P1 positive (gold)",        GOLD,                  ("true",)),
+        ("A1 alternative legal deck", ALT,                   ("true",)),
+        ("N1 empty delivery",         "",                    ("false",)),
+        ("N2 fabricated summary",     GOLD + FABRICATE,      ("false",)),
+        # quantified_score tasks assert on the numeric verdict instead:
+        ("P2 optimal",                GOLD,                  ("ge", 0.30)),
+        ("N5 baseline copied",        BASELINE,              ("le", 0.001)),
+    ]
 
-Exit code 0 iff every expectation matches.
+Each script runs inside the VM with the task's init resources already uploaded;
+the harness cleans the declared artifacts before every case, so a case only sees
+what its script produces.
+
+Pinned references: if the verifier declares `EXPECTED_<NAME> = ...` lines and the
+gold summary is numeric with the same arity, the harness bakes the measured
+values into the verifier copy used for evaluation (the packaged file keeps its
+placeholders for authoring, and re-running the audit refreshes the pins).
+
+Usage:
+    ~/projects/engiworld-playground/engiworld-repo/runtime/.venv/bin/python \\
+        scripts/audit_task.py --task cae--cli--calculix--task-0002
 """
 from __future__ import annotations
 
 import argparse
+import base64
+import importlib.util
 import json
 import os
 import re
@@ -40,125 +54,36 @@ IMAGE = Path(os.environ.get(
 DESK = "/home/user/Desktop"
 EVAL_VM_PATH = "/home/user/vericax/eval.py"
 
-# ---------------------------------------------------------------- reference run
-REF_SCRIPT = r"""
-set -e
-cd /home/user/Desktop
-rm -f solution.inp solution.dat solution.frd solution.cvg summary.txt
-python3 - <<'PYEOF'
-from pathlib import Path
-n = 10
-lines = ["*Heading", "VeriCAX task-0001 reference solution", "*Node"]
-for i in range(1, n + 2):
-    lines.append(f"{i}, {10.0 * (i - 1):.1f}, 0.0, 0.0")
-lines.append("*Element, type=B31, elset=RootElems")
-for e in range(1, 6):
-    lines.append(f"{e}, {e}, {e + 1}")
-lines.append("*Element, type=B31, elset=TipElems")
-for e in range(6, 11):
-    lines.append(f"{e}, {e}, {e + 1}")
-lines += [
-    "*Nset, nset=All_Nodes", ", ".join(str(i) for i in range(1, n + 2)),
-    "*Material, name=Steel", "*Elastic", "210000.0, 0.3",
-    "*Beam Section, elset=RootElems, material=Steel, section=RECT", "10.0, 10.0",
-    "*Beam Section, elset=TipElems, material=Steel, section=RECT", "6.0, 6.0",
-    "*Boundary", "1, 1, 6, 0.0", "*Step", "*Static", "*Cload", f"{n + 1}, 2, -100.0",
-    "*Node Print, NSET=All_Nodes", "U", "*End Step", "",
-]
-Path("solution.inp").write_text("\n".join(lines))
-PYEOF
-/usr/bin/ccx solution > /tmp/ccx-run.log 2>&1 || { tail -25 /tmp/ccx-run.log; exit 1; }
-python3 - <<'PYEOF'
-from pathlib import Path
-import re
-dat = Path("solution.dat").read_text(errors="ignore")
-uy = {}
-head = None
-for raw in dat.splitlines():
-    s = raw.strip()
-    if not s:
-        continue
-    if re.match(r"^[A-Za-z*]", s):
-        head = s.lower()
-        continue
-    if head and "displacements" in head:
-        p = s.split()
-        try:
-            uy[int(p[0])] = float(p[2])
-        except (ValueError, IndexError):
-            pass
-assert 6 in uy and 11 in uy, "parse failed"
-Path("summary.txt").write_text(f"{uy[6]}, {uy[11]}\n")
-print("REFERENCE:", uy[6], uy[11])
-PYEOF
-cat summary.txt
-"""
-
-ALT_SCRIPT = r"""
-set -e
-cd /home/user/Desktop
-# Legal alternative encoding: elements declared tip-first in two blocks,
-# sections in the opposite order, BC without trailing value, integer load,
-# own print-set name.
-python3 - <<'PYEOF'
-from pathlib import Path
-n = 10
-lines = ["*Heading", "alternative legal deck", "*Node"]
-for i in range(n + 1, 0, -1):
-    lines.append(f"{i}, {10.0 * (i - 1):.1f}, 0.0, 0.0")
-lines.append("*Element, type=B31, elset=TipElems")
-for e in range(10, 5, -1):
-    lines.append(f"{e}, {e}, {e + 1}")
-lines.append("*Element, type=B31, elset=RootElems")
-for e in range(5, 0, -1):
-    lines.append(f"{e}, {e}, {e + 1}")
-lines += [
-    "*Material, name=Steel", "*Elastic", "210000.0, 0.3",
-    "*Beam Section, elset=TipElems, material=Steel, section=RECT", "6.0, 6.0",
-    "*Beam Section, elset=RootElems, material=Steel, section=RECT", "10.0, 10.0",
-    "*Nset, nset=PrintNodes", ", ".join(str(i) for i in range(1, n + 2)),
-    "*Boundary", "1, 1, 6", "*Step", "*Static", "*Cload", "11, 2, -100",
-    "*Node Print, NSET=PrintNodes", "U", "*End Step", "",
-]
-Path("solution.inp").write_text("\n".join(lines))
-PYEOF
-/usr/bin/ccx solution > /tmp/ccx-alt.log 2>&1 || { tail -25 /tmp/ccx-alt.log; exit 1; }
-python3 - <<'PYEOF'
-from pathlib import Path
-import re
-dat = Path("solution.dat").read_text(errors="ignore")
-uy = {}
-head = None
-for raw in dat.splitlines():
-    s = raw.strip()
-    if not s:
-        continue
-    if re.match(r"^[A-Za-z*]", s):
-        head = s.lower()
-        continue
-    if head and "displacements" in head:
-        p = s.split()
-        try:
-            uy[int(p[0])] = float(p[2])
-        except (ValueError, IndexError):
-            pass
-assert 6 in uy and 11 in uy, "parse failed"
-Path("summary.txt").write_text(f"{uy[6]}, {uy[11]}\n")
-print("ALTERNATIVE:", uy[6], uy[11])
-PYEOF
-"""
-
-EVAL_RUN = f"""
-cd {DESK}
-rm -f _verdict.txt _verdict.err
-python3 {EVAL_VM_PATH} > _verdict.txt 2> _verdict.err
-echo "rc=$?" >> _verdict.txt
-"""
-
 
 def task_dir_for(task_id: str) -> Path:
-    d, i, s, t = task_id.split("--")
-    return REPO / "tasks" / d / i / s / t
+    domain, iface, software, task = task_id.split("--")
+    return REPO / "tasks" / domain / iface / software / task
+
+
+def load_cases(task_dir: Path):
+    spec = importlib.util.spec_from_file_location("audit_cases", task_dir / "audit_cases.py")
+    if spec is None or spec.loader is None:
+        raise SystemExit(f"no audit_cases.py in {task_dir}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def check_expectation(expect: tuple, verdict: str) -> tuple[bool, str]:
+    kind = expect[0]
+    if kind in ("true", "false"):
+        want = "True" if kind == "true" else "False"
+        first = verdict.splitlines()[0].strip() if verdict else "<no output>"
+        return first == want, f"want={want} got={first}"
+    try:
+        value = float(verdict.splitlines()[0])
+    except (ValueError, IndexError):
+        return False, f"want={expect} got=<unparseable {verdict[:40]!r}>"
+    if kind == "ge":
+        return value >= expect[1], f"want>={expect[1]} got={value:.6f}"
+    if kind == "le":
+        return value <= expect[1], f"want<={expect[1]} got={value:.6f}"
+    raise SystemExit(f"unknown expectation kind: {kind}")
 
 
 def main() -> int:
@@ -168,14 +93,24 @@ def main() -> int:
     args = ap.parse_args()
 
     task_dir = task_dir_for(args.task)
+    task_json = json.loads((task_dir / f"{task_dir.name}.json").read_text())
+    cases = load_cases(task_dir).CASES
+    artifacts = [Path(p).name for p in task_json.get("artifact_paths", [])]
+    if not artifacts:
+        raise SystemExit("task declares no artifact_paths")
     gt_dir = task_dir / "ground_truth"
-    eval_src = task_dir / "eval.py"
-    if not eval_src.is_file() or not (task_dir / "init_file").is_dir():
-        print(f"task package incomplete: {task_dir}", file=sys.stderr)
-        return 2
 
     sys.path.insert(0, str(ENGINE))
     from desktop_env.desktop_env import DesktopEnv  # noqa: E402
+
+    # mirror the runtime's path resolution: local_path is relative to the
+    # software directory (the task dir's parent)
+    software_dir = task_dir.parent
+    for item in task_json.get("config", []):
+        if item.get("type") != "upload_file":
+            continue
+        for res in item.get("parameters", {}).get("files", []):
+            res["local_path"] = str((software_dir / res["local_path"]).resolve())
 
     env = DesktopEnv(
         provider_name="docker", path_to_vm=str(IMAGE.resolve()), os_type="Ubuntu",
@@ -188,8 +123,6 @@ def main() -> int:
         env.step(("bash", script), bash_timeout=timeout)
 
     def put(remote: str, data: bytes) -> None:
-        # base64 through the shell keeps arbitrary bytes intact
-        import base64
         b64 = base64.b64encode(data).decode()
         sh(f"mkdir -p $(dirname {remote}) && echo '{b64}' | base64 -d > {remote}")
 
@@ -199,144 +132,112 @@ def main() -> int:
         except Exception:  # noqa: BLE001
             return None
 
+    def clean() -> None:
+        names = " ".join(f"{DESK}/{a}" for a in artifacts)
+        sh(f"rm -f {names} {DESK}/_verdict.txt {DESK}/_verdict.err")
+
     def verdict() -> tuple[str, str]:
-        sh(EVAL_RUN)
-        out = get(f"{DESK}/_verdict.txt") or b""
-        err = get(f"{DESK}/_verdict.err") or b""
-        return out.decode(errors="ignore").strip(), err.decode(errors="ignore").strip()
+        sh(f"cd {DESK} && python3 {EVAL_VM_PATH} > _verdict.txt 2> _verdict.err; "
+           f"echo \"rc=$?\" >> _verdict.txt")
+        out = (get(f"{DESK}/_verdict.txt") or b"").decode(errors="ignore").strip()
+        err = (get(f"{DESK}/_verdict.err") or b"").decode(errors="ignore").strip()
+        return out, err
 
     results = []
+    gold_summary = ""
     try:
         print("[boot] starting VM ...")
-        task_json = json.loads((task_dir / f"{task_dir.name}.json").read_text())
-        # mirror the runtime's path resolution: local_path is relative to the
-        # software directory (the task dir's parent); upload steps need absolute
-        software_dir = task_dir.parent
-        for item in task_json.get("config", []):
-            if item.get("type") != "upload_file":
-                continue
-            for res in item.get("parameters", {}).get("files", []):
-                res["local_path"] = str((software_dir / res["local_path"]).resolve())
         env.reset(task_config=task_json)
         print("[boot] VM ready")
 
-        # ---------------- reference (ground truth)
-        print("[gt] running golden solution ...")
-        sh(REF_SCRIPT)
-        gt = {}
-        for name in ("solution.inp", "solution.dat", "summary.txt"):
+        # ---------------- ground truth from the gold case
+        gold_script = cases[0][1]
+        print("[gt] running gold case ...")
+        clean()
+        sh(gold_script)
+        for name in artifacts:
             data = get(f"{DESK}/{name}")
             if not data:
-                print(f"FAILED to fetch {name}", file=sys.stderr)
+                print(f"[gt] FAILED to fetch {name}", file=sys.stderr)
                 return 3
-            gt[name] = data
             gt_dir.mkdir(parents=True, exist_ok=True)
             (gt_dir / name).write_bytes(data)
             print(f"[gt] {name}: {len(data)} bytes")
-        gt_summary = gt["summary.txt"].decode().strip()
-        step, tip = [float(x) for x in gt_summary.split(",")]
-        print(f"[gt] pinned values: step_uy={step!r} tip_uy={tip!r}")
+        if "summary.txt" in artifacts:
+            gold_summary = (gt_dir / "summary.txt").read_text().strip()
+            print(f"[gt] reference summary: {gold_summary}")
 
-        # bake pinned values into a copy of eval.py for this audit run
-        eval_text = eval_src.read_text()
-        baked = re.sub(r"(?m)^EXPECTED_STEP_UY = .*$", f"EXPECTED_STEP_UY = {step!r}", eval_text)
-        baked = re.sub(r"(?m)^EXPECTED_TIP_UY = .*$", f"EXPECTED_TIP_UY = {tip!r}", baked)
+        # ---------------- verifier copy (fill pinned references if declared)
+        eval_text = (task_dir / "eval.py").read_text()
+        baked = eval_text
+        pin_names = re.findall(r"(?m)^EXPECTED_([A-Z0-9_]+) = ", eval_text)
+        if pin_names and gold_summary:
+            values = []
+            for part in gold_summary.split(","):
+                try:
+                    values.append(float(part.strip()))
+                except ValueError:
+                    values = []
+                    break
+            if values and len(values) == len(pin_names):
+                for name, value in zip(pin_names, values):
+                    baked = re.sub(rf"(?m)^EXPECTED_{name} = .*$",
+                                   f"EXPECTED_{name} = {value!r}", baked)
+                print(f"[gt] baked pins: {dict(zip(pin_names, values))}")
+            elif pin_names:
+                print(f"[gt] note: {len(pin_names)} pins vs summary {gold_summary!r}; not baking")
         put(EVAL_VM_PATH, baked.encode())
 
-        def stage(inp=None, dat=None, summary=None):
-            sh(f"cd {DESK} && rm -f solution.inp solution.dat summary.txt")
-            for name, content in (("solution.inp", inp), ("solution.dat", dat), ("summary.txt", summary)):
-                if content is not None:
-                    put(f"{DESK}/{name}", content)
-
-        def expect(label: str, want_true: bool) -> None:
+        # ---------------- cases
+        for label, script, expect in cases:
+            clean()
+            if script.strip():
+                sh(script)
             out, err = verdict()
-            got = out.splitlines()[0].strip() if out else "<no output>"
-            ok = (got == ("True" if want_true else "False"))
-            results.append((label, want_true, got, ok, err[-300:]))
-            print(f"[{'PASS' if ok else 'MISS'}] {label}: want={'True' if want_true else 'False'} got={got}")
+            ok, detail = check_expectation(expect, out)
+            results.append((label, detail, ok, err[-300:]))
+            print(f"[{'PASS' if ok else 'MISS'}] {label}: {detail}")
 
-        # ---------------- P1 / P2 positive + robustness
-        stage(gt["solution.inp"], gt["solution.dat"], gt["summary.txt"])
-        expect("P1 positive (ground truth)", True)
-        expect("P2 robust (same input re-run)", True)
-
-        # ---------------- A1 alternative legal deck
-        sh(ALT_SCRIPT)
-        alt = {n: get(f"{DESK}/{n}") for n in ("solution.inp", "solution.dat", "summary.txt")}
-        if all(alt.values()):
-            stage(alt["solution.inp"], alt["solution.dat"], alt["summary.txt"])
-            expect("A1 alternative legal deck", True)
-        else:
-            results.append(("A1 alternative legal deck", True, "<staging failed>", False, ""))
-            print("[MISS] A1 staging failed")
-
-        # ---------------- N1 empty delivery
-        stage()
-        expect("N1 empty delivery", False)
-
-        # ---------------- N2 fabricated summary
-        stage(gt["solution.inp"], gt["solution.dat"], b"-0.01, -0.10\n")
-        expect("N2 fabricated summary", False)
-
-        # ---------------- N3 zero-byte dat
-        stage(gt["solution.inp"], b"", gt["summary.txt"])
-        expect("N3 zero-byte dat", False)
-
-        # ---------------- N4 tampered sections (both 10x10, summary left as-is)
-        tampered = gt["solution.inp"].decode().replace(
-            "*Beam Section, elset=TipElems, material=Steel, section=RECT\n6.0, 6.0\n",
-            "*Beam Section, elset=Seg2, material=Steel, section=RECT\n10.0, 10.0\n")
-        stage(tampered.encode(), gt["solution.dat"], gt["summary.txt"])
-        expect("N4 tampered sections", False)
-
-        # ---------------- restore a clean desktop
-        stage(gt["solution.inp"], gt["solution.dat"], gt["summary.txt"])
+        # leave the gold submission staged for inspection
+        clean()
+        if gold_script.strip():
+            sh(gold_script)
     finally:
         if not args.keep_vm:
             env.close()
 
     print("\n===== AUDIT SUMMARY =====")
-    passed = sum(1 for r in results if r[3])
-    for label, want, got, ok, err in results:
-        print(f"{'PASS' if ok else 'MISS'}  {label:34s} want={'True' if want else 'False'} got={got}"
-              + (f"  err={err.strip()[:120]}" if err.strip() else ""))
+    passed = sum(1 for r in results if r[2])
+    for label, detail, ok, err in results:
+        line = f"{'PASS' if ok else 'MISS'}  {label:38s} {detail}"
+        if not ok and err.strip():
+            line += f"  err={err.strip().splitlines()[0][:140]}"
+        print(line)
     print(f"{passed}/{len(results)} expectations matched")
 
-    (task_dir / "ground_truth" / "audit.md").write_text(render_audit_md(results, gt_summary))
-    print(f"audit record -> {task_dir / 'ground_truth' / 'audit.md'}")
+    (gt_dir / "audit.md").write_text(render_audit_md(task_json, results, gold_summary))
+    print(f"audit record -> {gt_dir / 'audit.md'}")
     return 0 if passed == len(results) else 1
 
 
-def render_audit_md(results, gt_summary: str) -> str:
+def render_audit_md(task_json: dict, results, gold_summary: str) -> str:
     import datetime
     lines = [
         "# Verifier audit record",
         "",
         f"- date: {datetime.date.today().isoformat()}",
-        "- image: CalculiX-2.21.qcow2 (same image as evaluation)",
-        "- verifier: task-0001/eval.py (IMPLEMENTS L1, L2, L3)",
-        f"- ground truth: `summary.txt` = {gt_summary}",
+        f"- task: {task_json.get('id')} (evaluator func: "
+        f"{task_json.get('evaluator', {}).get('func')})",
+        "- image: same image as evaluation (CalculiX-2.21)",
+        f"- reference submission summary: `{gold_summary}`",
         "",
-        "| group | case | expected | actual | verdict |",
-        "|---|---|---|---|---|",
+        "| case | expectation | actual | verdict |",
+        "|---|---|---|---|",
     ]
-    for label, want, got, ok, _err in results:
-        lines.append(f"| — | {label} | {'True' if want else 'False'} | {got} | {'PASS' if ok else 'MISS'} |")
-    lines += [
-        "",
-        "Notes:",
-        "- Scored quantities are NODAL displacements (uy at node 6 and node 11), which",
-        "  converge with mesh refinement. Beam stress output is deliberately not scored:",
-        "  CalculiX reports it at section Gauss points (~0.58x the outer-fibre stress)",
-        "  and the value would be ambiguous to request in the instruction.",
-        "- Mesh convergence was measured before freezing the task: 1 element/segment",
-        "  gives -0.144 (24% below beam theory); the prescribed 10-element mesh gives",
-        "  -0.3464 vs analytic -0.3504 (1.1%), inside the verifier's 2% band.",
-        "- The alternative deck permutes node/element/section order, splits elements",
-        "  across two cards and adds output requests; L2 compares order-independently,","so it must be accepted.",
-        "",
-    ]
+    for label, detail, ok, _err in results:
+        want, _, got = detail.partition(" got=")
+        lines.append(f"| {label} | {want} | {got} | {'PASS' if ok else 'MISS'} |")
+    lines += ["", "Generated by scripts/audit_task.py from the task's audit_cases.py.", ""]
     return "\n".join(lines)
 
 
