@@ -29,8 +29,8 @@ values into the verifier copy used for evaluation (the packaged file keeps its
 placeholders for authoring, and re-running the audit refreshes the pins).
 
 Usage:
-    ~/projects/engiworld-playground/engiworld-repo/runtime/.venv/bin/python \\
-        scripts/audit_task.py --task cae--cli--calculix--task-0002
+    <runtime-venv>/bin/python scripts/audit_task.py \
+        --task cae--cli--calculix--task-0002
 """
 from __future__ import annotations
 
