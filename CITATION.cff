@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this benchmark or its task packages, please cite it as below."
+title: VeriCAx
+abstract: >-
+  Artifact-centric verification benchmark for agents operating professional CAx
+  software. Scores come from re-opened engineering artifacts checked by
+  domain verifiers, and every verifier is itself audited against positive,
+  alternative, negative and robustness cases before publication.
+type: software
+license: MIT
+authors:
+  - name: "VeriCAx contributors"
+repository-code: "https://github.com/lynxpurr/vericax"
+keywords:
+  - benchmark
+  - agents
+  - CAD
+  - CAE
+  - CAM
+  - artifact-centric evaluation
+  - verification
+references:
+  - type: article
+    title: >-
+      EngiWorld: What Can Frontier Agents Deliver in Professional Engineering
+      Environments?
+    authors:
+      - name: "Hongcheng Gao and others"
+    year: 2026
+    identifiers:
+      - type: other
+        value: "arXiv:2609.37686"

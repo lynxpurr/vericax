@@ -38,7 +38,7 @@ VeriCAx 是**工件级验真（artifact-centric verification）优先**的 CAx a
 | v1.5 | GUI 通道 | 同上软件 GUI 形态 | 另行分层 |
 | 并行 | VeriCAx-Ops | 运维域子集（RAGFlow/cron/跨服务链，见调研报告 §8） | 5→20 题 |
 
-镜像策略：v0/v0.5 直接复用 EngiWorld 15 个开源镜像（MIT，含 CalculiX-2.21 已在 um890 实测可用）；v1 起自建镜像按 spec/04 规范。
+镜像策略：v0/v0.5 直接复用 EngiWorld 15 个开源镜像（MIT，含 CalculiX-2.21 已实测可用）；v1 起自建镜像按 spec/04 规范。
 
 ## 5. 非目标（明确排除）
 

@@ -1,0 +1,58 @@
+name: Task proposal
+description: Propose a new CAx task for the benchmark.
+labels: ["task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A task is publishable only with a verifier **and** an audit record. See
+        CONTRIBUTING.md for the full checklist.
+  - type: input
+    id: domain
+    attributes:
+      label: Domain and software
+      placeholder: "CAE / CalculiX 2.21 (CLI)"
+    validations:
+      required: true
+  - type: dropdown
+    id: capability
+    attributes:
+      label: Capability
+      options:
+        - single-execution
+        - software-selection
+        - observation-reconstruct
+        - design-optimization
+        - cross-software
+        - cross-stage-consistency
+        - open-environment
+    validations:
+      required: true
+  - type: textarea
+    id: deliverable
+    attributes:
+      label: What artifact must the agent deliver?
+      description: Name the files and the quantities that will be scored, and why they are unambiguous.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: How is it verified?
+      description: Which verifier layers (L1-L5), which parser or API re-opens the artifact, and what makes fabrication impossible.
+    validations:
+      required: true
+  - type: textarea
+    id: reference
+    attributes:
+      label: Reference and alternatives
+      description: How will the ground truth be produced, and which alternative legal encodings should the verifier accept?
+  - type: checkboxes
+    id: legality
+    attributes:
+      label: Licensing
+      options:
+        - label: The task does not redistribute proprietary software
+          required: true
+        - label: The instruction does not reveal verifier thresholds or reference values
+          required: true

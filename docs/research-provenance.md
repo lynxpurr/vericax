@@ -14,7 +14,7 @@
 | 反作弊规格（AST 校验/stealth 拒绝/通道隔离） | `engine/mm_agents/agent.py::_validate_pyautogui_cdata` + CLI system prompt 实读 |
 | 审计协议 | 论文 §verifier audit：96 参考解全收 + 替代解全收 + 21+21 负面全拒 |
 | 分数语义与 error 分离 | `local_eval.py`/`runner.py` 实读 + 3 题实测 summary.json |
-| 环境规格（KVM ACL/netfilter 坑/177s boot） | um890 实测 smoke-test（environment_ready） |
+| 环境规格（KVM ACL/netfilter 坑/177s boot） | 实测 smoke-test（environment_ready） |
 | 失败模式设计输入 | t02 假提交（0 字节 dat）/ t03 调试死循环（100 轮 357K reasoning）实测 |
 | split 版本化纪律 | EngiWorld main-300/main-306 并存教训 |
 | 命名决议 | 联网查重：caX-bench 商标/EngiBench/FleetBench/CADTestBench 等，见 spec/06 |

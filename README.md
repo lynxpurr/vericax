@@ -2,58 +2,120 @@
 
 **Artifact-centric verification benchmark for agents in professional CAx (CAD/CAE/CAM) environments.**
 
-VeriCAx 评测通用 agent（完整 agent 栈，而非裸 LLM）在专业 CAx 软件里交付**工程工件**的能力。第一性原则：
+[![ci](https://github.com/lynxpurr/vericax/actions/workflows/ci.yml/badge.svg)](https://github.com/lynxpurr/vericax/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 
-> **分数只来自重开工件的可执行校验。** agent 的自述、日志、轨迹永远不作为得分依据。
-> verifier 本身被反向审计（正面/替代/负面三组）——审计不过，verifier 不可信。
+VeriCAx evaluates a **complete agent stack** (harness + model, not a bare LLM) on
+its ability to deliver engineering artifacts inside professional CAx software.
+The first principle:
 
-## 三资产结构（继承 EngiWorld 验证过的形态）
+> **Scores only come from re-opening artifacts and checking them executably.**
+> An agent's own summary, logs and trajectory are never evidence.
+> Every verifier is itself audited (positive / alternative / negative / robust)
+> — an unaudited verifier is not trusted.
 
-| 资产 | 内容 | 位置 |
+## Status
+
+Alpha, under active development. The repository is private while the pilot slice
+is stabilised; it will be published under MIT. Current contents:
+
+| Area | State |
+|---|---|
+| Specifications | `docs/spec/00`–`07` drafted |
+| Task packages | 3 CalculiX tasks, each with a passing audit record |
+| Tooling | audit harness, package validator, VM probe, dependency resolver |
+| Second solver | planned (FEniCS) |
+
+## Layout
+
+```
+docs/spec/         specifications (the current bulk of the project)
+docs/setup.md      how to obtain the external runtime and VM images
+tasks/             task packages: <domain>/<interface>/<software>/task-<NNNN>/
+scripts/           audit_task.py, pack_task.py, vm_exec.py, _config.py, check_setup.py
+tasks/_template/   starting point for a new task package
+```
+
+## Quickstart
+
+See [docs/setup.md](docs/setup.md). In short: bring an external evaluation
+runtime and a VM image, point `vericax.toml` at them, then
+
+```bash
+python scripts/check_setup.py
+<runtime-venv>/bin/python scripts/audit_task.py \
+  --task cae--cli--calculix--task-0001
+```
+
+The audit boots one VM, regenerates the ground truth from the gold case, runs
+every audit case in `audit_cases.py`, and writes `ground_truth/audit.md`.
+
+## What a task package contains
+
+```
+tasks/cae/cli/calculix/task-0001/
+├── task-0001.json       instruction, integrity policy, evaluator and metric
+├── init_file/           starting resources (injected into the agent environment)
+├── eval.py              verifier; declares IMPLEMENTS = ("L1", "L2", "L3", ...)
+├── audit_cases.py       positive / alternative / negative cases with expectations
+├── ground_truth/        reference artifacts + audit.md (never reachable by the agent)
+├── resources.sha256     package manifest, verifier included
+```
+
+## Verifier layers
+
+| Layer | Meaning |
+|---|---|
+| L1 | deliverable completeness — files exist, are non-empty, and re-open |
+| L2 | design conformance — the deck actually encodes what the task asked for |
+| L3 | independent re-solve — submitted numbers must match the submitted model's own physics |
+| L4 | cross-stage consistency — multi-step/multi-artifact invariants |
+| L5 | two-stage scoring — feasibility gate, then a normalised quality score |
+
+Details, anti-cheat requirements and the audit protocol:
+[`docs/spec/02-verifier-spec.md`](docs/spec/02-verifier-spec.md).
+
+## Repository boundary and external dependencies
+
+This is an independent project, not a mirror of, or workspace for, any other
+benchmark repository. Two large assets are **external** and never vendored:
+
+| Dependency | Purpose | Configure with |
 |---|---|---|
-| VeriCAx-Tasks | 任务包（task.json + verifier + 资源，SHA256 清单） | `tasks/`（本仓） |
-| VeriCAx-Images | VM 环境镜像（qcow2+zstd+manifest） | HF org `vericax`（待建） |
-| VeriCAx-Runtime | 评测 runtime（容器化 VM、通道隔离、带外评分） | `runtime/`（v0 档 2 落地） |
+| evaluation runtime (provides `engine/desktop_env`) | boots VMs, runs episodes | `VERICAX_RUNTIME` or `vericax.toml` → `[runtime] path` |
+| decompressed VM image `<snapshot>.qcow2` | task environment | `VERICAX_IMAGE_DIR` or `vericax.toml` → `[images] dir` |
 
-## 仓库边界与外部依赖
+When they are missing the tools fail with setup instructions; they never guess a
+sibling directory. `vericax.toml` is gitignored.
 
-本仓是**独立项目**，不是 EngiWorld 的镜像或附属工作区。两者关系：
+## Roadmap
 
-| | 本仓（vericax） | EngiWorld 调研工作区（外部） |
-|---|---|---|
-| 内容 | 规范、任务包、verifier、审计/打包工具 | EngiWorld 仓克隆、VM 镜像、跑批结果、调研报告 |
-| 与本仓关系 | — | 仅作为**外部依赖与出处引用** |
+- [x] Specifications and the audit protocol
+- [x] Three audited CalculiX tasks covering L1–L5
+- [ ] Fourth pilot task on a second solver (FEniCS), proving the layers are solver-agnostic
+- [ ] Tier 1 trusted loop: out-of-band verifier execution and the anti-cheat layer as runtime code
+- [ ] Public task suite and image release under the `vericax` organisation
 
-外部依赖两样，都不 vendored 进本仓：
+## Contributing
 
-| 依赖 | 用途 | 配置 |
-|---|---|---|
-| 评测 runtime（提供 `engine/desktop_env`） | 起 VM、执行环境 | `VERICAX_RUNTIME` 或 `vericax.toml [runtime] path` |
-| 解压后的 VM 镜像 `<snapshot>.qcow2` | 任务运行环境 | `VERICAX_IMAGE_DIR` 或 `vericax.toml [images] dir` |
+See [CONTRIBUTING.md](CONTRIBUTING.md). Task contributions require a verifier and
+a `MISS`-free audit record. Security aspects (evaluation bypasses) are described in
+[SECURITY.md](SECURITY.md).
 
-配置方式：`cp vericax.toml.example vericax.toml` 后填写（该文件已 gitignore）。缺失时工具会直接报错并给出指引，**不会猜测相邻目录**。
+## Provenance
 
-## 规格文档（spec 是本仓当前的主体交付）
-
-- [`docs/spec/00-vision-and-scope.md`](docs/spec/00-vision-and-scope.md) — 定位、差异化矩阵、范围与非目标
-- [`docs/spec/01-task-package-schema.md`](docs/spec/01-task-package-schema.md) — 任务包格式与 split 纪律
-- [`docs/spec/02-verifier-spec.md`](docs/spec/02-verifier-spec.md) — **五层 verifier 范式 + 反作弊 + 审计协议**（核心）
-- [`docs/spec/03-scoring-and-results.md`](docs/spec/03-scoring-and-results.md) — 分数语义、结果 schema、运维纪律
-- [`docs/spec/04-environment-spec.md`](docs/spec/04-environment-spec.md) — 镜像/运行时规格（含实测踩坑记录）
-- [`docs/spec/05-roadmap.md`](docs/spec/05-roadmap.md) — 档 0/1/2 路线图
-- [`docs/spec/06-naming-and-legal.md`](docs/spec/06-naming-and-legal.md) — 命名决议、四连查结果、法律边界
-- [`docs/spec/07-abaqus-porting.md`](docs/spec/07-abaqus-porting.md) — **Abaqus 移植指南**（ODB 读取、关键字差异、L5 复用、许可/锁文件坑）
-
-任务模板见 [`tasks/_template/`](tasks/_template/)。
-
-## 状态
-
-2026-11-18 立项。spec 冻结前待办：商标库人工查询（06 号文档 checklist）；档 0 pilot 任务设计。
-
-## 考古出处
-
-本仓全部设计来自 EngiWorld（arXiv:2609.37686）实地调研：环境复现、verifier 解剖、3 题/20 题实测与失败模式分析。完整调研报告与实测数据见 `~/projects/engiworld-playground/engiworld-调研报告.md`（含 results/cae-batch/ 轨迹留档）。
+Several structural ideas come from a hands-on study of
+[EngiWorld](https://arxiv.org/abs/2609.37686) (MIT): the three-asset layout, the
+task definition shape, artifact-centric verification and its audit protocol.
+That study also produced a 20-task CalculiX baseline with one model (2/20
+delivered correct artifacts); the failures were dominated by *wrong physics*
+rather than an inability to drive the solver, which is precisely the gap
+artifact-level verification is meant to expose. Attribution details:
+[ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md).
 
 ## License
 
-MIT（见 LICENSE）。注意：第三方工程软件各自许可不受此影响；专有软件（Abaqus/ANSYS 等）任务定义可公开、镜像不公开。
+MIT — see [LICENSE](LICENSE). Third-party engineering software keeps its own
+licence: task definitions may be published for proprietary applications
+(Abaqus, ANSYS), but their images are never distributed here.

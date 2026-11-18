@@ -5,7 +5,7 @@
 ## 档 0 · 闭环 pilot（~1 天）
 
 - [x] 项目骨架 + spec v0.1（本文档体系）
-- [ ] 复用 um890 已验证环境（CalculiX-2.21 镜像 + EngiWorld runtime），按 spec/01 模板产出 **5 道原生 CAE 题**（不得照抄 EngiWorld 题面，验证"自建题→审计→评分"全流程）
+- [ ] 复用已验证环境（CalculiX-2.21 镜像 + EngiWorld runtime），按 spec/01 模板产出 **5 道原生 CAE 题**（不得照抄 EngiWorld 题面，验证"自建题→审计→评分"全流程）
 - [ ] 每题跑通：prepare → check → smoke → 2 个被测 agent（Hermes / ZCode bot）×1 run
 - [ ] 退出条件：verifier 三组审计全过（spec/02 §4）+ 好坏 run 可区分 + summary.json 全字段落盘
 

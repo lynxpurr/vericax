@@ -1,0 +1,42 @@
+name: Bug report
+description: Something in the tooling, a verifier, or the specs is wrong.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. For **evaluation bypasses** (an agent scoring without
+        delivering artifacts), please use the private channel in SECURITY.md instead.
+  - type: input
+    id: task
+    attributes:
+      label: Affected task or script
+      placeholder: "cae--cli--calculix--task-0002 / scripts/audit_task.py"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the verdict, the `debug:` line from the scoring side, and the audit case name if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "runtime checkout revision, image name, host kernel, docker version"
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Sanity checks
+      options:
+        - label: The audit record for this task is currently MISS-free
+        - label: I am not pasting credentials or machine paths
+          required: true

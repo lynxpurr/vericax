@@ -1,6 +1,6 @@
 # 04 · 环境与 Runtime 规格
 
-状态：草案 v0.1（2026-11-18）· 含 um890 实测踩坑记录（smoke-test environment_ready 实证）
+状态：草案 v0.1（2026-11-18）· 含实测踩坑记录（smoke-test environment_ready 实证）
 
 ## 1. 镜像规范（VeriCAx-Images）
 
@@ -19,11 +19,11 @@
 - 16C/89G 宿主实测：串行 1 VM 稳；并行 2 VM 理论可行（2×16G），未验证，v0 不支持
 - 分辨率 1920×1080，初始化前后校准（GUI 通道）
 
-## 3. 已知部署坑（um890 实测，必读）
+## 3. 已知部署坑（实测，必读）
 
 | 坑 | 现象 | 解法 |
 |---|---|---|
-| **KVM 权限** | `/dev/kvm` root:kvm 660 | um890 已挂 ACL（`user:zenz:rw-`）；新机器 `sudo usermod -aG kvm $USER` 或复制 ACL |
+| **KVM 权限** | `/dev/kvm` root:kvm 660 | 测试机上已挂 ACL（`<user>:rw-`）；新机器 `sudo usermod -aG kvm $USER` 或复制 ACL |
 | **netfilter legacy 模块** | 容器内 iptables 失败 → QEMU 静默退化 user-mode（只转 22/3389）→ guest 服务端口永不可达 → readiness 300s 超时。现象极迷惑：VM 明明启动到 graphical.target | 载入 `ip_tables iptable_nat iptable_filter iptable_mangle`；持久化：`sudo tee /etc/modules-load.d/vericax-netfilter.conf <<< "ip_tables"`。sudo 不可用时的替代：特权容器 `--entrypoint modprobe` + 挂载解压后的模块树（见调研报告 §6） |
 | **pip 安装路径断裂** | 包安装到 site-packages 后相对路径定位 engine 失效 | 源码仓一律 `pip install -e`；或显式 `ENGINE_PATH` 环境变量且代码走 env 优先 |
 | **代理计费** | ModelScope/dashscope 国内直连，默认 shell 挂 Clash | 下载/评分进程统一 `unset HTTP_PROXY HTTPS_PROXY ALL_PROXY ...` |

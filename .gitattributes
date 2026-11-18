@@ -1,0 +1,22 @@
+# Normalize text files; keep benchmark artifacts byte-exact.
+* text=auto eol=lf
+
+*.py  text
+*.md  text
+*.json text
+*.toml text
+*.yml text
+*.yaml text
+*.cff text
+*.sha256 text
+*.inp text
+
+# Deck/result artifacts are compared numerically, not textually, but they are
+# plain text today; mark them explicit so editors do not rewrite them.
+tasks/**/init_file/*.inp text
+tasks/**/ground_truth/*.inp text
+tasks/**/ground_truth/*.dat text
+
+*.qcow2 binary
+*.zst binary
+*.png binary
