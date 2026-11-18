@@ -45,3 +45,15 @@ env.reset(task_config=...)   # 注入 init_file
 env.close()                  # 快照复位
 ```
 v0 直接复用 EngiWorld runtime（MIT）+ 上述坑位补丁；v1 抽象成 `vericax-runtime` 独立包。
+
+## 6. CalculiX 工件与输出格式（task-0001 实测，写 verifier 必读）
+
+| 事项 | 事实 | 对 spec/02 的影响 |
+|---|---|---|
+| `.dat` 来源 | 只有 `*Node Print` / `*El Print` 写 `.dat`；`*Node File` / `*El File` 只写 `.frd` | 要求 `.dat` 交付物时，任务书必须说明 print 卡；verifier 应自行注入 |
+| 集合要求 | `*Node Print, NSET=...` / `*El Print, ELSET=...` 必须指向已定义集合；`NALL`/`EALL` 是 Abaqus 约定，CalculiX 无 | verifier 注入时自己声明 `*Nset` 覆盖全部 id（见 eval.py `_ensure_output_requests`） |
+| 应力语义 | beam 单元应力输出在截面高斯点（方形截面 y≈±0.577·半宽），约为外纤维值的 0.58x | **不要**把 beam 应力作为评分量；用节点位移/支反力等无歧义量 |
+| 网格收敛 | 1 单元/段：挠度低 24%；≥10 单元（每 10mm 一个）误差 <1% | 评分量与解析解挂钩时，任务必须规定足够密的网格 |
+| 运行 | `ccx <jobname>` 就地写 `<jobname>.dat/.frd/.sta/.cvg`；无 MPI 依赖可直接在 VM 跑 | 参考解必须在同一镜像内生成（跨镜像会漂移） |
+
+**审计教训（写进流程）**：task-0001 首版用 2 单元 + "最大应力"作为评分量，审计正例被解析解带子拒收——审计协议在冻结前抓到的是**题目设计缺陷**，不是代码 bug。这正是 spec/02 §4 存在的理由：先审计 verifier，再发布任务。
