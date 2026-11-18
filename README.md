@@ -24,6 +24,7 @@ VeriCAx 评测通用 agent（完整 agent 栈，而非裸 LLM）在专业 CAx �
 - [`docs/spec/04-environment-spec.md`](docs/spec/04-environment-spec.md) — 镜像/运行时规格（含实测踩坑记录）
 - [`docs/spec/05-roadmap.md`](docs/spec/05-roadmap.md) — 档 0/1/2 路线图
 - [`docs/spec/06-naming-and-legal.md`](docs/spec/06-naming-and-legal.md) — 命名决议、四连查结果、法律边界
+- [`docs/spec/07-abaqus-porting.md`](docs/spec/07-abaqus-porting.md) — **Abaqus 移植指南**（ODB 读取、关键字差异、L5 复用、许可/锁文件坑）
 
 任务模板见 [`tasks/_template/`](tasks/_template/)。
 
