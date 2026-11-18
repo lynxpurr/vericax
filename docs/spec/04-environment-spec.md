@@ -57,3 +57,14 @@ v0 直接复用 EngiWorld runtime（MIT）+ 上述坑位补丁；v1 抽象成 `v
 | 运行 | `ccx <jobname>` 就地写 `<jobname>.dat/.frd/.sta/.cvg`；无 MPI 依赖可直接在 VM 跑 | 参考解必须在同一镜像内生成（跨镜像会漂移） |
 
 **审计教训（写进流程）**：task-0001 首版用 2 单元 + "最大应力"作为评分量，审计正例被解析解带子拒收——审计协议在冻结前抓到的是**题目设计缺陷**，不是代码 bug。这正是 spec/02 §4 存在的理由：先审计 verifier，再发布任务。
+
+## 7. 与外部资产的关系（部署边界）
+
+VeriCAx 不 vendor 运行时与镜像。`scripts/_config.py` 是唯一的解析入口：
+
+| 资产 | 环境变量 | 配置文件 |
+|---|---|---|
+| runtime（含 `engine/desktop_env`） | `VERICAX_RUNTIME` | `vericax.toml` → `[runtime] path` |
+| 镜像目录（含 `<snapshot>.qcow2`） | `VERICAX_IMAGE_DIR`（或单文件 `VERICAX_IMAGE`） | `vericax.toml` → `[images] dir` |
+
+v0 复用 EngiWorld runtime 与其公开镜像；v0.5 起发布自有镜像集（VeriCAx-Images）时，只换配置指向，任务包与 verifier 不受影响。

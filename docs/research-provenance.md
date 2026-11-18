@@ -1,5 +1,9 @@
 # Research Provenance
 
+> **边界说明**：本文件记录的是*出处引用*，不是本仓内容。研究仓（EngiWorld 实地调研、
+> VM 镜像与跑批结果）是**独立的外部工作区**，不在本仓内；下文路径若指向该工作区，
+> 属于外部引用，运行时依赖请见 README《仓库边界与外部依赖》。
+
 本仓所有规格决策均可追溯到 2026-11-17/18 的 EngiWorld 实地调研，证据链：
 
 | 决策 | 证据 |
@@ -15,5 +19,4 @@
 | split 版本化纪律 | EngiWorld main-300/main-306 并存教训 |
 | 命名决议 | 联网查重：caX-bench 商标/EngiBench/FleetBench/CADTestBench 等，见 spec/06 |
 
-完整报告：`~/projects/engiworld-playground/engiworld-调研报告.md`（§4 verifier 解剖、§7 实测、§8 EngiOps 提案、§9 社区盘点）。
-实测轨迹：`~/projects/engiworld-playground/results/cae-batch/`。
+外部研究仓（本机路径，仅作引用）：调研报告 `engiworld-调研报告.md`（§4 verifier 解剖、§7 三题实测、§8 EngiOps 提案、§9 社区盘点、§10 20 题基线）；实测轨迹 `results/cae-batch/`。引用这些材料时请注明它们属于研究仓而非本仓。

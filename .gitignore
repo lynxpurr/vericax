@@ -17,3 +17,6 @@ __pycache__/
 # secrets
 .env
 *.key
+
+# machine-local paths to external assets
+vericax.toml

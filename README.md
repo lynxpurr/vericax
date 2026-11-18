@@ -15,6 +15,24 @@ VeriCAx 评测通用 agent（完整 agent 栈，而非裸 LLM）在专业 CAx �
 | VeriCAx-Images | VM 环境镜像（qcow2+zstd+manifest） | HF org `vericax`（待建） |
 | VeriCAx-Runtime | 评测 runtime（容器化 VM、通道隔离、带外评分） | `runtime/`（v0 档 2 落地） |
 
+## 仓库边界与外部依赖
+
+本仓是**独立项目**，不是 EngiWorld 的镜像或附属工作区。两者关系：
+
+| | 本仓（vericax） | EngiWorld 调研工作区（外部） |
+|---|---|---|
+| 内容 | 规范、任务包、verifier、审计/打包工具 | EngiWorld 仓克隆、VM 镜像、跑批结果、调研报告 |
+| 与本仓关系 | — | 仅作为**外部依赖与出处引用** |
+
+外部依赖两样，都不 vendored 进本仓：
+
+| 依赖 | 用途 | 配置 |
+|---|---|---|
+| 评测 runtime（提供 `engine/desktop_env`） | 起 VM、执行环境 | `VERICAX_RUNTIME` 或 `vericax.toml [runtime] path` |
+| 解压后的 VM 镜像 `<snapshot>.qcow2` | 任务运行环境 | `VERICAX_IMAGE_DIR` 或 `vericax.toml [images] dir` |
+
+配置方式：`cp vericax.toml.example vericax.toml` 后填写（该文件已 gitignore）。缺失时工具会直接报错并给出指引，**不会猜测相邻目录**。
+
 ## 规格文档（spec 是本仓当前的主体交付）
 
 - [`docs/spec/00-vision-and-scope.md`](docs/spec/00-vision-and-scope.md) — 定位、差异化矩阵、范围与非目标

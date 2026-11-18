@@ -16,12 +16,8 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-RUNTIME = Path(os.environ.get(
-    "VERICAX_RUNTIME", REPO.parent / "engiworld-playground" / "engiworld-repo" / "runtime"))
-ENGINE = RUNTIME / "engine"
-IMAGE = Path(os.environ.get(
-    "VERICAX_IMAGE",
-    REPO.parent / "engiworld-playground" / "environment-images" / "images" / "CalculiX-2.21.qcow2"))
+sys.path.insert(0, str(REPO / "scripts"))
+import _config  # noqa: E402  (external dependency resolution)
 
 
 def main() -> int:
@@ -31,6 +27,7 @@ def main() -> int:
     ap.add_argument("--fetch", action="append", default=[], help="remote path to fetch")
     ap.add_argument("--upload", action="append", default=[],
                     help="LOCAL:REMOTE pair, uploaded before the script runs")
+    ap.add_argument("--snapshot", default="CalculiX-2.21")
     ap.add_argument("--timeout", type=int, default=600)
     args = ap.parse_args()
 
@@ -38,11 +35,13 @@ def main() -> int:
     if not script:
         ap.error("need --script or --script-file")
 
-    sys.path.insert(0, str(ENGINE))
+    runtime = _config.runtime_path()
+    image = _config.image_path(args.snapshot)
+    sys.path.insert(0, str(runtime / "engine"))
     from desktop_env.desktop_env import DesktopEnv  # noqa: E402
 
     env = DesktopEnv(
-        provider_name="docker", path_to_vm=str(IMAGE.resolve()), os_type="Ubuntu",
+        provider_name="docker", path_to_vm=str(image), os_type="Ubuntu",
         action_space="pyautogui", require_a11y_tree=False,
         screen_size=(1920, 1080), headless=True, client_password="",
         cache_dir=str(REPO / "cache" / "probe"),

@@ -1,0 +1,11 @@
+# VeriCAx machine-local configuration. Copy to `vericax.toml` (gitignored).
+# Both entries point at EXTERNAL assets: this repository does not vendor them.
+
+[runtime]
+# An EngiWorld-compatible runtime checkout providing engine/desktop_env.
+# e.g. an EngiWorld runtime clone's `runtime/` directory.
+path = "/path/to/engiworld-runtime"
+
+[images]
+# Directory holding decompressed <snapshot>.qcow2 files (CalculiX-2.21.qcow2, ...).
+dir = "/path/to/environment-images"

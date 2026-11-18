@@ -44,12 +44,8 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-RUNTIME = Path(os.environ.get(
-    "VERICAX_RUNTIME", REPO.parent / "engiworld-playground" / "engiworld-repo" / "runtime"))
-ENGINE = RUNTIME / "engine"
-IMAGE = Path(os.environ.get(
-    "VERICAX_IMAGE",
-    REPO.parent / "engiworld-playground" / "environment-images" / "images" / "CalculiX-2.21.qcow2"))
+sys.path.insert(0, str(REPO / "scripts"))
+import _config  # noqa: E402  (external dependency resolution)
 
 DESK = "/home/user/Desktop"
 EVAL_VM_PATH = "/home/user/vericax/eval.py"
@@ -100,7 +96,9 @@ def main() -> int:
         raise SystemExit("task declares no artifact_paths")
     gt_dir = task_dir / "ground_truth"
 
-    sys.path.insert(0, str(ENGINE))
+    runtime = _config.runtime_path()
+    image = _config.image_path(task_json.get("snapshot", "CalculiX-2.21"))
+    sys.path.insert(0, str(runtime / "engine"))
     from desktop_env.desktop_env import DesktopEnv  # noqa: E402
 
     # mirror the runtime's path resolution: local_path is relative to the
@@ -113,7 +111,7 @@ def main() -> int:
             res["local_path"] = str((software_dir / res["local_path"]).resolve())
 
     env = DesktopEnv(
-        provider_name="docker", path_to_vm=str(IMAGE.resolve()), os_type="Ubuntu",
+        provider_name="docker", path_to_vm=str(image), os_type="Ubuntu",
         action_space="pyautogui", require_a11y_tree=False,
         screen_size=(1920, 1080), headless=True, client_password="",
         cache_dir=str(REPO / "cache" / "audit"),
