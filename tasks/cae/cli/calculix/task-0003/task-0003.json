@@ -1,0 +1,57 @@
+{
+  "id": "cae--cli--calculix--task-0003",
+  "schema_version": "0.1",
+  "snapshot": "CalculiX-2.21",
+  "interface": "cli",
+  "instruction": "Work from a CalculiX cantilever template `/home/user/Desktop/beam_template.inp`. Use `/usr/bin/ccx` for the solve.\n\nBuild the stepped beam used in this series and run TWO load cases inside ONE job, then generate `/home/user/Desktop/solution.inp`:\n- 11 nodes at `(10*(i-1), 0, 0)`, i = 1..11, and 10 B31 elements where element e joins nodes `e` and `e+1`\n- Sections by region: elements 1-5 use a `10x10 mm` RECT section; elements 6-10 use a `6x6 mm` RECT section, assigned through element sets of your choice\n- Material E=210000, nu=0.3; clamped boundary at node 1 (dofs 1-6)\n- Step 1: apply FY=-100 N at node 11\n- Step 2: apply FY=-200 N at node 11 (reset the loads with `*Cload, OP=NEW` so the second step carries only the new value)\n- Request the nodal displacements in both steps (`*Node Print, NSET=...`, which needs an explicit node set)\n\nSubmit the single job with `ccx` and produce `/home/user/Desktop/solution.dat` containing results for both steps.\n\nWrite `/home/user/Desktop/summary.txt` as two comma-separated numbers: `uy_100, uy_200` — the vertical displacement of node 11 under the -100 N and the -200 N load cases.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {"local_path": "task-0003/init_file/beam_template.inp", "path": "/home/user/Desktop/beam_template.inp"}
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/solution.inp",
+    "/home/user/Desktop/solution.dat",
+    "/home/user/Desktop/summary.txt"
+  ],
+  "integrity_policy": {
+    "native_interface_only": true,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": ["numpy", "scipy"],
+    "forbid_read": ["ground_truth", "evaluator"]
+  },
+  "evaluator": {
+    "func": "exact_match",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {"local_path": "task-0003/eval.py", "path": "/home/user/vericax/eval.py"}
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {"expected": "True\n"}
+    }
+  },
+  "limits": {"cli_max_steps": 100, "gui_max_steps": null, "active_time_seconds": 18000},
+  "related_apps": ["calculix"],
+  "capability": "cross-stage-consistency",
+  "splits": [],
+  "possibility_of_env_change": "low"
+}
