@@ -176,6 +176,8 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 | run | agent 崩溃（非零退出） | `agent_error`（提案） | freeze → score | 是（verifier 结论） |
 | run | 到截止 | `active_time_budget_exhausted` | 杀进程组 → freeze → 0 | 是（0） |
 | run | 模型 API 中断 | `api_interruption` | 停止；按策略重试 | 否 |
+| run | CLI policy 拒绝工件写入 | `artifact_write_rejected`（提案） | 记录；不按能力 0 计；可提示换合法生成路径 | 否（verifier 仍可判 False） |
+| run | 长循环探测 CGX/格式 | `agent_stalled` | 早停/换策略提示 | verifier 通过则有效；失败则排除 |
 | freeze | 工件拉取失败 | `infra_incomplete` | 中止 | 否 |
 | freeze | 工件缺失/空 | `null`（L1 失败） | score | 是（0/False） |
 | score | scoring 实例启动失败 | `infra_incomplete` | 中止 | 否 |
@@ -190,7 +192,7 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 - [x] `vericax-sh` 原型：run/put/get/done；token；命令日志；超时（2026-11-19）。
 - [x] agent 容器 recipe：无仓库挂载、bridge 网络、独立 state、凭据注入（2026-11-19）。
 - [x] sandbox overlay 管理：每 run 新建、结束丢弃（`vericax verify-overlay` 显式验证：标记不跨 boot 持久、base 镜像未变）。
-- [x] tier-1 scoring 实例：同镜像、只读挂载、无网络（网络为 guest 层 iptables 放行本地子网、拒绝其余；宿主层 DOCKER-USER 加固留 Phase 2）。
+- [ ] tier-1 scoring 实例：同镜像、只读挂载、无网络（guest 层 iptables 已实现；2026-11-19 复核对三次 dsh run 记录 `network_isolation=false`，`sandbox_vm.py` 隔离脚本的 bash 解析错误修复待验证；宿主层 DOCKER-USER 加固留 Phase 2）。
 - [x] artifact freeze：扁平化、sha256、`artifacts.json`。
 - [x] `summary.json`：三件套归因 + `error_category` + `scoring_basis` + cost + `image_sha256`。
 - [x] 回归：现有 3 题 tier-0 审计全绿（7/7、9/9、8/8）；tier-1 gold 一致（True、0.35、True，0003 pins 从 GT 烘焙）。
@@ -205,3 +207,4 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 - 远程/云 sandbox（不在 v0/v0.5 范围）。
 - Windows/macOS 宿主。
 - 是否需要 session wrapper（Phase 1 spike 决定）。
+- 版本化工件写入 / `artifact_write_rejected` 分类（EngiWorld CLI integrity policy 实测；spec/08 §11）。

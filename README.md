@@ -22,9 +22,10 @@ is stabilised; it will be published under MIT. Current contents:
 
 | Area | State |
 |---|---|
-| Specifications | `docs/spec/00`–`10` drafted |
+| Specifications | `docs/spec/00`–`10`; 2026-11-19 calibration (L0 GT self-check, `run_mode`/`tree_version`, CLI artifact-write policy) |
 | Task packages | 3 CalculiX tasks, each with a passing audit record |
 | Tooling | audit harness, package validator, VM probe, dependency resolver |
+| Phase 1 runner | implemented: `vericax` lifecycle, `vericax-sh`, agent containers; acceptance 4/5; dsh n=3 pending `DEEPSEEK_API_KEY` |
 | Second solver | planned (FEniCS) |
 
 ## Layout
@@ -32,6 +33,7 @@ is stabilised; it will be published under MIT. Current contents:
 ```
 docs/spec/         specifications (the current bulk of the project)
 docs/setup.md      how to obtain the external runtime and VM images
+docs/lessons-2026-11-19.md  audit-calibration lessons behind the 2026-11-19 spec changes
 tasks/             task packages: <domain>/<interface>/<software>/task-<NNNN>/
 scripts/           audit_task.py, pack_task.py, vm_exec.py, _config.py, check_setup.py
 tasks/_template/   starting point for a new task package
