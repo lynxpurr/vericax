@@ -41,6 +41,8 @@ class Adapter:
     cost_path: str | None = None
     state_dir: str | None = None
     state_seed: list[str] = field(default_factory=list)
+    state_template_dir: str | None = None
+    source_dir: Path | None = None
     model_name: str | None = None
     model_endpoint: str | None = None
     container_image: str = "vericax-agent:phase1"
@@ -104,6 +106,8 @@ def load_adapter(path: Path) -> Adapter:
         cost_path=output.get("cost_path"),
         state_dir=state.get("dir") or None,
         state_seed=[str(item) for item in state.get("seed", [])],
+        state_template_dir=state.get("template_dir") or None,
+        source_dir=path.parent,
         model_name=model.get("name"),
         model_endpoint=model.get("endpoint"),
         container_image=str(container.get("image", "vericax-agent:phase1")),
@@ -171,6 +175,15 @@ def prepare_state_seed(adapter: Adapter, episode_dir: Path) -> dict[str, str]:
         raise SystemExit(f"{adapter.name}: state.dir must be relative to the container HOME")
     host_state = episode_dir / "agent-state"
     host_state.mkdir(parents=True, exist_ok=True)
+    if adapter.state_template_dir:
+        # a stack-owned tree (e.g. a dsh profile) copied whole into the state
+        # dir; relative paths resolve next to the adapter TOML
+        template = Path(adapter.state_template_dir).expanduser()
+        if not template.is_absolute() and adapter.source_dir:
+            template = adapter.source_dir / template
+        if not template.is_dir():
+            raise SystemExit(f"{adapter.name}: state template missing: {template}")
+        shutil.copytree(template, host_state, dirs_exist_ok=True)
     for seed in adapter.state_seed:
         source = Path(seed).expanduser()
         if not source.is_file():

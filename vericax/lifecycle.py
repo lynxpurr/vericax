@@ -175,9 +175,9 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
         seen = True
         totals["llm_calls"] += 1
         aliases = {
-            "prompt_tokens": ("input", "input_tokens", "prompt_tokens"),
-            "completion_tokens": ("output", "output_tokens", "completion_tokens"),
-            "reasoning_tokens": ("reasoning", "reasoning_tokens"),
+            "prompt_tokens": ("input", "input_tokens", "inputTokens", "prompt_tokens"),
+            "completion_tokens": ("output", "output_tokens", "outputTokens", "completion_tokens"),
+            "reasoning_tokens": ("reasoning", "reasoning_tokens", "reasoningTokens"),
         }
         for field_name, candidates in aliases.items():
             for candidate in candidates:
