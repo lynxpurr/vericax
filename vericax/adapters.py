@@ -128,6 +128,11 @@ def build_command(
 
     Returns (argv, needs_stdin). Rule A2: this function is generic; every
     per-stack difference must come from the TOML file.
+
+    ``instruction = "stdin"`` is delivered as a shell redirect from the
+    read-only instruction mount (``sh -c '<argv> < /vericax/instruction.md'``).
+    Docker's attach-stdin path proved unreliable (no EOF delivery, garbled
+    streams); the redirect is deterministic and needs no extra plumbing.
     """
     argv: list[str] = []
     for part in adapter.command:
@@ -140,13 +145,15 @@ def build_command(
                 argv.append(instruction_text)
             elif adapter.instruction == "file":
                 argv.append(CONTAINER_INSTRUCTION_PATH)
-            # stdin: the placeholder is simply dropped; content goes to stdin
+            # stdin: the placeholder is simply dropped; see the redirect below
         else:
             argv.append(part)
     argv.extend(adapter.approval)
     if extra_argv:
         argv.extend(extra_argv)
-    return argv, adapter.needs_stdin
+    if adapter.instruction == "stdin":
+        return ["sh", "-c", f"{shlex.join(argv)} < {CONTAINER_INSTRUCTION_PATH}"], False
+    return argv, False
 
 
 def prepare_state_seed(adapter: Adapter, episode_dir: Path) -> dict[str, str]:
