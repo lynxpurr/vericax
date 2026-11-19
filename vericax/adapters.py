@@ -39,6 +39,7 @@ class Adapter:
     working_dir: str = "/home/user/Desktop"
     output_format: str = "text"
     cost_path: str | None = None
+    cost_event_types: list[str] = field(default_factory=list)
     state_dir: str | None = None
     state_seed: list[str] = field(default_factory=list)
     state_template_dir: str | None = None
@@ -90,6 +91,10 @@ def load_adapter(path: Path) -> Adapter:
     container_env = container.get("env", {})
     if not isinstance(container_env, dict):
         raise SystemExit(f"{path}: container.env must be a table")
+    cost_event_types = output.get("cost_event_types", [])
+    if not isinstance(cost_event_types, list) or not all(
+            isinstance(item, str) for item in cost_event_types):
+        raise SystemExit(f"{path}: output.cost_event_types must be a list of event types")
 
     return Adapter(
         name=name,
@@ -104,6 +109,7 @@ def load_adapter(path: Path) -> Adapter:
         working_dir=str(sandbox.get("working_dir", "/home/user/Desktop")),
         output_format=str(output.get("format", "text")),
         cost_path=output.get("cost_path"),
+        cost_event_types=list(cost_event_types),
         state_dir=state.get("dir") or None,
         state_seed=[str(item) for item in state.get("seed", [])],
         state_template_dir=state.get("template_dir") or None,

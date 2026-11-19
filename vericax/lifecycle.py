@@ -7,6 +7,7 @@ results; capability failures go through the tier-1 verifier.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import secrets
 import sys
@@ -15,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import adapters as adapters_mod
-from . import config, freeze, scoring, summary as summary_mod
+from . import config, freeze, scoring, summary as summary_mod, validity
 from .agent_runner import run_agent, cleanup_container
 from .errors import (
     EpisodeError,
@@ -90,6 +91,14 @@ def check_task(task_id: str, adapter_spec: str | None = None) -> dict:
     _verify_task_package(task_dir)
     freeze.check_basename_uniqueness(task_json.get("artifact_paths", []))
     result = {"task_id": task_id, "manifest": "ok", "artifact_paths": "unique"}
+    result["tree_version"] = validity.tree_version(task_dir)
+    l0 = validity.load_reference_selfcheck(task_dir)
+    result["reference_selfcheck"] = validity.reference_selfcheck_state(l0)
+    if l0 is None:
+        print("check: WARNING - no L0 reference self-check "
+              "(`vericax audit --task ...` before publishing)")
+    elif not l0.get("passed"):
+        print("check: WARNING - L0 reference self-check did not pass")
     split_version = (task_json.get("splits") or [None])[0]
     if not split_version:
         print("check: WARNING - task declares no split (spec/10: no split, no release)")
@@ -171,6 +180,8 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
                 node = None
                 break
         if not isinstance(node, dict):
+            continue
+        if adapter.cost_event_types and event.get("type") not in adapter.cost_event_types:
             continue
         seen = True
         totals["llm_calls"] += 1
@@ -264,6 +275,139 @@ def smoke(task_id: str) -> dict:
     return report
 
 
+# ---------------------------------------------------------------- L0 audit
+def _load_audit_cases(task_dir: Path):
+    spec = importlib.util.spec_from_file_location("audit_cases", task_dir / "audit_cases.py")
+    if spec is None or spec.loader is None:
+        raise SystemExit(f"no audit_cases.py in {task_dir}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def run_reference_selfcheck(task_id: str, keep_vm: bool = False) -> dict:
+    """L0 benchmark-validity gate (spec/02 section 1).
+
+    Replay the shipped reference case, require the produced summary to match the
+    shipped GT summary, and run the task's own verifier against the replay. The
+    record is written to ``ground_truth/reference_selfcheck.json`` (a derived
+    artifact excluded from the package manifest) and to a raw run directory.
+    """
+    task_dir = _task_dir(task_id)
+    task_json = _load_task(task_dir, task_id)
+    _verify_task_package(task_dir)
+    artifact_paths = task_json.get("artifact_paths", [])
+    freeze.check_basename_uniqueness(artifact_paths)
+    if not artifact_paths:
+        raise SystemExit("task declares no artifact_paths")
+
+    snapshot = task_json.get("snapshot", "CalculiX-2.21")
+    image = config.image_path(snapshot)
+    image_sha = config.image_sha256(image)
+    gold_script = _load_audit_cases(task_dir).CASES[0][1]
+    expected_path = task_dir / "ground_truth" / "summary.txt"
+    expected_summary = expected_path.read_text().strip() if expected_path.is_file() else None
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    out_dir = REPO / "runs" / f"l0-{task_id.rsplit('--', 1)[-1]}-{stamp}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    vm = SandboxVM(snapshot, cache_dir=out_dir / "cache")
+    observed: dict[str, bytes] = {}
+    observed_summary: str | None = None
+    solver_version: str | None = None
+    verifier_verdict: str | None = None
+    verifier_sha: str | None = None
+    pins: dict[str, float] = {}
+    detail = ""
+    summary_matched = False
+    verifier_ok = False
+    try:
+        vm.boot(_vm_task_config(task_dir, task_json))
+        vm.wait_healthy()
+        solver_version = scoring._solver_version(vm)
+        replay = vm.bash(gold_script, timeout=1800)
+        if replay.get("returncode") != 0:
+            detail = f"reference case exited rc={replay.get('returncode')}"
+        for remote in artifact_paths:
+            data = vm.get(remote)
+            if data is None:
+                detail = detail or f"reference case did not produce {remote}"
+                continue
+            name = Path(remote).name
+            observed[name] = data
+            (out_dir / name).write_bytes(data)
+            if name == "summary.txt":
+                observed_summary = data.decode(errors="ignore").strip()
+
+        summary_matched = validity.compare_summaries(observed_summary, expected_summary)
+
+        eval_text = (task_dir / "eval.py").read_text()
+        try:
+            eval_text, pins = scoring.bake_pins(eval_text, expected_summary)
+        except SystemExit as exc:
+            detail = detail or f"pin baking failed: {exc}"
+        verifier_sha = validity.sha256_bytes(eval_text.encode())
+        vm.upload(scoring.EVAL_VM_PATH, eval_text.encode())
+        for gt_file in sorted((task_dir / "ground_truth").iterdir()):
+            if gt_file.is_file() and gt_file.name not in (validity.L0_RECORD, "audit.md"):
+                vm.upload(f"{scoring.SCORE_VM_ROOT}/ground_truth/{gt_file.name}",
+                          gt_file.read_bytes())
+        for name, data in observed.items():
+            vm.upload(f"{scoring.AGENT_ROOT}/{name}", data)
+        probe = vm.bash(
+            f"VERICAX_AGENT_ROOT={scoring.AGENT_ROOT} VERICAX_CCX=/usr/bin/ccx "
+            f"python3 {scoring.EVAL_VM_PATH} 2>/tmp/vericax_l0.err; echo rc=$?",
+            timeout=900)
+        (out_dir / "verifier.stdout").write_text(probe.get("output", ""))
+        (out_dir / "verifier.stderr").write_bytes(vm.get("/tmp/vericax_l0.err") or b"")
+        verifier_verdict = next(
+            (line.strip() for line in probe.get("output", "").splitlines() if line.strip()),
+            None)
+        evaluator_func = task_json.get("evaluator", {}).get("func", "exact_match")
+        if evaluator_func == "exact_match":
+            verifier_ok = verifier_verdict == "True"
+        else:
+            try:
+                verifier_ok = float(verifier_verdict) > 0
+            except (TypeError, ValueError):
+                verifier_ok = False
+    finally:
+        if keep_vm:
+            print(f"l0: leaving the VM running (output: {out_dir})")
+        else:
+            vm.close()
+
+    passed = bool(summary_matched and verifier_ok)
+    record = {
+        "task_id": task_id,
+        "performed": True,
+        "passed": passed,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "tree_version": validity.tree_version(task_dir),
+        "image_sha256": image_sha,
+        "solver_version": solver_version,
+        "gt_deck": "audit_cases.CASES[0]",
+        "gt_deck_sha256": validity.sha256_bytes(gold_script.encode()),
+        "gt_summary_sha256": (validity.sha256_bytes(expected_summary.encode())
+                              if expected_summary else None),
+        "expected_summary": expected_summary,
+        "observed_summary": observed_summary,
+        "summary_matched": summary_matched,
+        "verifier_verdict": verifier_verdict,
+        "verifier_sha256": verifier_sha,
+        "pins_baked": pins,
+        "artifacts": {name: validity.sha256_bytes(data)
+                      for name, data in sorted(observed.items())},
+        "detail": detail or None,
+        "output_dir": str(out_dir),
+    }
+    payload = json.dumps(record, indent=2) + "\n"
+    validity.reference_selfcheck_path(task_dir).write_text(payload)
+    (out_dir / validity.L0_RECORD).write_text(payload)
+    print(f"l0: {'PASS' if passed else 'FAIL'} -> {validity.reference_selfcheck_path(task_dir)}")
+    return record
+
+
 # ---------------------------------------------------------------- episode
 def run_episode(
     task_id: str,
@@ -273,13 +417,23 @@ def run_episode(
     time_limit: int | None = None,
     payload_dir: Path | None = None,
     do_score: bool = True,
+    run_mode: str = summary_mod.RUN_MODE_RERUN,
+    kind: str = "capability",
+    tree_version: str | None = None,
 ) -> tuple[dict, Path]:
     """One full episode. Returns (summary_dict, episode_dir)."""
+    if run_mode not in summary_mod.RUN_MODES:
+        raise SystemExit(f"run_mode must be one of {summary_mod.RUN_MODES}")
+    if kind not in summary_mod.EPISODE_KINDS:
+        raise SystemExit(f"kind must be one of {summary_mod.EPISODE_KINDS}")
     task_dir = _task_dir(task_id)
     task_json = _load_task(task_dir, task_id)
     _verify_task_package(task_dir)
     adapter = adapters_mod.load_adapter(adapters_mod.resolve_adapter(adapter_spec))
     artifact_paths = task_json.get("artifact_paths", [])
+    tree_version = tree_version or validity.tree_version(task_dir)
+    reference_selfcheck = validity.reference_selfcheck_state(
+        validity.load_reference_selfcheck(task_dir))
     freeze.check_basename_uniqueness(artifact_paths)
 
     snapshot = task_json.get("snapshot", "CalculiX-2.21")
@@ -474,6 +628,10 @@ def run_episode(
         active_time_limit_seconds=effective_limit,
         split_version=split_version,
         image_sha256=image_sha,
+        run_mode=run_mode,
+        tree_version=tree_version,
+        reference_selfcheck=reference_selfcheck,
+        kind=kind,
         verifier_sha256=score_result.verifier_sha256 if score_result else None,
         adapter_name=adapter.name,
         adapter_version=adapter.version,
@@ -490,35 +648,58 @@ def run_episode(
 
 
 # ---------------------------------------------------------------- report
-def report(runs_dir: Path | None = None) -> str:
-    """Aggregate all summary.json files into a capability matrix (Phase 1)."""
+def _episode_kind(row: dict) -> str:
+    kind = row.get("kind")
+    if kind in summary_mod.EPISODE_KINDS:
+        return kind
+    # Pre-schema episodes carry no kind; the harness must not infer it from a
+    # stack name (rule A1). Callers that run scripted/cheat episodes declare
+    # kind=test at run time; older unlabelled records default to capability.
+    return "capability"
+
+
+def report(runs_dir: Path | None = None, include_tests: bool = False) -> str:
+    """Aggregate episodes by task/stack/tree/mode (spec/03 section 4).
+
+    Test and debug episodes are excluded by default: the Phase 1 cheat suite
+    must never move a capability mean.
+    """
     runs_dir = Path(runs_dir or REPO / "runs")
-    rows = []
-    for path in sorted(runs_dir.glob("ep-*/summary.json")):
-        data = json.loads(path.read_text())
-        rows.append(data)
+    all_rows = [json.loads(path.read_text())
+                for path in sorted(runs_dir.glob("ep-*/summary.json"))]
+    rows = [row for row in all_rows
+            if include_tests or _episode_kind(row) == "capability"]
+    excluded = len(all_rows) - len(rows)
     if not rows:
-        return "report: no episodes recorded yet"
+        return "report: no capability episodes recorded yet"
     lines = [
-        "task | adapter | model | n | mean | min | max | errors | basis",
-        "---|---|---|---|---|---|---|---|---",
+        "task | adapter | model | tree | mode | n | mean | min | max | errors | basis",
+        "---|---|---|---|---|---|---|---|---|---|---",
     ]
     groups: dict[tuple, list[dict]] = {}
     for row in rows:
-        key = (row["task_id"], row["agent"]["name"],
-               (row.get("model") or {}).get("name") or "-")
+        key = (
+            row["task_id"],
+            row["agent"]["name"],
+            (row.get("model") or {}).get("name") or "-",
+            row.get("tree_version") or "-",
+            row.get("run_mode") or "-",
+        )
         groups.setdefault(key, []).append(row)
-    for (task, agent, model), items in sorted(groups.items()):
+    for (task, agent, model, tree, mode), items in sorted(groups.items()):
         scored = [it["score"] for it in items
-                  if it["scoring_basis"] == summary_mod.SCORING_BASIS_NATIVE]
-        errors = sum(1 for it in items if it["error_category"])
+                  if it["scoring_basis"] == summary_mod.SCORING_BASIS_NATIVE
+                  and it.get("score") is not None]
+        errors = sum(1 for it in items if it.get("error_category"))
         n_scored = len(scored)
         mean = sum(scored) / n_scored if n_scored else None
         lines.append(
-            f"{task} | {agent} | {model} | {n_scored}/{len(items)} | "
-            f"{mean if mean is not None else '-'} | "
+            f"{task} | {agent} | {model} | {validity.short_tree_version(tree)} | {mode} | "
+            f"{n_scored}/{len(items)} | {mean if mean is not None else '-'} | "
             f"{min(scored) if scored else '-'} | {max(scored) if scored else '-'} | "
             f"{errors} | {items[0]['scoring_basis']}")
+    if excluded and not include_tests:
+        lines.append(f"\n(excluded {excluded} test/debug episode(s); --include-tests to show)")
     text = "\n".join(lines) + "\n"
     print(text)
     return text

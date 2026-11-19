@@ -62,11 +62,16 @@ EngiWorld 测裸 LLM 时模型看不到 task-root；VeriCAx 的被测 agent 拥�
 
 | 组 | 构成 | 通过判据 |
 |---|---|---|
-| 参考自洽组 | shipped `ground_truth/*.inp` 原样重放 + 与 GT summary 对表 | 100% 一致；否则任务包无效（L0） |
+| 参考自洽组 | 参考案例重放（`audit_cases.py` 的 GOLD；包内若有 GT deck 则原样重放）+ 与 GT summary 对表 | 100% 一致；否则任务包无效（L0） |
 | 正面组 | 参考解（ground_truth）走完整评分流程 | 100% 收 |
 | 替代路径组 | ≥2 条与参考解**不同**的合法解法（不同软件路径/不同参数/不同中间格式） | 100% 收 |
 | 负面组 | ①空交付 ②只交指标不交工件 ③篡改输入 ④跳步骤（中间产物缺失）⑤编码 payload ⑥假场/抄数值 | 100% 拒 |
 | 稳健组 | 同一 verifier 连续 10 次对同一提交 | 判定全一致 |
+
+参考自洽组的执行入口是 `vericax audit --task <id> --group reference`：重放参考案例，
+要求产出与 `ground_truth/summary.txt` 数值一致，并用同一 verifier 复判；结果写
+`ground_truth/reference_selfcheck.json`，summary 的 `reference_selfcheck` 字段引用
+`pass | fail | not_run`。该记录是派生审计产物，不进入 `resources.sha256`。
 
 审计记录模板写入任务包 `ground_truth/audit.md`：每组用例、期望、实际、审计人、日期。北极星：误杀 0%、漏放 0%（调研报告 §4/§7 的 t02 案例 = 负面组 ② 的原型）。
 

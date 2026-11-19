@@ -6,12 +6,28 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- `vericax audit --task <id> --group reference`: the L0 benchmark-validity gate.
+  It replays the reference case, compares the produced summary with the shipped
+  GT summary, runs the verifier, and writes
+  `ground_truth/reference_selfcheck.json` (excluded from `resources.sha256`).
+- `summary.json` provenance: `run_mode`, `tree_version`, `reference_selfcheck`
+  and `kind`. `vericax report` groups by tree/run mode and excludes test/debug
+  episodes by default.
+- Adapter `output.cost_event_types`; pi uses `message_end` at `message.usage`,
+  so streamed `message_update` events are no longer counted as LLM calls.
+
 ### Changed
 - Spec calibration from the 2026-11-18/19 EngiWorld audit: L0 GT self-check
   (`02`), `run_mode`/`tree_version`/`reference_selfcheck` (`03`), tolerant
   verifier parsing, CLI artifact-write policy (`04`/`08`/`09`), and the
   benchmark-validity gate (`05`/`10`). Provenance updated.
 - Added `docs/lessons-2026-11-19.md` with the audit-calibration rationale.
+
+### Fixed
+- pi cost accounting on the recorded task-0001 episode: 7 LLM calls / 4,593
+  input / 2,897 output / 1,399 reasoning tokens instead of summing every
+  streamed update event.
 
 ### Planned
 - Fourth pilot task on a second solver (FEniCS) to demonstrate that the verifier

@@ -24,10 +24,11 @@
 
 ## 档 1.5 · benchmark-validity gate（2026-11-19 新增）
 
-- [ ] GT self-check：每个任务包用参考 deck 重放并复现 GT summary；fail 不得发布（spec/02 L0）。
-- [ ] `run_mode` / `tree_version` 进 summary（spec/03）。
+- [x] GT self-check：每个任务包用参考 deck 重放并复现 GT summary；fail 不得发布（spec/02 L0）。
+      实现：`vericax audit --task <id> --group reference`；VM 验证待 P4。
+- [x] `run_mode` / `tree_version` 进 summary（spec/03）。实现：`validity.tree_version` + summary 字段。
 - [ ] CLI artifact-write policy：记录 `artifact_write_rejected` / `agent_stalled`；决定是否支持版本化重试（spec/09 §11）。
-- [ ] 模型对比必须同一 `tree_version`；n≥3 才下结论。
+- [x] 模型对比必须同一 `tree_version`；n≥3 才下结论。实现：`report` 按 tree/mode 分组，测试集默认排除。
 - 验收：审计套件含参考自洽组；榜单模板含 tree 版本；Phase 2 第一批题全部过 gate。
 
 ## 档 2 · v0.5 CAE 全量（~1 周）

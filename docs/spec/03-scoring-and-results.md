@@ -16,7 +16,8 @@
 - `agent_error`（agent 非零退出但未到截止，2026-11-18 增补）不是 infra：照常 freeze → score，分数归属 verifier 结论（spec/08 §7/§8）
 - **`run_mode` 必填**（2026-11-19 增补）：`rerun` | `rescore`；re-score 只作估计，不得与 rerun 混表；任务树/verifier 变更后必须 rerun。
 - **`tree_version` 必填**：任务树/补丁集标识；不同 tree 的结果不可合并（与 spec/01 §3 的 id 迁移纪律一致）。
-- **`reference_selfcheck` 必填**：`pass` | `fail` | `not_run`；`fail` 的任务包不得进入榜单（spec/02 L0）。
+- **`reference_selfcheck` 必填**：`pass` | `fail` | `not_run`；`fail` 的任务包不得进入榜单（spec/02 L0）。详细记录落 `ground_truth/reference_selfcheck.json`。
+- **`kind` 必填**：`capability` | `test` | `debug`；聚合默认只收 `capability`，作弊/回归测试不得移动能力均值。
 
 ## 2. summary.json Schema（每次 run 一个）
 
@@ -45,12 +46,19 @@
   "active_duration_seconds": 4658.2,
   "active_time_limit_seconds": 18000,
   "split_version": "v0.1-cae-cli-100",               // ▲ 强制回填，杜绝无 split 声明的基线
-  "tree_version": "calculix-2026-11-18-patched",     // ▲ 任务树/补丁集标识；不同 tree 不可合并
+"tree_version": "calculix-2026-11-18-patched",     // ▲ 任务树/补丁集标识；不同 tree 不可合并
+                                                      //   VeriCAx 默认写任务包 manifest 摘要 sha256:<hex>；
+                                                      //   跨仓对比可用 --tree-version 覆盖
   "run_mode": "rerun",                               // ▲ rerun | rescore；rescore 只作估计
   "reference_selfcheck": "pass",                     // ▲ pass | fail | not_run（spec/02 L0）
+  "kind": "capability",                              // ▲ capability | test | debug；test/debug 不进能力聚合
   "run_index": 1, "run_total": 3                     // ▲ n≥3 纪律的落点
 }
 ```
+
+聚合规则：`report` 默认只统计 `kind=capability`；`test`（作弊/回归）与
+`debug`（诊断）单独展示。旧 episode 缺 `kind` 时，`fake` adapter 按 `test`
+处理，其余按 `capability` 处理。
 
 ## 3. 三级入口（任何评测系统的标准动作，EngiWorld 验证有效）
 

@@ -117,6 +117,7 @@ working_dir = "/home/user/Desktop"
 [output]
 format = "text"                                  # text | json
 cost_path = null                                 # 如 "usage.total_tokens"
+cost_event_types = []                            # 只统计这些事件类型；空 = 所有带 usage 的事件
 
 [state]
 dir = ".dsh"                                     # 每 run 用独立 HOME 隔离
@@ -131,6 +132,7 @@ dir = ".dsh"                                     # 每 run 用独立 HOME 隔离
 | `sandbox.shell` | 把栈的 shell 工具指向 `vericax-sh` 的方式（PATH / 配置键 / wrapper） |
 | `sandbox.file_tools` | 原生 read/write/edit 的处理：禁用、代理到 sandbox、或允许本地写（不推荐） |
 | `output.format` / `cost_path` | 输出解析与 token/cost 提取；拿不到就记 `null` |
+| `output.cost_event_types` | 只在这些事件类型上提取 usage（如 pi 的 `message_end`、dsh 的 `status`）。流式 `message_update` 会重复携带 usage，不过滤会把一次调用计成上百次 `llm_calls` |
 | `state.dir` | 每 run 独立状态目录，避免 n 次 run 互相污染 |
 
 `{instruction}` 的替换规则：
