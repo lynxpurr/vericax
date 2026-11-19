@@ -22,7 +22,7 @@ is stabilised; it will be published under MIT. Current contents:
 
 | Area | State |
 |---|---|
-| Specifications | `docs/spec/00`–`07` drafted |
+| Specifications | `docs/spec/00`–`10` drafted |
 | Task packages | 3 CalculiX tasks, each with a passing audit record |
 | Tooling | audit harness, package validator, VM probe, dependency resolver |
 | Second solver | planned (FEniCS) |
