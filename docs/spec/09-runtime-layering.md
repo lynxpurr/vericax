@@ -201,7 +201,7 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 
 ## 11. 待定
 
-- 2 VM 并行（Phase 2 先 soak；spec/04 标注未验证）。
+- ~~2 VM 并行（Phase 2 先 soak）~~ **soak 已通过（2026-11-19）**：`tests/soak_two_vms.py` 同时启动两台 sandbox VM（各 179s ready，wall 209s），两台均健康、init 注入成功、guest 隔离生效、独立关闭；并发*调度*仍留 Phase 2 实现。
 - GUI 通道（v1.5；截图/鼠标键盘与 CLI 分榜）。
 - 自建评分镜像（依赖 D5）。
 - 远程/云 sandbox（不在 v0/v0.5 范围）。
