@@ -153,7 +153,7 @@ class SandboxVM:
         """
         script = r"""
 GW=$(ip route show | awk '/^default/ {print $3; exit}')
-[ -n "$GW" ] || { echo VCAX_RESULT=no-default-route; exit 0 }
+[ -n "$GW" ] || { echo VCAX_RESULT=no-default-route; exit 0; }
 SUB=$(echo "$GW" | sed 's/\.[0-9]*$/.0\/24/')
 as_root() { if [ "$(id -u)" = "0" ]; then "$@"; else printf 'password\n' | sudo -S "$@" 2>/dev/null || sudo -n "$@" 2>/dev/null; fi; }
 as_root iptables -C OUTPUT -d "$SUB" -j ACCEPT 2>/dev/null || as_root iptables -A OUTPUT -d "$SUB" -j ACCEPT 2>/dev/null
