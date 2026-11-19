@@ -45,7 +45,7 @@ Phase 1 的动作：
 | 求解器 | 版本/镜像 | 状态 | Phase 2 题量 | 备注 |
 |---|---|---|---|---|
 | **CalculiX** | 2.21 / `CalculiX-2.21.qcow2` | 已验证（3 题） | 14 | 现有 3 题 + 11 新题 |
-| **FEniCS** | 待定（D5） | 候选 | 7 | 第二求解器；优先验证 verifier 层与求解器无关 |
+| **FEniCS** | 0.10.0.post2 / `FEniCS.qcow2` | **已验证（1 题）** | 7 | 第二求解器；`cae--cli--fenics--task-0001` 审计 12/12、L0 通过、假 agent tier-1 = 1.0 |
 | **cross-solver** | 两个镜像 | 新能力 | 4 | `software-selection` 专用；verifier 需 provenance 判据 |
 
 D5 已定（2026-11-18），执行顺序：
@@ -56,11 +56,11 @@ D5 已定（2026-11-18），执行顺序：
 
 无论哪条路径，**换镜像 = 重跑审计**；pinned 参考值与镜像绑定（spec/04 §6）。
 
-### 3.1 现状（2026-11-19 盘点）
+### 3.1 现状（2026-11-19 更新）
 
-- 本机 `[images] dir` 只有 `CalculiX-2.21.qcow2`（+ `.zst`）；**没有 FEniCS qcow2**。
-- EngiWorld 运行时的部署清单里，FEniCS 仅以阿里云云镜像名出现（`EngiWorld-FEniCS-20261015`，50 GiB 系统盘），没有本地可用的 qcow2 下载物。
-- 因此 **Phase 2 的第一项（第二求解器 smoke）处于阻塞**：需要人类决定获取路径（EngiWorld 发布归档 / 云镜像导出），或先完成 D5 承诺的自建镜像 recipe（Phase 1 未完成项）。
+- FEniCS 镜像已通过 ModelScope 通道获取（`engiworld.prepare_images --source modelscope --image FEniCS`，65 s；`FEniCS.qcow2` 17.0 GB，sha256 与 manifest 一致），dolfinx 0.10.0.post2。
+- 第二求解器 smoke **已完成**：`cae--cli--fenics--task-0001`（带孔板，L1–L3）审计 12/12 全过、L0 参考自检 pass、假 agent tier-1 = 1.0——L1–L3 的验证逻辑与求解器无关得到实证。
+- 剩余 Phase 2 工作：题量（本 solver 再 +6）、cross-solver provenance 判据、自建镜像 recipe（D5 未完成项）。
 
 ## 4. 题量分解
 

@@ -46,7 +46,7 @@ def bake_pins(eval_text: str, gold_summary: str | None) -> tuple[str, dict[str, 
     they were measured on. The packaged verifier keeps placeholders for
     authoring; only the scoring copy receives measured values.
     """
-    pin_names = re.findall(r"(?m)^EXPECTED_([A-Z0-9_]+) = None", eval_text)
+    pin_names = re.findall(r"(?m)^EXPECTED_([A-Z0-9_]+) = None\s*(?:#.*)?$", eval_text)
     if not pin_names:
         return eval_text, {}
     if not gold_summary:
@@ -65,7 +65,7 @@ def bake_pins(eval_text: str, gold_summary: str | None) -> tuple[str, dict[str, 
             f"cannot bake {len(pin_names)} pins from gold summary {gold_summary!r}")
     baked = eval_text
     for name, value in zip(pin_names, values):
-        baked = re.sub(rf"(?m)^EXPECTED_{name} = None$", f"EXPECTED_{name} = {value!r}", baked)
+        baked = re.sub(rf"(?m)^EXPECTED_{name} = None.*$", f"EXPECTED_{name} = {value!r}", baked)
     return baked, dict(zip(pin_names, values))
 
 
@@ -76,6 +76,7 @@ def run_scoring(
     snapshot: str,
     cache_dir: Path,
     eval_timeout: int = DEFAULT_EVAL_TIMEOUT,
+    solver_probe: str | None = None,
 ) -> ScoreResult:
     """Boot the scoring VM, inject verifier + frozen artifacts, run the verifier."""
     result = ScoreResult()
@@ -95,7 +96,7 @@ def run_scoring(
         result.network_isolated, isolation_detail = vm.isolate_network()
         vm.wait_healthy()
         result.logs["network_isolation"] = isolation_detail
-        result.solver_version = _solver_version(vm)
+        result.solver_version = _solver_version(vm, solver_probe)
 
         vm.upload(EVAL_VM_PATH, eval_text.encode())
         gt_dir = task_dir / "ground_truth"
@@ -159,10 +160,18 @@ def run_scoring(
         vm.close()
 
 
-def _solver_version(vm: SandboxVM) -> str | None:
+DEFAULT_SOLVER_PROBE = "ccx -v 2>&1 | head -2"
+
+
+def _solver_version(vm: SandboxVM, probe_command: str | None = None) -> str | None:
+    """Record the solver version via the task-declared probe command.
+
+    The probe is task-owned metadata (``solver_probe`` in the task JSON):
+    different images carry different solvers, and the harness must not guess.
+    """
     try:
-        probe = vm.bash("/usr/bin/ccx -v 2>&1 | head -2", timeout=60)
+        probe = vm.bash(probe_command or DEFAULT_SOLVER_PROBE, timeout=60)
         text = probe.get("output", "").strip()
-        return text.splitlines()[0] if text else None
+        return text.splitlines()[0] if text and probe.get("returncode") == 0 else None
     except Exception:  # noqa: BLE001 - metadata only
         return None

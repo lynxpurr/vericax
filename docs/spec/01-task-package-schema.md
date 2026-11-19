@@ -45,6 +45,7 @@ tasks/<domain>/<interface>/<software>/task-<NNNN>/
     }
   },
   "limits": {"cli_max_steps": 100, "gui_max_steps": null, "active_time_seconds": 18000},  // ▲ 收进任务包（EngiWorld 放全局 profile）
+  "solver_probe": "ccx -v 2>&1 | head -2",         // ▲ 可选：评分前记录求解器版本的命令（缺省按 CalculiX）
   "related_apps": ["calculix"],
   "splits": ["v0.1-cae-cli-100"],                  // ▲ 所属 split（版本化，见 §3）
   "possibility_of_env_change": "low"

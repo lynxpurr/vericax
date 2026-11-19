@@ -569,6 +569,7 @@ def run_episode(
                     frozen_artifacts_dir=episode_dir / "artifacts",
                     snapshot=snapshot,
                     cache_dir=episode_dir / "scoring-cache",
+                    solver_probe=task_json.get("solver_probe"),
                 )
                 (logs_dir / "evaluator.stdout").write_text(
                     score_result.logs.get("evaluator_stdout", ""))
