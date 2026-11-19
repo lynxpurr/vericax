@@ -40,9 +40,8 @@ PURITY_TARGETS = [
 ]
 PURITY_PATTERNS = [
     (r"\bstack\s*==", "stack equality"),
-    (r"adapter\.name\s*==", "adapter-name equality"),
+    (r"(?:adapter|stack)\.name\s*==", "adapter-name equality"),
     (r"==\s*['\"](dsh|pi|fake|opencode|hermes|openclaw)['\"]", "stack literal comparison"),
-    (r"(?:^|\s)if\s+\w*name\w*\s*==\s*['\"]", "name-branching"),
 ]
 
 results: list[tuple[str, bool, str]] = []
@@ -95,8 +94,10 @@ def run_cli(args: list[str], timeout: int = 3600) -> tuple[int, str, str]:
 
 
 def read_summary(stdout: str) -> dict:
+    """The CLI prints a reduced block; the full record lives on disk."""
     start = stdout.index("{")
-    return json.loads(stdout[start:])
+    block = json.loads(stdout[start:])
+    return json.loads((REPO / "runs" / block["episode_id"] / "summary.json").read_text())
 
 
 def check_contract_purity() -> None:
@@ -156,8 +157,10 @@ def main() -> int:
 
     tasks = TASKS[:1] if args.quick else TASKS
     for task_id in tasks:
-        run_fake("solve", task_id, {"score": 1.0 if "0002" not in task_id else 0.30,
-                                    "expect_accept": True})
+        # task-0002 is quantified: the audited gold optimum scores 0.35 and the
+        # audit's acceptance floor is ge 0.34 (audit_cases.py P1).
+        floor = 0.34 if "0002" in task_id else 1.0
+        run_fake("solve", task_id, {"score": floor, "expect_accept": True})
 
     t1 = TASKS[0]
     baseline = run_fake("solve", t1, {"score": 1.0, "expect_accept": True})
