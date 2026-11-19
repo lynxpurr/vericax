@@ -143,12 +143,17 @@ class SandboxVM:
 
         The bash channel is a non-root user, so the rules go through sudo with
         the image's default password (the runtime's own client_password
-        convention). One SINGLE root invocation applies all three rules:
+        convention). One SINGLE root invocation applies all four rules:
         separate sudo child processes per rule proved flaky here - the VM
-        server dropped the control connection mid-sequence. The rule set keeps
-        the local subnet (controller, DNS) and loopback reachable and rejects
-        everything else; verified on the CalculiX-2.21 image (external ping and
-        curl fail, the controller channel stays alive).
+        server dropped the control connection mid-sequence.
+
+        The first rule (conntrack ESTABLISHED,RELATED) is essential: the
+        controller's replies belong to inbound-initiated flows, and without it
+        the REJECT rule severed the control channel itself. The remaining
+        rules keep the local subnet (gateway, DNS) and loopback reachable and
+        reject new outbound connections. Verified on the CalculiX-2.21 image:
+        the controller stays alive with the rules active, while external ping
+        and curl fail.
 
         A failure is recorded, never fatal; host-level DOCKER-USER enforcement
         stays a Phase 2 item.
@@ -157,7 +162,7 @@ class SandboxVM:
 GW=$(ip route show | awk '/^default/ {print $3; exit}')
 [ -n "$GW" ] || { echo VCAX_RESULT=no-default-route; exit 0; }
 SUB=${GW%.*}.0/24
-printf 'password\n' | sudo -S sh -c "iptables -A OUTPUT -d $SUB -j ACCEPT; iptables -A OUTPUT -d 127.0.0.0/8 -j ACCEPT; iptables -A OUTPUT ! -d $SUB -j REJECT" >/dev/null 2>&1
+printf 'password\n' | sudo -S sh -c "iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT; iptables -A OUTPUT -d $SUB -j ACCEPT; iptables -A OUTPUT -d 127.0.0.0/8 -j ACCEPT; iptables -A OUTPUT ! -d $SUB -j REJECT" >/dev/null 2>&1
 if ping -c1 -W2 1.1.1.1 >/dev/null 2>&1; then echo "VCAX_RESULT=reachable subnet=$SUB"; else echo "VCAX_RESULT=blocked subnet=$SUB"; fi
 """.strip()
         try:
