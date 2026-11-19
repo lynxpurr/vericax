@@ -100,6 +100,7 @@
 实现要点：
 
 - VM 的 22/3389/osworld 端口只绑 `127.0.0.1`；容器不能用 `host.docker.internal` 绕过（该地址指向宿主网关，不是 loopback 绑定）。
+- **Phase 1 的实际形态（2026-11-19）**：外部 runtime 仍把端口发布在 `0.0.0.0`，未改 provider；宿主侧用 `scripts/harden_host_input.sh` 的 INPUT 规则拦截 `docker0` → 宿主端口段（5000–5100 / 8006–8100 / 9222–9300 / 8080–8200），容器→宿主控制端被 DROP（实测 curl 超时），宿主→VM 控制通道不受影响。规则不跨重启，需在开机后重放一次。"只绑 127.0.0.1" 仍是理想形态，留待 Provider 侧改动（Phase 2）。
 - proxy 优先用 **Unix socket** 挂载进容器；退而求其次用专用 bridge 网络 + 宿主端口，且该端口只对 agent 容器网段开放。
 - 所有允许/拒绝都在部署层配置；不依赖 agent 遵守 instruction。
 
@@ -201,7 +202,7 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 
 ## 11. 待定
 
-- 2 VM 并行（Phase 2 先 soak；spec/04 标注未验证）。
+- ~~2 VM 并行（Phase 2 先 soak）~~ **soak 已通过（2026-11-19）**：`tests/soak_two_vms.py` 同时启动两台 sandbox VM（各 179s ready，wall 209s），两台均健康、init 注入成功、guest 隔离生效、独立关闭；并发*调度*仍留 Phase 2 实现。
 - GUI 通道（v1.5；截图/鼠标键盘与 CLI 分榜）。
 - 自建评分镜像（依赖 D5）。
 - 远程/云 sandbox（不在 v0/v0.5 范围）。
