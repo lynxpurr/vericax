@@ -6,7 +6,7 @@
 
 verifier 是本基准的第一公民。社区（CAD Bench v2、BIM-Edit、FEABench）已普遍走到"执行/重开验真"，但没人把**反作弊栈 + verifier 反向审计**做成一等公民——这是 VeriCAx 的差异化锚点，本规格因此比任务集更优先冻结。
 
-## 1. 五层范式（每道 verifier 必须声明实现了哪些层；L1/L2 强制，L3/L4 按题型，L5 优化题强制）
+## 1. 五层范式 + L0 参考自洽（L0 是发布门槛；每道 verifier 必须声明实现的 L1–L5 层；L1/L2 强制，L3/L4 按题型，L5 优化题强制）
 
 ### L1 交付完整性（强制）
 - required artifacts 逐一存在且非空（对应实测教训：t02 交付 0 字节 `laminate.dat` 仍"流程完整"，必须由本层拦住）
@@ -30,6 +30,12 @@ verifier 是本基准的第一公民。社区（CAD Bench v2、BIM-Edit、FEABen
 - 第一段可行性门：约束全过才进第二段；任一违反 → 0 分（不部分给分）
 - 第二段质量分：`score = clamp(1 − C_submitted / C_baseline)`，C 由 verifier 现场重算；metric 写在 task.json（`{name, baseline_score, direction, output_field}`），verifier 内不硬编码
 - baseline_score 必须来自 verifier 自测参考解，不接受任务书里的声明值
+
+### L0 参考自洽（发布门槛；2026-11-19 增补）
+- 用任务包 `ground_truth/` 里的参考 deck 原样走一遍 verifier，必须复现 shipped GT summary。
+- GT deck 与 GT summary 任一不一致 → **任务包无效，不得发布**；这不是 agent 失败。
+- L0 是发布门槛，不是 agent 评分层；`IMPLEMENTS` 不要求写 L0。
+- 审计证据：EngiWorld CalculiX 20 题中 task-05/17/19 的 GT summary 位移比自己的 GT deck 输出小 **8.444x**；task-04 的 tie 面写错、task-06 的压力面写错。详见研究仓 `engiworld-调研报告.md` §11 与 `results/gt-selfcheck/`。
 
 ## 2. 反作弊规格
 
@@ -56,10 +62,16 @@ EngiWorld 测裸 LLM 时模型看不到 task-root；VeriCAx 的被测 agent 拥�
 
 | 组 | 构成 | 通过判据 |
 |---|---|---|
+| 参考自洽组 | 参考案例重放（`audit_cases.py` 的 GOLD；包内若有 GT deck 则原样重放）+ 与 GT summary 对表 | 100% 一致；否则任务包无效（L0） |
 | 正面组 | 参考解（ground_truth）走完整评分流程 | 100% 收 |
 | 替代路径组 | ≥2 条与参考解**不同**的合法解法（不同软件路径/不同参数/不同中间格式） | 100% 收 |
 | 负面组 | ①空交付 ②只交指标不交工件 ③篡改输入 ④跳步骤（中间产物缺失）⑤编码 payload ⑥假场/抄数值 | 100% 拒 |
 | 稳健组 | 同一 verifier 连续 10 次对同一提交 | 判定全一致 |
+
+参考自洽组的执行入口是 `vericax audit --task <id> --group reference`：重放参考案例，
+要求产出与 `ground_truth/summary.txt` 数值一致，并用同一 verifier 复判；结果写
+`ground_truth/reference_selfcheck.json`，summary 的 `reference_selfcheck` 字段引用
+`pass | fail | not_run`。该记录是派生审计产物，不进入 `resources.sha256`。
 
 审计记录模板写入任务包 `ground_truth/audit.md`：每组用例、期望、实际、审计人、日期。北极星：误杀 0%、漏放 0%（调研报告 §4/§7 的 t02 案例 = 负面组 ② 的原型）。
 
@@ -69,3 +81,5 @@ EngiWorld 测裸 LLM 时模型看不到 task-root；VeriCAx 的被测 agent 拥�
 - 单 verifier ≤ 300 行为宜；超限说明任务该拆分
 - 每个 verifier 顶部声明实现层：`IMPLEMENTS = ("L1", "L2", "L3", "L5")`
 - 版本随任务包走，`resources.sha256` 覆盖 eval.py 自身
+- **不做语义等价的字面量拒绝**：`valid_input` 只做数学校验（载荷和、边界 DOF、关键字存在），不要求唯一字符串拼写；summary 解析容忍表头/空行；等价写法必须都收。EngiWorld 审计中 task-09（`,,5.0,1.0e-5` vs `1,8,5.0,1.0e-5`）、task-12/18（summary 表头）因此误杀。
+- **拒绝原因必须可分类**：`numeric_mismatch` / `format_error` / `equivalent_but_rejected`；`equivalent_but_rejected` 是 verifier 缺陷，必须修，不能计入 agent 能力。

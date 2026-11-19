@@ -13,6 +13,10 @@ SCORING_BASIS_NATIVE = "native_evaluator"
 SCORING_BASIS_TIME_BUDGET = "active_time_budget"
 SCORING_BASIS_INFRA = "infra"
 
+RUN_MODES = ("rerun", "rescore")
+RUN_MODE_RERUN = "rerun"
+EPISODE_KINDS = ("capability", "test", "debug")
+
 
 def build_summary(
     *,
@@ -36,6 +40,10 @@ def build_summary(
     active_time_limit_seconds: int | None,
     split_version: str | None,
     image_sha256: str,
+    run_mode: str = RUN_MODE_RERUN,
+    tree_version: str | None = None,
+    reference_selfcheck: str = "not_run",
+    kind: str = "capability",
     verifier_sha256: str | None = None,
     adapter_name: str | None = None,
     adapter_version: str | None = None,
@@ -67,6 +75,11 @@ def build_summary(
         "split_version": split_version,
         "run_index": run_index,
         "run_total": run_total,
+        # ---- benchmark validity (spec/02 L0, spec/03 section 1)
+        "run_mode": run_mode,
+        "tree_version": tree_version,
+        "reference_selfcheck": reference_selfcheck,
+        "kind": kind,
         # ---- VeriCAx Phase 1 provenance extensions (spec/09 section 7.3)
         "image_sha256": image_sha256,
         "verifier_sha256": verifier_sha256,

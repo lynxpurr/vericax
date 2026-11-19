@@ -20,6 +20,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 MANIFEST = "resources.sha256"
+L0_RECORD = "reference_selfcheck.json"   # derived audit output, not a resource
 REQUIRED_FILES = ("eval.py",)
 
 
@@ -41,7 +42,7 @@ def package_files(task_dir: Path) -> list[Path]:
     for path in sorted(task_dir.rglob("*")):
         if not path.is_file():
             continue
-        if path.name == MANIFEST:
+        if path.name in (MANIFEST, L0_RECORD):
             continue
         if "__pycache__" in path.parts:
             continue
@@ -87,6 +88,17 @@ def main() -> int:
         errors.append("ground_truth/audit.md missing (run scripts/audit_task.py)")
     elif "MISS" in audit.read_text():
         errors.append("audit record contains MISS entries")
+    l0_path = task_dir / "ground_truth" / L0_RECORD
+    if l0_path.is_file():
+        try:
+            l0 = json.loads(l0_path.read_text())
+        except ValueError:
+            errors.append(f"{L0_RECORD} is not valid JSON")
+        else:
+            if not l0.get("passed"):
+                errors.append("L0 reference self-check did not pass")
+    else:
+        print(f"note: no {L0_RECORD}; run `vericax audit --task {args.task}` before publishing")
 
     if errors:
         print("PACKAGE INVALID:")

@@ -21,7 +21,11 @@ working_dir = "/home/user/Desktop"
 [output]
 format = "json"
 # pi --mode json emits per-message usage objects (input/output/reasoning).
-cost_path = "usage"
+# Only message_end carries the final usage for one LLM call; the message_update
+# stream repeats partial usage and must not be summed (G3: 652 update events
+# were previously counted as 652 calls).
+cost_path = "message.usage"
+cost_event_types = ["message_end"]
 
 [state]
 # pi keeps auth + provider catalogs under $HOME/.pi/agent; the harness copies

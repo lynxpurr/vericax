@@ -117,6 +117,7 @@ working_dir = "/home/user/Desktop"
 [output]
 format = "text"                                  # text | json
 cost_path = null                                 # 如 "usage.total_tokens"
+cost_event_types = []                            # 只统计这些事件类型；空 = 所有带 usage 的事件
 
 [state]
 dir = ".dsh"                                     # 每 run 用独立 HOME 隔离
@@ -131,6 +132,7 @@ dir = ".dsh"                                     # 每 run 用独立 HOME 隔离
 | `sandbox.shell` | 把栈的 shell 工具指向 `vericax-sh` 的方式（PATH / 配置键 / wrapper） |
 | `sandbox.file_tools` | 原生 read/write/edit 的处理：禁用、代理到 sandbox、或允许本地写（不推荐） |
 | `output.format` / `cost_path` | 输出解析与 token/cost 提取；拿不到就记 `null` |
+| `output.cost_event_types` | 只在这些事件类型上提取 usage（如 pi 的 `message_end`、dsh 的 `status`）。流式 `message_update` 会重复携带 usage，不过滤会把一次调用计成上百次 `llm_calls` |
 | `state.dir` | 每 run 独立状态目录，避免 n 次 run 互相污染 |
 
 `{instruction}` 的替换规则：
@@ -228,6 +230,7 @@ spec/03 当前枚举：`environment_error | infra_incomplete | active_time_budge
 | agent 绕过 proxy 直连 VM | VM 端口绑定 127.0.0.1；容器用 bridge 网络；禁止 `--network=host` |
 | agent 在宿主执行命令 | proxy 只实现 VM 内 `run` 与 `put/get`，不暴露宿主 shell |
 | agent 用原生文件工具伪造"交付" | `file_tools=disable/proxy`；freeze 只认 sandbox 内的 `artifact_paths` |
+| agent 用 shell 覆盖最终工件 | CLI integrity policy 拒绝写入/覆盖；最终工件必须由应用生成（spec/02 §2） |
 | agent 留后台进程干扰评分 | freeze 前杀进程组；评分在独立实例、独立网络 |
 | agent 用符号链接越界 | freeze 解析 symlink 并拒绝越界目标 |
 | agent 伪造 summary | summary 不作为证据；只读工件；L1–L5 verifier 重开/重算 |
@@ -240,7 +243,7 @@ spec/03 当前枚举：`environment_error | infra_incomplete | active_time_budge
 契约通用性 = 换 adapter 后不改契约/评测 harness 仍能跑通。Phase 1 验收：
 
 1. ✅ **脚本化假 agent × 3 题**（2026-11-19）：0001=1.0、0002=0.35、0003=1.0，全部经 tier-1 verifier。
-2. ⏳ **dsh × task-0001 × n=3**：启动链路已结构化验证（stdin 重定向 + NDJSON 事件流，唯一失败点为 `MISSING_CREDENTIAL`）；**等待 `DEEPSEEK_API_KEY` 后执行**。
+2. ✅ **dsh × task-0001 × n=3**（2026-11-19）：score=1.0 / 1.0 / 1.0，经 tier-1；三件套归因完整（dsh 0.2.1-rc.5 / deepseek-v4.1-flash-1017 @ Bailian Token Plan）；prompt tokens 26k/28k/23k；活跃 60–70s/集。
 3. ✅ **pi × task-0001 × n=1**（2026-11-19）：score=1.0，活跃 102s，三件套归因完整，cost 从 stderr NDJSON 提取；原生 write/edit 工具被 adapter 禁用，工件全部经 sandbox 产出。
 4. ✅ **作弊提交全拒**：空交付 / 假 summary / 篡改 summary 均 0.0；VM 内后台写者不改变 tier-1 结论（1.0 vs 1.0）。
 5. ✅ **静态检查**：lifecycle/freeze/score 路径无 `if stack ==`。
@@ -254,4 +257,5 @@ Phase 2 加 opencode/hermes/openclaw 时，预期**只新增 adapter 和 conform
 - ~~代理认证：Unix socket vs 每 episode token~~ **已定（2026-11-18 评审）：两者都用**——Unix socket 限定可达面，每 episode token 防同容器/网段内伪造；与 spec/09 §5 一致。
 - ~~`artifact_uri` 的形态~~ **已定（2026-11-18 评审）：逐文件 + `artifacts.json` manifest**；tarball 仅用于复现归档，评分只读解包目录。
 - 多 run 状态隔离的具体目录布局（HOME/config/session）。
+- **CLI artifact-write policy / one-shot recovery（2026-11-19 新增）**：runtime 拒绝直接写入/覆盖 scored artifact；首次 deck 写错后不能简单重写，agent 可能转向 CGX/格式探测长循环。EngiWorld 实测 qwen3.8-flash（21 calls）与 glm-5.3（18 calls）在 task-01 未收敛；qwen4 一次写对后 7 步通过。待定：允许版本化输入（`beam.v2.inp`）再由应用生成最终工件，还是保持 first-write-wins；前者影响反作弊/复现语义。当前不改契约。
 - Windows/macOS 宿主支持不在 v0 范围。
