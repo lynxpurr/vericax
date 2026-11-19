@@ -122,7 +122,15 @@ class ProxyServer:
                     self._reply(fh, {"ok": False, "error": "bad_request"})
                     return
                 if not isinstance(request, dict) or request.get("token") != self._token:
-                    self._log("auth", {"denied": True})
+                    got = request.get("token") if isinstance(request, dict) else f"<{type(request).__name__}>"
+                    raw = line[:200].decode(errors="replace").replace(self._token, "<token>")
+                    self._log("auth", {
+                        "denied": True,
+                        "got_len": len(got) if isinstance(got, str) else -1,
+                        "got_prefix": got[:6] if isinstance(got, str) else "",
+                        "want_len": len(self._token),
+                        "raw": raw,
+                    })
                     self._reply(fh, {"ok": False, "error": "auth_failed"})
                     return
                 verb = request.get("v")

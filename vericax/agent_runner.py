@@ -52,32 +52,44 @@ def run_agent(
 ) -> AgentResult:
     import docker  # provided by the runtime venv
 
-    client = docker.from_env()
+    client = docker.from_env(timeout=600)
     started = time.monotonic()
-    container = client.containers.run(
-        image,
-        command=command,
-        name=container_name,
-        environment=env,
-        volumes=mounts,
-        network="bridge",          # never host (spec/09 section 5)
-        working_dir="/vericax",
-        detach=True,
-        stdin_open=bool(stdin_bytes),
-        auto_remove=False,
-    )
+    container = None
+    # The host may run unrelated workloads against the same daemon; a
+    # transient API timeout is infra, retried once with a name cleanup.
+    for attempt in (1, 2):
+        try:
+            container = client.containers.run(
+                image,
+                command=command,
+                name=container_name,
+                environment=env,
+                volumes=mounts,
+                network="bridge",      # never host (spec/09 section 5)
+                working_dir="/vericax",
+                detach=True,
+                stdin_open=bool(stdin_bytes),
+                auto_remove=False,
+            )
+            break
+        except Exception:  # noqa: BLE001 - retried once below
+            cleanup_container(container_name)
+            if attempt == 2:
+                raise
     result = AgentResult(container=container.name)
 
     if stdin_bytes:
         _feed_stdin(container, stdin_bytes)
 
     # ---- deadline enforcement (I6): harness polls; agent self-exit wins.
+    # docker-py's wait(timeout=N) is an HTTP read timeout, NOT a poll window:
+    # a healthy long-running agent would raise ReadTimeout after N seconds.
+    # Poll the container status instead and only wait once, at the end.
     while True:
         container.reload()
         if container.status not in ("running", "created"):
             break
-        remaining = deadline_epoch - time.time()
-        if remaining <= 0:
+        if time.time() >= deadline_epoch:
             result.killed_by_deadline = True
             try:
                 container.stop(timeout=grace_seconds)
@@ -85,8 +97,11 @@ def run_agent(
                 container.kill()
             container.reload()
             break
-        container.wait(timeout=min(remaining, 5.0))
-        container.reload()
+        time.sleep(2.0)
+    try:
+        container.wait(timeout=60)
+    except Exception:  # noqa: BLE001 - the exit code below still applies
+        pass
 
     result.duration_seconds = time.monotonic() - started
     exit_state = container.wait(timeout=30) or {}

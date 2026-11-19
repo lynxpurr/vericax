@@ -443,7 +443,14 @@ def run_episode(
         cleanup_container(container_name)
 
     wall = time.monotonic() - wall_started
-    cost = _extract_cost(adapter, agent_result.stdout) if agent_result else None
+    # stacks differ in which stream carries their JSON events (pi writes
+    # --mode json events to stderr); scan both, extract nothing on silence
+    cost = None
+    if agent_result:
+        for stream in (agent_result.stdout, agent_result.stderr):
+            cost = _extract_cost(adapter, stream)
+            if cost:
+                break
     split_version = (task_json.get("splits") or [None])[0]
 
     summary = summary_mod.build_summary(

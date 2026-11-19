@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("score", help="tier-1 score an existing episode's frozen artifacts")
     p.add_argument("--task", required=True)
-    p.add_argument("--episode", required=True, help="episode dir with artifacts/")
+    p.add_argument("--episode", default=None, help="episode dir with artifacts/")
     p.add_argument("--from-dir", type=Path, default=None,
                    help="score artifacts from an arbitrary directory instead "
                         "(gold-consistency regression)")
@@ -96,6 +96,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if summary["scoring_basis"] != "infra" else 3
 
     if args.command == "score":
+        if not args.episode and not args.from_dir:
+            parser.error("score needs --episode or --from-dir")
         task_dir = lifecycle._task_dir(args.task)
         task_json = lifecycle._load_task(task_dir, args.task)
         artifacts = Path(args.from_dir) if args.from_dir else \
