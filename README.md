@@ -33,6 +33,7 @@ is stabilised; it will be published under MIT. Current contents:
 ```
 docs/spec/         specifications (the current bulk of the project)
 docs/setup.md      how to obtain the external runtime and VM images
+docs/lessons-2026-11-19.md  audit-calibration lessons behind the 2026-11-19 spec changes
 tasks/             task packages: <domain>/<interface>/<software>/task-<NNNN>/
 scripts/           audit_task.py, pack_task.py, vm_exec.py, _config.py, check_setup.py
 tasks/_template/   starting point for a new task package

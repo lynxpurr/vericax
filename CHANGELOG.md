@@ -11,6 +11,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`02`), `run_mode`/`tree_version`/`reference_selfcheck` (`03`), tolerant
   verifier parsing, CLI artifact-write policy (`04`/`08`/`09`), and the
   benchmark-validity gate (`05`/`10`). Provenance updated.
+- Added `docs/lessons-2026-11-19.md` with the audit-calibration rationale.
 
 ### Planned
 - Fourth pilot task on a second solver (FEniCS) to demonstrate that the verifier
