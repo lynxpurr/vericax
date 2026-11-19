@@ -141,24 +141,23 @@ class SandboxVM:
     def isolate_network(self) -> tuple[bool, str]:
         """Guest-level egress block, best effort: allow only the local NAT subnet.
 
-        With QEMU user networking the host NAT address sits ON the default
-        route, so deleting that route would sever the controller channel
-        itself. Instead guest iptables OUTPUT rules keep the slirp subnet
-        (controller, DNS) reachable and reject everything else.
+        The bash channel is a non-root user, so the rules go through sudo with
+        the image's default password (the runtime's own client_password
+        convention). One SINGLE root invocation applies all three rules:
+        separate sudo child processes per rule proved flaky here - the VM
+        server dropped the control connection mid-sequence. The rule set keeps
+        the local subnet (controller, DNS) and loopback reachable and rejects
+        everything else; verified on the CalculiX-2.21 image (external ping and
+        curl fail, the controller channel stays alive).
 
-        One single bash call does parse-apply-verify: mid-sequence server
-        stalls (xtables lock, module load) then surface as one clean timeout
-        instead of poisoning the retry budget. A failure is recorded, never
-        fatal; host-level DOCKER-USER enforcement stays a Phase 2 item.
+        A failure is recorded, never fatal; host-level DOCKER-USER enforcement
+        stays a Phase 2 item.
         """
         script = r"""
 GW=$(ip route show | awk '/^default/ {print $3; exit}')
 [ -n "$GW" ] || { echo VCAX_RESULT=no-default-route; exit 0; }
-SUB=$(echo "$GW" | sed 's/\.[0-9]*$/.0\/24/')
-as_root() { if [ "$(id -u)" = "0" ]; then "$@"; else printf 'password\n' | sudo -S "$@" 2>/dev/null || sudo -n "$@" 2>/dev/null; fi; }
-as_root iptables -C OUTPUT -d "$SUB" -j ACCEPT 2>/dev/null || as_root iptables -A OUTPUT -d "$SUB" -j ACCEPT 2>/dev/null
-as_root iptables -C OUTPUT -d 127.0.0.0/8 -j ACCEPT 2>/dev/null || as_root iptables -A OUTPUT -d 127.0.0.0/8 -j ACCEPT 2>/dev/null
-as_root iptables -A OUTPUT ! -d "$SUB" -j REJECT 2>/dev/null
+SUB=${GW%.*}.0/24
+printf 'password\n' | sudo -S sh -c "iptables -A OUTPUT -d $SUB -j ACCEPT; iptables -A OUTPUT -d 127.0.0.0/8 -j ACCEPT; iptables -A OUTPUT ! -d $SUB -j REJECT" >/dev/null 2>&1
 if ping -c1 -W2 1.1.1.1 >/dev/null 2>&1; then echo "VCAX_RESULT=reachable subnet=$SUB"; else echo "VCAX_RESULT=blocked subnet=$SUB"; fi
 """.strip()
         try:
