@@ -100,6 +100,7 @@
 实现要点：
 
 - VM 的 22/3389/osworld 端口只绑 `127.0.0.1`；容器不能用 `host.docker.internal` 绕过（该地址指向宿主网关，不是 loopback 绑定）。
+- **Phase 1 的实际形态（2026-11-19）**：外部 runtime 仍把端口发布在 `0.0.0.0`，未改 provider；宿主侧用 `scripts/harden_host_input.sh` 的 INPUT 规则拦截 `docker0` → 宿主端口段（5000–5100 / 8006–8100 / 9222–9300 / 8080–8200），容器→宿主控制端被 DROP（实测 curl 超时），宿主→VM 控制通道不受影响。规则不跨重启，需在开机后重放一次。"只绑 127.0.0.1" 仍是理想形态，留待 Provider 侧改动（Phase 2）。
 - proxy 优先用 **Unix socket** 挂载进容器；退而求其次用专用 bridge 网络 + 宿主端口，且该端口只对 agent 容器网段开放。
 - 所有允许/拒绝都在部署层配置；不依赖 agent 遵守 instruction。
 
