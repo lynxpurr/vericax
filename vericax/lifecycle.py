@@ -655,9 +655,10 @@ def _episode_kind(row: dict) -> str:
     kind = row.get("kind")
     if kind in summary_mod.EPISODE_KINDS:
         return kind
-    # Pre-schema Phase 1 episodes: fake/cheat runs are tests, real stacks are
-    # capability results. Without this, the cheat suite moves the fake mean.
-    return "test" if (row.get("agent") or {}).get("name") == "fake" else "capability"
+    # Pre-schema episodes carry no kind; the harness must not infer it from a
+    # stack name (rule A1). Callers that run scripted/cheat episodes declare
+    # kind=test at run time; older unlabelled records default to capability.
+    return "capability"
 
 
 def report(runs_dir: Path | None = None, include_tests: bool = False) -> str:

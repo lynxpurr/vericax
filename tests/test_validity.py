@@ -100,7 +100,9 @@ class ReportTests(unittest.TestCase):
     def test_cheat_suite_excluded_by_default(self):
         with tempfile.TemporaryDirectory() as tmp:
             self._write(tmp, "ep-1", self._row("dsh", 1.0))
-            self._write(tmp, "ep-2", self._row("fake", 0.0))
+            # scripted/cheat episodes declare their kind at run time; the
+            # harness never infers it from a stack name (rule A1)
+            self._write(tmp, "ep-2", self._row("fake", 0.0, kind="test"))
             with redirect_stdout(io.StringIO()):
                 text = lifecycle.report(Path(tmp))
             self.assertIn("dsh", text)
@@ -110,9 +112,16 @@ class ReportTests(unittest.TestCase):
     def test_include_tests(self):
         with tempfile.TemporaryDirectory() as tmp:
             self._write(tmp, "ep-1", self._row("dsh", 1.0))
-            self._write(tmp, "ep-2", self._row("fake", 0.0))
+            self._write(tmp, "ep-2", self._row("fake", 0.0, kind="test"))
             with redirect_stdout(io.StringIO()):
                 text = lifecycle.report(Path(tmp), include_tests=True)
+            self.assertIn("fake", text)
+
+    def test_unlabelled_episode_defaults_to_capability(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._write(tmp, "ep-1", self._row("fake", 0.0))  # no kind
+            with redirect_stdout(io.StringIO()):
+                text = lifecycle.report(Path(tmp))
             self.assertIn("fake", text)
 
     def test_n_three_mean_and_range(self):
