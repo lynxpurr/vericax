@@ -1,11 +1,16 @@
 # dsh adapter (spec/08 section 5, D1): one-shot headless profile.
 # dsh --profile headless answers one task and exits; `-` reads the task from
 # stdin, so the instruction is piped rather than passed as argv.
+#
+# Model route: Aliyun Bailian Token Plan (OpenAI chat-completions gateway),
+# model deepseek-v4.1-flash-1017. The route is declared by the profile in
+# adapters/dsh-profile/, which the harness copies into the per-run state dir;
+# the key is resolved from BAILIAN_API_KEY, injected at run time from the host.
 name = "dsh"
 version = "0.2.1-rc.5"
 
 [launch]
-command = ["dsh", "--profile", "headless", "--json"]
+command = ["dsh", "--profile", "vericax", "--json"]
 instruction = "stdin"
 approval = []
 grace_seconds = 10
@@ -23,12 +28,15 @@ cost_path = "usage"
 
 [state]
 dir = ".dsh"
+template_dir = "dsh-profile"
 
 [model]
-name = "deepseek"
-endpoint = "deepseek-official"
+name = "deepseek-v4.1-flash-1017"
+endpoint = "bailian-token-plan"
 
 [container]
 image = "vericax-agent:phase1"
-# credentials are injected at run time from the host environment, never baked
-env_from = ["DEEPSEEK_API_KEY"]
+# credentials: forwarded from the host environment at launch, never baked
+env_from = ["BAILIAN_API_KEY"]
+# headless has no approval surface; the container itself is the sandbox (D2b)
+env = { DSH_HOME = "/root/.dsh", DSH_PERMISSION_MODE = "danger-full-access" }
