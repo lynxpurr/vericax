@@ -93,6 +93,8 @@ D5 已定（2026-11-18），执行顺序：
 - **工件可重开**：verifier 必须用原生 API/格式解析器重开，不读 agent 自述。
 - **求解器版本固定**：task JSON 的 `snapshot` 指向明确镜像；结果记录 `image_sha256`。
 - **无 split 不发布**：task JSON 的 `splits` 不得为空。
+- **GT 自校验**：GT deck 必须复现 GT summary；base 模板与 GT deck 的单元类型/面编号/输出请求一致；任务书必须写明 verifier 会检查的设置，不得有隐藏变更（spec/02 L0）。
+- **禁止字面量 verifier**：`valid_input` 只做数学校验；summary 解析容忍表头/空行；等价写法必须都收（spec/02 §5）。
 
 ## 7. Phase 2 执行顺序
 
@@ -116,6 +118,7 @@ D5 已定（2026-11-18），执行顺序：
 **Suite 验收（Phase 2 出口）：**
 
 - ≥2 求解器、20–30 题、每 capability ≥3。
+- **benchmark-validity gate**：每个任务包通过 GT 自校验；模型比较必须在同一 `tree_version` 上；n≥3；re-score 不得当 rerun 发布（spec/02 L0、spec/03 §1）。
 - 成绩矩阵：capability × solver，每格给出 n、均值、极差。
 - 报告字段：split 版本、n、agent/harness/model、`image_sha256`、$/题、活跃时长中位、错误分类占比。
 - 通道分数不合并：CLI 与 GUI 分开；跨软件与单软件分开报。
@@ -130,6 +133,7 @@ D5 已定（2026-11-18），执行顺序：
 | provenance 判据 | 新 verifier 能力 | `software-selection` 4 题的前置；可能需要在 spec/02 增补一层 |
 | 图纸/报告输入格式 | task schema | `observation-reconstruct` 的 init_file 类型 |
 | open-environment 网络策略 | spec/09 | 默认 sandbox 无外网；按任务开包源 |
+| benchmark 修复 / tree 版本 | 审计 | 未修复题会把 benchmark 缺陷误读为能力差异；EngiWorld 2/20→8/20 主要是 repair |
 | GUI 通道 | v1.5 | 不在 Phase 2 矩阵内 |
 | cross-software | v1 | 独立于本表的 6 类；届时新增 capability |
 

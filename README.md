@@ -22,9 +22,10 @@ is stabilised; it will be published under MIT. Current contents:
 
 | Area | State |
 |---|---|
-| Specifications | `docs/spec/00`–`10` drafted |
+| Specifications | `docs/spec/00`–`10`; 2026-11-19 calibration (L0 GT self-check, `run_mode`/`tree_version`, CLI artifact-write policy) |
 | Task packages | 3 CalculiX tasks, each with a passing audit record |
 | Tooling | audit harness, package validator, VM probe, dependency resolver |
+| Phase 1 runner | implemented: `vericax` lifecycle, `vericax-sh`, agent containers; acceptance 4/5; dsh n=3 pending `DEEPSEEK_API_KEY` |
 | Second solver | planned (FEniCS) |
 
 ## Layout

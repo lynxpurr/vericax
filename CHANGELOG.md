@@ -6,6 +6,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- Spec calibration from the 2026-11-18/19 EngiWorld audit: L0 GT self-check
+  (`02`), `run_mode`/`tree_version`/`reference_selfcheck` (`03`), tolerant
+  verifier parsing, CLI artifact-write policy (`04`/`08`/`09`), and the
+  benchmark-validity gate (`05`/`10`). Provenance updated.
+
 ### Planned
 - Fourth pilot task on a second solver (FEniCS) to demonstrate that the verifier
   layers are solver-agnostic.
