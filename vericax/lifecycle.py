@@ -257,8 +257,11 @@ def smoke(task_id: str) -> dict:
     report: dict = {"task_id": task_id, "output_dir": str(out_dir)}
     try:
         vm.boot(_vm_task_config(task_dir, task_json))
-        isolated = vm.remove_default_route()
+        vm.wait_healthy()
+        isolated, isolation_detail = vm.isolate_network()
+        vm.wait_healthy()
         report["network_isolated"] = isolated
+        report["network_isolation_detail"] = isolation_detail
         for item in task_json.get("config", []):
             if item.get("type") != "upload_file":
                 continue
