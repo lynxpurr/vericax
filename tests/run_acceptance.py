@@ -116,6 +116,7 @@ def run_fake(mode: str, task_id: str, expect: dict) -> dict:
     payload = build_payload(mode, task_id)
     try:
         rc, out, err = run_cli(["run", "--task", task_id, "--adapter", "fake",
+                                "--kind", "test",
                                 "--payload-dir", str(payload)])
         if rc != 0:
             record(f"fake[{mode}] {task_id.rsplit('--', 1)[-1]}", False,
