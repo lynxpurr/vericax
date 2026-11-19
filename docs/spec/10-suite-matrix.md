@@ -56,6 +56,12 @@ D5 已定（2026-11-18），执行顺序：
 
 无论哪条路径，**换镜像 = 重跑审计**；pinned 参考值与镜像绑定（spec/04 §6）。
 
+### 3.1 现状（2026-11-19 盘点）
+
+- 本机 `[images] dir` 只有 `CalculiX-2.21.qcow2`（+ `.zst`）；**没有 FEniCS qcow2**。
+- EngiWorld 运行时的部署清单里，FEniCS 仅以阿里云云镜像名出现（`EngiWorld-FEniCS-20261015`，50 GiB 系统盘），没有本地可用的 qcow2 下载物。
+- 因此 **Phase 2 的第一项（第二求解器 smoke）处于阻塞**：需要人类决定获取路径（EngiWorld 发布归档 / 云镜像导出），或先完成 D5 承诺的自建镜像 recipe（Phase 1 未完成项）。
+
 ## 4. 题量分解
 
 | capability | CalculiX | FEniCS | cross-solver | 合计 |
