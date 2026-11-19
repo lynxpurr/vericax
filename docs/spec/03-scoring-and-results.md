@@ -13,6 +13,7 @@
 - 分数与错误**分离**：分数无效时写 0 并打 `scoring_basis` 标记，绝不把 infra 故障伪装成能力 0 分
 - 通道分数永不合并：`cli` 与 `gui` 是两个独立榜（EngiWorld 合成 EngiScore 的做法不采纳——调研结论：通道能力不可加总）
 - 单跑方差纪律：排行榜比较必须 n≥3，同时报告均值与极差；单跑结果只能标 `preliminary`
+- `agent_error`（agent 非零退出但未到截止，2026-11-18 增补）不是 infra：照常 freeze → score，分数归属 verifier 结论（spec/08 §7/§8）
 
 ## 2. summary.json Schema（每次 run 一个）
 
@@ -27,9 +28,12 @@
   "native_evaluator_executed": true,                 // evaluator 真跑了才有资格谈分数
   "error": null,
   "error_category": null,        // environment_error | infra_incomplete | active_time_budget_exhausted
-                                 // | api_interruption | agent_stalled   ▲ 前四类继承 EngiWorld，末类新增
+                                 // | api_interruption | agent_stalled | agent_error
+                                 // ▲ 前四类继承 EngiWorld，agent_stalled 为 VeriCAx 新增，
+                                 //   agent_error 于 2026-11-18 增补（spec/08 §8：agent 非零退出但未到截止）
   "result_dir": "...",
-  "artifact_uri": null,          // ▲ 交付物快照存档（复现审计用）
+  "artifact_uri": null,          // ▲ 交付物快照存档（复现审计用）；2026-11-18 定形：逐文件副本 +
+                                 //   artifacts.json manifest（basename 扁平化 + sha256），tarball 仅作归档
   "cost": {"llm_calls": 148, "prompt_tokens": 2190000, "completion_tokens": 475000,
            "reasoning_tokens": 402000, "usd_estimate": null},   // ▲ token 三分口径实测验证有效
   "wall_duration_seconds": 4658.2,
