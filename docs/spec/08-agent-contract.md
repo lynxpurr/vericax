@@ -241,7 +241,7 @@ spec/03 当前枚举：`environment_error | infra_incomplete | active_time_budge
 契约通用性 = 换 adapter 后不改契约/评测 harness 仍能跑通。Phase 1 验收：
 
 1. ✅ **脚本化假 agent × 3 题**（2026-11-19）：0001=1.0、0002=0.35、0003=1.0，全部经 tier-1 verifier。
-2. ⏳ **dsh × task-0001 × n=3**：启动链路已结构化验证（stdin 重定向 + NDJSON 事件流，唯一失败点为 `MISSING_CREDENTIAL`）；**等待 `DEEPSEEK_API_KEY` 后执行**。
+2. ✅ **dsh × task-0001 × n=3**（2026-11-19）：score=1.0 / 1.0 / 1.0，经 tier-1；三件套归因完整（dsh 0.2.1-rc.5 / deepseek-v4.1-flash-1017 @ Bailian Token Plan）；prompt tokens 26k/28k/23k；活跃 60–70s/集。
 3. ✅ **pi × task-0001 × n=1**（2026-11-19）：score=1.0，活跃 102s，三件套归因完整，cost 从 stderr NDJSON 提取；原生 write/edit 工具被 adapter 禁用，工件全部经 sandbox 产出。
 4. ✅ **作弊提交全拒**：空交付 / 假 summary / 篡改 summary 均 0.0；VM 内后台写者不改变 tier-1 结论（1.0 vs 1.0）。
 5. ✅ **静态检查**：lifecycle/freeze/score 路径无 `if stack ==`。

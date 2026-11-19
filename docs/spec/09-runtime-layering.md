@@ -192,7 +192,7 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 - [x] `vericax-sh` 原型：run/put/get/done；token；命令日志；超时（2026-11-19）。
 - [x] agent 容器 recipe：无仓库挂载、bridge 网络、独立 state、凭据注入（2026-11-19）。
 - [x] sandbox overlay 管理：每 run 新建、结束丢弃（`vericax verify-overlay` 显式验证：标记不跨 boot 持久、base 镜像未变）。
-- [x] tier-1 scoring 实例：同镜像、只读挂载、无网络（网络为 guest 层 iptables 放行本地子网、拒绝其余；宿主层 DOCKER-USER 加固留 Phase 2）。
+- [ ] tier-1 scoring 实例：同镜像、只读挂载、无网络（guest 层 iptables 已实现；2026-11-19 复核对三次 dsh run 记录 `network_isolation=false`，`sandbox_vm.py` 隔离脚本的 bash 解析错误修复待验证；宿主层 DOCKER-USER 加固留 Phase 2）。
 - [x] artifact freeze：扁平化、sha256、`artifacts.json`。
 - [x] `summary.json`：三件套归因 + `error_category` + `scoring_basis` + cost + `image_sha256`。
 - [x] 回归：现有 3 题 tier-0 审计全绿（7/7、9/9、8/8）；tier-1 gold 一致（True、0.35、True，0003 pins 从 GT 烘焙）。

@@ -2,7 +2,7 @@
 
 状态：草案 v0.1（2026-11-18）· 与调研报告 §8.6 档 0/1/2 对齐，换 VeriCAx 口径
 
-> **2026-11-19 状态校准**：Phase 0 设计冻结完成；Phase 1 runner 已实现，验收 4/5，唯一阻塞是 dsh × task-0001 × n=3（需要 `DEEPSEEK_API_KEY`）；Phase 2 尚未开工。EngiWorld 审计带来的 benchmark-validity gate 作为 Phase 1.5 插入。
+> **2026-11-19 状态校准**：Phase 0 设计冻结完成；Phase 1 runner 已实现，验收 5/5（dsh × task-0001 × n=3 = 1.0/1.0/1.0，见 `runs/`）。残留项：三次 dsh run 的 `network_isolation=false`；guest 隔离脚本的修复尚未验证，Phase 1 出口前需一次 smoke/重跑确认。Phase 2 尚未开工。EngiWorld 审计带来的 benchmark-validity gate 作为 Phase 1.5 插入。
 
 ## 档 0 · 闭环 pilot（~1 天）
 
