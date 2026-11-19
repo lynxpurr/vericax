@@ -239,18 +239,18 @@ spec/03 当前枚举：`environment_error | infra_incomplete | active_time_budge
 
 契约通用性 = 换 adapter 后不改契约/评测 harness 仍能跑通。Phase 1 验收：
 
-1. **脚本化假 agent × 3 题**：证明 harness 本身（不调模型）。
-2. **dsh × task-0001 × n=3**：产出合规 `summary.json`，三件套归因完整。
-3. **pi × task-0001 × n=1**：只加 `adapters/pi.toml`，契约与 harness 不变；验证原生文件工具不会绕过 sandbox。
-4. **作弊提交全拒**：假 summary、篡改工件、空交付、后台进程干扰。
-5. **静态检查**：lifecycle/freeze/score 路径无 `if stack ==`。
+1. ✅ **脚本化假 agent × 3 题**（2026-11-19）：0001=1.0、0002=0.35、0003=1.0，全部经 tier-1 verifier。
+2. ⏳ **dsh × task-0001 × n=3**：启动链路已结构化验证（stdin 重定向 + NDJSON 事件流，唯一失败点为 `MISSING_CREDENTIAL`）；**等待 `DEEPSEEK_API_KEY` 后执行**。
+3. ✅ **pi × task-0001 × n=1**（2026-11-19）：score=1.0，活跃 102s，三件套归因完整，cost 从 stderr NDJSON 提取；原生 write/edit 工具被 adapter 禁用，工件全部经 sandbox 产出。
+4. ✅ **作弊提交全拒**：空交付 / 假 summary / 篡改 summary 均 0.0；VM 内后台写者不改变 tier-1 结论（1.0 vs 1.0）。
+5. ✅ **静态检查**：lifecycle/freeze/score 路径无 `if stack ==`。
 
 Phase 2 加 opencode/hermes/openclaw 时，预期**只新增 adapter 和 conformance 用例**，不改契约。
 
 ## 11. 待定与开放问题
 
 - ~~`agent_error` 是否加入 spec/03 的 `error_category` 枚举~~ **已定（2026-11-18 评审）：加入**；spec/03 §2 已增补。
-- `vericax-sh` 是否需要 session wrapper（controller 每次调用都是新 bash；`cd`/env 不保留）——Phase 1 spike 决定；spike 候选方案是 proxy 侧用 VM 内 cwd 状态文件延续 `pwd`，不起持久进程。
+- ~~`vericax-sh` 是否需要 session wrapper~~ **Phase 1 spike 结论（2026-11-19）：不起持久进程**。proxy 在每条 run 的命令后追加哨兵捕获最终 `pwd`，下一条命令在捕获的目录中启动——`cd` 语义跨调用保留，环境变量不保留（需 per-command inline）。实测 pi × task-0001 通过该通道完成交付。
 - ~~代理认证：Unix socket vs 每 episode token~~ **已定（2026-11-18 评审）：两者都用**——Unix socket 限定可达面，每 episode token 防同容器/网段内伪造；与 spec/09 §5 一致。
 - ~~`artifact_uri` 的形态~~ **已定（2026-11-18 评审）：逐文件 + `artifacts.json` manifest**；tarball 仅用于复现归档，评分只读解包目录。
 - 多 run 状态隔离的具体目录布局（HOME/config/session）。

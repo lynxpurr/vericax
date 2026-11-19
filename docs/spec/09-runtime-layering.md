@@ -186,16 +186,16 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 
 ## 10. Phase 1 实现清单
 
-- [ ] `vericax` CLI：`prepare / check / smoke / run / score / report`。
-- [ ] `vericax-sh` 原型：run/put/get/done；token；命令日志；超时。
-- [ ] agent 容器 recipe：无仓库挂载、bridge 网络、独立 state、凭据注入。
-- [ ] sandbox overlay 管理：每 run 新建、结束丢弃。
-- [ ] tier-1 scoring 实例：同镜像、只读挂载、无网络。
-- [ ] artifact freeze：扁平化、sha256、`artifacts.json`。
-- [ ] `summary.json`：三件套归因 + `error_category` + `scoring_basis` + cost + `image_sha256`。
-- [ ] 回归：现有 3 题 tier-0 审计全绿；tier-1 结果与 tier-0 一致。
-- [ ] 作弊拒绝测试：假 summary、篡改工件、空交付、后台进程。
-- [ ] 静态检查：lifecycle/freeze/score 无 `if stack ==`。
+- [x] `vericax` CLI：`prepare / check / smoke / run / score / report`（2026-11-19）。
+- [x] `vericax-sh` 原型：run/put/get/done；token；命令日志；超时（2026-11-19）。
+- [x] agent 容器 recipe：无仓库挂载、bridge 网络、独立 state、凭据注入（2026-11-19）。
+- [x] sandbox overlay 管理：每 run 新建、结束丢弃（`vericax verify-overlay` 显式验证：标记不跨 boot 持久、base 镜像未变）。
+- [x] tier-1 scoring 实例：同镜像、只读挂载、无网络（网络为 guest 层 iptables 放行本地子网、拒绝其余；宿主层 DOCKER-USER 加固留 Phase 2）。
+- [x] artifact freeze：扁平化、sha256、`artifacts.json`。
+- [x] `summary.json`：三件套归因 + `error_category` + `scoring_basis` + cost + `image_sha256`。
+- [x] 回归：现有 3 题 tier-0 审计全绿（7/7、9/9、8/8）；tier-1 gold 一致（True、0.35、True，0003 pins 从 GT 烘焙）。
+- [x] 作弊拒绝测试：假 summary、篡改工件、空交付、后台进程（全部 0.0 拒绝；后台写者不改变 tier-1 结论）。
+- [x] 静态检查：lifecycle/freeze/score 无 `if stack ==`（`tests/run_acceptance.py` 纯度检查）。
 
 ## 11. 待定
 
