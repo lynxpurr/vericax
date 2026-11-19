@@ -1,0 +1,31 @@
+# Scripted fake agent (spec/08 section 10.1): harness regression without a model.
+# The adapter runs a plain python:3.12-slim container; behavior comes from the
+# payload dir mounted at /vericax/payload (config.json + recipe.sh), built by
+# the acceptance runner - the agent container itself stays repo-free (D2b).
+name = "fake"
+version = "0.1.0"
+
+[launch]
+command = ["python3", "/vericax/payload/fake_agent.py"]
+instruction = "file"
+approval = []
+grace_seconds = 5
+
+[sandbox]
+shell = "path"
+shell_target = "vericax-sh"
+file_tools = "disable"
+working_dir = "/home/user/Desktop"
+
+[output]
+format = "text"
+# cost_path omitted: the scripted agent produces no usage events
+
+[state]
+
+[model]
+name = "scripted"
+endpoint = "local"
+
+[container]
+image = "vericax-agent:fakeslim"

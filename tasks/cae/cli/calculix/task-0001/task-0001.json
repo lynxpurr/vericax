@@ -72,6 +72,8 @@
     "calculix"
   ],
   "capability": "single-execution",
-  "splits": [],
+  "splits": [
+    "v0.1-cae-cli-pilot"
+  ],
   "possibility_of_env_change": "low"
 }
