@@ -8,6 +8,19 @@ manifest itself: task JSON, verifier, init resources and ground truth. The
 verifier's own hash is included, so silently editing the scoring logic
 invalidates the package — same discipline as pinning inputs for anti-tamper.
 
+Gate policy:
+
+* The audit matrix is checked structurally (groups, six negative kinds,
+  robustness record) **and row by row**: the case table in
+  ``ground_truth/audit.md`` must contain exactly the cases declared in
+  ``audit_cases.py`` and every row must be ``PASS``. A hand-written or stale
+  record therefore cannot pass the gate.
+* The L0 reference record (``ground_truth/reference_selfcheck.json``) is a
+  **hard gate when the manifest is written** — no L0, no publish. It is
+  gitignored (a derived artifact), so ``--check`` only warns when it is
+  absent: a fresh checkout cannot verify L0 offline, and the manifest was
+  gated when it was written.
+
 --check verifies an existing manifest without rewriting it.
 """
 from __future__ import annotations
@@ -28,6 +41,33 @@ REQUIRED_NEGATIVE_KINDS = {
     "empty", "metrics_only", "tampered_input",
     "skipped_steps", "encoded_payload", "fabricated_field",
 }
+
+
+def parse_audit_table(text: str) -> list[tuple[str, str]]:
+    """Return ``(label, verdict)`` rows from the generated audit table.
+
+    The record renders as ``| case | expectation | actual | verdict |``
+    (``scripts/audit_task.py::render_audit_md``). Rows are only collected from
+    inside that table; anything else in the file is ignored.
+    """
+    rows: list[tuple[str, str]] = []
+    in_table = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            in_table = False
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        if len(cells) < 4:
+            continue
+        if cells[0].lower() == "case":
+            in_table = True
+            continue
+        if set(cells[0]) <= set("-: "):
+            continue
+        if in_table:
+            rows.append((cells[0], cells[-1]))
+    return rows
 
 
 def task_dir_for(task_id: str) -> Path:
@@ -134,6 +174,27 @@ def main() -> int:
                 stray = sorted(label for label in kinds if label not in labels)
                 if stray:
                     errors.append(f"audit matrix: NEGATIVE_KINDS names unknown cases {stray}")
+            table_rows = parse_audit_table(audit_text)
+            if not table_rows:
+                errors.append("audit record has no case table "
+                              "(rerun scripts/audit_task.py)")
+            else:
+                labels_in_table = [label for label, _ in table_rows]
+                duplicate = sorted({label for label in labels_in_table
+                                    if labels_in_table.count(label) > 1})
+                if duplicate:
+                    errors.append(f"audit table has duplicate rows: {duplicate}")
+                table = dict(table_rows)
+                missing_rows = [label for label in labels if label not in table]
+                extra_rows = [label for label in table if label not in labels]
+                if missing_rows:
+                    errors.append(f"audit table is missing cases: {missing_rows}")
+                if extra_rows:
+                    errors.append(f"audit table has unknown rows: {extra_rows}")
+                not_pass = [label for label, verdict in table_rows
+                            if verdict.upper() != "PASS"]
+                if not_pass:
+                    errors.append(f"audit table rows are not PASS: {not_pass}")
     robust = re.search(r"robust: (\d+)/(\d+) consistent", audit_text)
     if not robust:
         errors.append("audit record has no robustness record "
@@ -153,8 +214,12 @@ def main() -> int:
         else:
             if not l0.get("passed"):
                 errors.append("L0 reference self-check did not pass")
+    elif args.check:
+        print(f"warning: no {L0_RECORD} in this checkout (it is gitignored); "
+              f"L0 was gated when the manifest was written", file=sys.stderr)
     else:
-        print(f"note: no {L0_RECORD}; run `vericax audit --task {args.task}` before publishing")
+        errors.append(f"missing {L0_RECORD}: run `vericax audit --task "
+                      f"{args.task}` before writing the manifest")
 
     if errors:
         print("PACKAGE INVALID:")
