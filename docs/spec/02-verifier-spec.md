@@ -82,9 +82,10 @@ EngiWorld 测裸 LLM 时模型看不到 task-root；VeriCAx 的被测 agent 拥�
 1. **稳健组入口**：`scripts/audit_task.py --repeat N`。跑完全部用例后，在同一 VM 内对
    GOLD 提交连续判定 N 次，要求判定全一致；`audit.md` 写入一行
    `- robust: N/N consistent`。发布前 N≥10。
-2. **负面组分类声明**：`audit_cases.py` 必须提供 `NEGATIVE_KINDS` 字典，把每个 N 用例
-   标签映射到六类键之一：
+2. **负面组分类声明**：`audit_cases.py` 必须提供 `NEGATIVE_KINDS` 字典，把六类反作弊
+   负例的标签映射到：
    `empty | metrics_only | tampered_input | skipped_steps | encoded_payload | fabricated_field`。
+   允许额外的物理/格式负例不进入该字典——它们只计入负面组数量，不参与六类覆盖检查。
 3. **打包门**：`scripts/pack_task.py` 导入 `audit_cases.py` 并校验——
    正面组 ≥1、替代路径组 ≥2、负面组 ≥6 且六类键齐全、`audit.md` 含 `robust: N/N consistent`
    且 N≥10；任一不满足，打包失败（`--check` 同样失败）。
