@@ -21,6 +21,7 @@ HMAX = float(os.environ.get("FENICS_HMAX", "4.0"))
 NEAR = float(os.environ.get("FENICS_NEAR", "0.18"))
 SLOPE = float(os.environ.get("FENICS_SLOPE", "0.10"))
 CLAMP_LOADED = os.environ.get("FENICS_CLAMP", "0") == "1"
+MESH_STRATEGY = os.environ.get("FENICS_MESH", "eval")
 
 E, NU, SIGMA_LOAD, THICK = 210000.0, 0.3, 100.0, 1.0
 
@@ -37,10 +38,33 @@ if R > 0:
 occ.synchronize()
 gmsh.option.setNumber("Mesh.MeshSizeMax", HMAX)
 gmsh.option.setNumber("Mesh.MeshSizeMin", 0.1)
-fid = gmsh.model.mesh.field.add("MathEval")
-gmsh.model.mesh.field.setString(
-    fid, "F", f"{NEAR} + {SLOPE}*(sqrt(x^2+y^2) - {R})")
-gmsh.model.mesh.field.setAsBackgroundMesh(fid)
+field = gmsh.model.mesh.field
+
+
+def _hole_curves():
+    curves = []
+    for _dim, tag in gmsh.model.getEntities(1):
+        xmin, ymin, _zmin, xmax, ymax, _zmax = gmsh.model.occ.getBoundingBox(1, tag)
+        if (xmax - xmin) ** 2 + (ymax - ymin) ** 2 < 25.0 ** 2:
+            curves.append(tag)
+    return curves
+
+
+if MESH_STRATEGY == "dist" and R > 0:
+    # Different meshing strategy: distance-to-hole + threshold field.
+    f_dist = field.add("Distance")
+    field.setNumbers(f_dist, "CurvesList", _hole_curves())
+    f_thr = field.add("Threshold")
+    field.setNumber(f_thr, "InField", f_dist)
+    field.setNumber(f_thr, "SizeMin", NEAR)
+    field.setNumber(f_thr, "SizeMax", HMAX)
+    field.setNumber(f_thr, "DistMin", 0.0)
+    field.setNumber(f_thr, "DistMax", 40.0)
+    field.setAsBackgroundMesh(f_thr)
+else:
+    fid = field.add("MathEval")
+    field.setString(fid, "F", f"{NEAR} + {SLOPE}*(sqrt(x^2+y^2) - {R})")
+    field.setAsBackgroundMesh(fid)
 gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)
 gmsh.option.setNumber("Mesh.ElementOrder", 1)
 gmsh.model.mesh.generate(2)
@@ -161,11 +185,37 @@ FABRICATE = _run(after=(
     "PY"))
 ZERO_MESH = _run(after=": > mesh.msh")
 BAD_SUMMARY = _run(after="printf '1, 2, 3\\n' > summary.txt")
+DIST_FIELD = _run(env="FENICS_MESH=dist FENICS_NEAR=0.16 FENICS_HMAX=3.5")
+
+METRICS_ONLY = r"""
+set -e
+cd /home/user/Desktop
+printf '%s\n' '308.46, 0.05008' > summary.txt
+"""
+
+ENCODE_SUMMARY = r"""
+python3 - <<'PYEOF'
+import base64
+from pathlib import Path
+Path("/home/user/Desktop/summary.txt").write_text(
+    base64.b64encode(b"308.46, 0.05008").decode() + "\n")
+PYEOF
+"""
+
+NEGATIVE_KINDS = {
+    "N1 empty delivery": "empty",
+    "N2 wrong hole radius": "tampered_input",
+    "N6 fabricated summary (+10%)": "fabricated_field",
+    "N7 zero-byte mesh": "skipped_steps",
+    "N10 metrics only": "metrics_only",
+    "N11 encoded payload": "encoded_payload",
+}
 
 CASES = [
     ("P1 positive (gold)", GOLD, ("true",)),
     ("P2 robust (gold re-run)", GOLD, ("true",)),
     ("A1 alternative legal (finer mesh)", FINER, ("true",)),
+    ("A2 alternative legal (distance-field mesh)", DIST_FIELD, ("true",)),
     ("N1 empty delivery", "", ("false",)),
     ("N2 wrong hole radius", WRONG_RADIUS, ("false",)),
     ("N3 no hole", NO_HOLE, ("false",)),
@@ -175,4 +225,6 @@ CASES = [
     ("N7 zero-byte mesh", ZERO_MESH, ("false",)),
     ("N8 malformed summary", BAD_SUMMARY, ("false",)),
     ("N9 coarse mesh", COARSE, ("false",)),
+    ("N10 metrics only", METRICS_ONLY, ("false",)),
+    ("N11 encoded payload", GOLD + ENCODE_SUMMARY, ("false",)),
 ]
