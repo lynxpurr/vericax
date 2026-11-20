@@ -23,6 +23,15 @@ sudo /home/user/venv/bin/pip install --upgrade pip
 sudo /home/user/venv/bin/pip install \
     Flask lxml numpy Pillow pynput PyAutoGUI pygame python-xlib requests
 
+# The OSWorld controller runs action scripts as `python3` through
+# /run_bash_script; route that name to the venv (pyautogui lives there).
+sudo tee /usr/local/bin/python3 >/dev/null <<'PY3'
+#!/bin/sh
+exec /home/user/venv/bin/python "$@"
+PY3
+sudo chmod 0755 /usr/local/bin/python3
+sudo ln -sf /usr/local/bin/python3 /usr/local/bin/python
+
 sudo mkdir -p /home/user/server
 wget -q http://10.0.2.2:8765/server.tar.gz -O /tmp/server.tar.gz
 sudo tar -xzf /tmp/server.tar.gz -C /home/user/server

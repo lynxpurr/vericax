@@ -62,7 +62,7 @@ D5 已定（2026-11-18），执行顺序：
 
 - **v0/v0.5：复用 EngiWorld 镜像**（CalculiX-2.21 已在本机验证；FEniCS 候选镜像需确认版本、工件格式、pins 与审计可复现）。
 - **Phase 1：写自建镜像构建 recipe**，并产出一张自建镜像验证可复现（不切换）。
-- **Phase 2：切换自建 VeriCAx 镜像**并重跑审计；所有 pins 必须在同镜像内重新烘焙（换镜像 = 重跑审计，spec/04 §6）。
+- **Phase 2：切换自建 VeriCAx 镜像**并重跑审计；所有 pins 必须在同镜像内重新烘焙（换镜像 = 重跑审计，spec/04 §6）。P3a 自建 CalculiX 镜像已于 2026-11-20 验证（L0 + fake smoke），尚未切换；P3b FEniCS / P3c merged 待做。
 
 无论哪条路径，**换镜像 = 重跑审计**；pinned 参考值与镜像绑定（spec/04 §6）。
 
@@ -145,7 +145,9 @@ D5 已定（2026-11-18），执行顺序：
 
 **P2 状态（2026-11-20）**：L6 判据已写入 spec/02 §1/§2/§6，task schema 增加 `provenance` 块（spec/01）。原型 `cae--cli--cross-solver--task-0001` 审计 15/15、robust 10/10、L0 pass、fake smoke 1.0；`capability` 如实写 `single-execution`，用固定 audit token + 伪造非空 field / 错误 token / foreign result 负例验证**拒绝**判据。真正的 `software-selection` 仍未验证，需 P3c merged image。
 
-**待决**：P3/P4/P5 的具体开工时点与授权。
+**P3 状态（2026-11-20）**：P3a 完成——clean build 自建 Ubuntu 24.04 + `ccx` 2.21-1 镜像（sha256 `91b1d6c8…47cd`），task-0001 L0 pass + fake smoke 1.0。套件仍跑 EngiWorld 镜像；切换需重烘 pins 并重跑审计（spec/04 §6）。P3b FEniCS / P3c merged cross-solver 镜像待做。
+
+**待决**：P3b/P3c、P4/P5 的具体开工时点与授权。
 
 **P0 已完成（2026-11-20）**：4 题全部 A≥2、六类反作弊负例齐全、`robust: 10/10 consistent`；`audit_task.py --repeat N` 与 `pack_task.py` 打包门已生效（spec/02 §4.1）。
 

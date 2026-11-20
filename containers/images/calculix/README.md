@@ -4,25 +4,35 @@ Build a CalculiX 2.21 qcow2 from a pinned Ubuntu 24.04 cloud image instead of
 reusing the EngiWorld image. This is the P3a deliverable; FEniCS 0.10 and the
 merged cross-solver image are P3b/P3c.
 
-## Status (2026-11-20)
+## Status (2026-11-20): P3a accepted
 
-The recipe and builder are in place, and a first image was built: Ubuntu
-24.04, `ccx` 2.21-1, Xvfb, OSWorld server with `/health` and `/screenshot`
-returning 200. **End-to-end `vericax audit` on the self-built image is not yet
-green.** The debugging round identified four CLI-only guest requirements that
-are now in `provision.sh` but still need a clean full `build.sh` run:
+A **fresh clean build from this recipe** produced an Ubuntu 24.04 image with
+`ccx` 2.21-1 and the OSWorld server, and passed both gates on 2026-11-20:
 
-1. generic DHCP netplan (`99-vericax.yaml`) because the runner NIC name differs
-   from the build NIC;
-2. `x11-xserver-utils` (the desktop preparation calls `xrandr`);
-3. a `gnome-screenshot` -> `scrot` shim for pyautogui under Xvfb;
-4. `server/main.py` `/run_python` must use `/home/user/venv/bin/python` (the
-   action scripts need the venv deps; installing them system-wide conflicted
-   with Debian packages).
+- `vericax audit --task cae--cli--calculix--task-0001 --group reference`:
+  passed (`summary_matched=true`, verifier `True`);
+- fake-agent run: score 1.0, `image_sha256` matching the image, sandbox and
+  scoring network isolation true.
 
-Do not switch the suite to this image or rebake pins until a clean build passes
-`vericax audit --task cae--cli--calculix--task-0001 --group reference` and a
-fake-agent run.
+Image under test: `CalculiX-2.21.qcow2`, SHA-256
+`91b1d6c843f5f9c6222ba5f56b0c87f5a84f0b29b2d54a6d04db4ddd228547cd`,
+1.57 GB. The local `out/` directory also keeps `image-build.json`,
+`l0-selfbuilt-task-0001.json` and `smoke-selfbuilt-task-0001.json`; these are
+evidence, not committed.
+
+Four CLI-only requirements are captured in `provision.sh` (all were needed to
+make the clean build pass): generic DHCP netplan (`99-vericax.yaml`) because
+the runner NIC differs from the build NIC; `x11-xserver-utils` for `xrandr`;
+a `gnome-screenshot` -> `scrot` shim for pyautogui under Xvfb; and
+`/usr/local/bin/python3` -> the venv, because the OSWorld controller runs
+action scripts as `python3` and the venv is where pyautogui lives. The
+scoring/verifier commands also resolve through that shim; the CalculiX
+verifiers only need the standard library, and `ccx` is at `/usr/bin/ccx`.
+
+This validates the **CalculiX-only** image. The suite still runs on the
+EngiWorld image; switching `vericax.toml`/`snapshot` to this image requires
+re-baking pins and re-running audit/L0 on every task (spec/04 §6). FEniCS
+(P3b) and the merged cross-solver image (P3c) are not built yet.
 
 ## What is pinned
 
