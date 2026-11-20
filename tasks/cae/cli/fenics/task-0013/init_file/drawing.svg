@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="520" viewBox="0 0 620 520">
+  <style>
+    .outline { fill: #e3f2fd; stroke: #0d47a1; stroke-width: 2; }
+    .hole { fill: #ffffff; stroke: #0d47a1; stroke-width: 2; }
+    .dim { stroke: #333; stroke-width: 1; fill: none; }
+    .dash { stroke: #777; stroke-width: 1; stroke-dasharray: 6 4; fill: none; }
+    text { font-family: DejaVu Sans, Arial, sans-serif; font-size: 16px; fill: #111; }
+    .small { font-size: 14px; }
+    .load { stroke: #c62828; stroke-width: 2; fill: none; }
+  </style>
+
+  <!-- quarter plate with a quarter hole at the origin; 4 px per mm -->
+  <path class="outline" d="M 80 372 L 80 20 L 480 20 L 480 420 L 128 420 A 48 48 0 0 1 80 372 Z"/>
+  <path class="hole" d="M 80 372 A 48 48 0 0 1 128 420 L 128 420 L 80 420 Z" fill="#fff"/>
+
+  <!-- symmetry edges -->
+  <line class="dash" x1="80" y1="372" x2="80" y2="20"/>
+  <line class="dash" x1="128" y1="420" x2="480" y2="420"/>
+  <text class="small" x="40" y="210" transform="rotate(-90 40 210)">symmetry: ux = 0</text>
+  <text class="small" x="220" y="455">symmetry: uy = 0</text>
+
+  <!-- hole radius dimension -->
+  <line class="dim" x1="80" y1="420" x2="128" y2="420"/>
+  <text class="small" x="95" y="445">R 12</text>
+
+  <!-- plate dimensions -->
+  <line class="dim" x1="80" y1="490" x2="480" y2="490"/>
+  <line class="dim" x1="80" y1="482" x2="80" y2="498"/>
+  <line class="dim" x1="480" y1="482" x2="480" y2="498"/>
+  <text x="270" y="512">100</text>
+
+  <line class="dim" x1="530" y1="20" x2="530" y2="420"/>
+  <line class="dim" x1="522" y1="20" x2="538" y2="20"/>
+  <line class="dim" x1="522" y1="420" x2="538" y2="420"/>
+  <text x="545" y="225">100</text>
+
+  <!-- right-edge traction, 80 MPa in +x -->
+  <g class="load">
+    <line x1="500" y1="60" x2="485" y2="60"/><polygon points="480,60 490,55 490,65" fill="#c62828"/>
+    <line x1="500" y1="140" x2="485" y2="140"/><polygon points="480,140 490,135 490,145" fill="#c62828"/>
+    <line x1="500" y1="220" x2="485" y2="220"/><polygon points="480,220 490,215 490,225" fill="#c62828"/>
+    <line x1="500" y1="300" x2="485" y2="300"/><polygon points="480,300 490,295 490,305" fill="#c62828"/>
+    <line x1="500" y1="380" x2="485" y2="380"/><polygon points="480,380 490,375 490,385" fill="#c62828"/>
+  </g>
+  <text x="505" y="45">80 MPa</text>
+
+  <text class="small" x="80" y="478">Quarter plate, 100 x 100 mm; quarter circular hole at the origin.</text>
+</svg>

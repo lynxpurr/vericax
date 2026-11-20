@@ -18,11 +18,11 @@
 |---|---|---|---|---|
 | `single-execution` | 一次求解/一次建模，工件正确 | L1–L3 | 0001/0004/0005/0006/0007 + FEniCS 0001 | 6 |
 | `design-optimization` | 可行性门 + 质量分两段式 | L1–L5 | 0002 + FEniCS 0002/0003/0004/0005 | 5 |
-| `cross-stage-consistency` | 多步骤/多工件在一套模型内自洽 | L1–L4 | 0003/0008/0009 | 4 |
+| `cross-stage-consistency` | 多步骤/多工件在一套模型内自洽 | L1–L4 | 0003/0008/0009/0010 | 4 |
 | `software-selection` | 选对工具并交付；verifier 能判工件来自哪个工具 | L1–L3 + L6 | — | 4 |
-| `observation-reconstruct` | 从图纸/报告/截图重建模型 | L1–L3 | — | 3 |
-| `open-environment` | agent 自行安装/配置工具并交付 | L1–L3 | — | 3 |
-| 合计 | | | 14 | **25** |
+| `observation-reconstruct` | 从图纸/报告/截图重建模型 | L1–L3 | 0011/0012/0013 | 3 |
+| `open-environment` | agent 自行安装/配置工具并交付 | L1–L3 | 0014/0015/0016 | 3 |
+| 合计 | | | 21 | **25** |
 
 > 规模下限：20 题（每 capability ≥3，且 ≥2 求解器）。25 是目标值；达不到 25 时优先保 capability 覆盖，不靠单类堆题。
 
@@ -44,9 +44,16 @@
 | `cae--cli--calculix--task-0009` | cross-stage-consistency | CalculiX 2.21 | L1–L4 | 13/13 | `v0.2-cae-cli-25` |
 | `cae--cli--fenics--task-0004` | design-optimization | FEniCS 0.10.0.post2 | L1–L5 | 15/15 | `v0.2-cae-cli-25` |
 | `cae--cli--fenics--task-0005` | design-optimization | FEniCS 0.10.0.post2 | L1–L5 | 15/15 | `v0.2-cae-cli-25` |
+| `cae--cli--calculix--task-0010` | cross-stage-consistency | CalculiX 2.21 | L1–L4 | 14/14 | `v0.2-cae-cli-25` |
+| `cae--cli--calculix--task-0011` | observation-reconstruct | CalculiX 2.21 | L1–L3 | 14/14 | `v0.2-cae-cli-25` |
+| `cae--cli--calculix--task-0012` | observation-reconstruct | CalculiX 2.21 | L1–L3 | 13/13 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0013` | observation-reconstruct | FEniCS 0.10.0.post2 | L1–L3 | 15/15 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0014` | open-environment | FEniCS 0.10.0.post2 | L1–L3 | 12/12 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0015` | open-environment | FEniCS 0.10.0.post2 | L1–L3 | 13/13 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0016` | open-environment | FEniCS 0.10.0.post2 | L1–L3 | 11/11 | `v0.2-cae-cli-25` |
 | `cae--cli--cross-solver--task-0001` | single-execution (L6 prototype) | CalculiX 2.21 | L1–L3 + L6 | 15/15 | `v0.2-cae-cli-l6-pilot` |
 
-2026-11-20（P0 重审计 + P1 试点 + P1 第二批）后计数如上；`v0.1-cae-cli-pilot` 保留 3 题，
+2026-11-20（P0 重审计 + P1 试点 + P1 第二批 + P1 完成）后计数如上；`v0.1-cae-cli-pilot` 保留 3 题，
 `v0.2-cae-cli-25` 随 P1 增长。审计记录以各任务包的 `ground_truth/audit.md`
 为准（robust 10/10）。
 
@@ -54,8 +61,8 @@
 
 | 求解器 | 版本/镜像 | 状态 | Phase 2 题量 | 备注 |
 |---|---|---|---|---|
-| **CalculiX** | 2.21 / `CalculiX-2.21.qcow2` | 已验证（9 题） | 14 | 现有 3 题 + P1 新增 6 题 + 5 新题 |
-| **FEniCS** | 0.10.0.post2 / `FEniCS.qcow2` | **已验证（5 题）** | 7 | 第二求解器；task-0001 审计 15/15；P1 新增 design-optimization ×4 |
+| **CalculiX** | 2.21 / `CalculiX-2.21.qcow2` | 已验证（12 题） | 14 | P1 完成 12 题；剩余 2 题到求解器目标 |
+| **FEniCS** | 0.10.0.post2 / `FEniCS.qcow2` | **已验证（9 题）** | 7 | 第二求解器；P1 完成 9 题（DO/observation/open-environment） |
 | **cross-solver** | merged image（P2 决定） | 新能力 | 4 | `software-selection` 专用；L6 判据见 spec/02 §1；merged image 由 P3 产出 |
 
 D5 已定（2026-11-18），执行顺序：
@@ -147,6 +154,10 @@ D5 已定（2026-11-18），执行顺序：
 
 **P3 状态（2026-11-20）**：P3a 完成——clean build 自建 Ubuntu 24.04 + `ccx` 2.21-1 镜像（sha256 `91b1d6c8…47cd`），task-0001 L0 pass + fake smoke 1.0。套件仍跑 EngiWorld 镜像；切换需重烘 pins 并重跑审计（spec/04 §6）。P3b FEniCS / P3c merged cross-solver 镜像待做。
 
+**open-environment 的 v0.2 形态（2026-11-20）**：最小实现是**本地 wheelhouse**——`init_file/wheels/` 提供工具轮子（scikit-fem、pygmsh），agent 在无外网的 sandbox 里自行创建/配置环境并安装；互联网/包源按任务放开留 v0.5。该形态用于 0014/0015，任务 JSON 的 `integrity_policy` 允许相应第三方包。
+
+**P1 完成（2026-11-20）**：21 题（single 6 / design 5 / cross-stage 4 / observation 3 / open-environment 3），满足 20 题下限与每 capability ≥3；距 25 目标 4 题，全部是 `software-selection`（待 P3c merged image）。
+
 **待决**：P3b/P3c、P4/P5 的具体开工时点与授权。
 
 **P0 已完成（2026-11-20）**：4 题全部 A≥2、六类反作弊负例齐全、`robust: 10/10 consistent`；`audit_task.py --repeat N` 与 `pack_task.py` 打包门已生效（spec/02 §4.1）。
@@ -173,7 +184,7 @@ D5 已定（2026-11-18），执行顺序：
 |---|---|---|
 | 第二求解器镜像 | D5 | Phase 2 能否按 25 题排期 |
 | 发布时点 | D4 | 商标检索、org 占位、split 冻结时间 |
-| 任务作者产能 | 人力 | P1 第二批后 14 题；距 20 下限 6 题、距 25 目标 11 题 |
+| 任务作者产能 | 人力 | P1 完成 21 题（20 下限 + 1，每 capability ≥3）；距 25 目标 4 题（software-selection，待 P3c） |
 | provenance 判据 | 新 verifier 能力 | `software-selection` 4 题的前置；可能需要在 spec/02 增补一层 |
 | 图纸/报告输入格式 | task schema | `observation-reconstruct` 的 init_file 类型 |
 | open-environment 网络策略 | spec/09 | 默认 sandbox 无外网；按任务开包源 |
