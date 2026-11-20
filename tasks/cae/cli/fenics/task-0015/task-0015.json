@@ -1,0 +1,81 @@
+{
+  "id": "cae--cli--fenics--task-0015",
+  "schema_version": "0.1",
+  "snapshot": "FEniCS",
+  "interface": "cli",
+  "instruction": "The image has no internet. A local wheelhouse is at `/home/user/Desktop/wheels`; it contains `pygmsh` 7.1.17.\n\n1. Install pygmsh from the wheelhouse, for example with `python3 -m pip install --user --no-index --find-links wheels pygmsh==7.1.17`.\n2. Use pygmsh to mesh ONE QUARTER of a thin square plate 200 x 200 mm with a central circular hole of radius 10 mm:\n   - domain: x in [0,100], y in [0,100], excluding the quarter disk x^2+y^2 <= 10^2\n   - symmetry: ux = 0 on x = 0; uy = 0 on y = 0\n   - hole and y = 100 traction-free\n   - material: E = 210000 MPa, nu = 0.3, plane stress, thickness 1 mm\n   - load: uniform traction (100, 0) MPa on x = 100\n   - mesh: triangular, at least 80 element edges along the hole arc, at least 3000 elements, no nodes inside the hole\n3. Solve with dolfinx and deliver in /home/user/Desktop:\n   - `mesh.msh` - the pygmsh/meshio mesh\n   - `solve.py` - the script that meshes with pygmsh and solves; it must import `pygmsh`\n   - `summary.txt` - one line, two comma-separated numbers: `sigma_xx_max, ux_max`, where sigma_xx_max is the maximum sigma_xx at the mesh vertices on the hole arc (|sqrt(x^2+y^2)-10| <= 1e-3) using a continuous P1 projection, and ux_max is the maximum ux on the loaded edge (x >= 100 - 1e-3).\n\nThe evaluator re-solves the submitted mesh independently and checks that solve.py uses pygmsh.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {
+            "local_path": "task-0015/init_file/brief.md",
+            "path": "/home/user/Desktop/brief.md"
+          },
+          {
+            "local_path": "task-0015/init_file/wheels/pygmsh-7.1.17-py3-none-any.whl",
+            "path": "/home/user/Desktop/wheels/pygmsh-7.1.17-py3-none-any.whl"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/mesh.msh",
+    "/home/user/Desktop/summary.txt",
+    "/home/user/Desktop/solve.py"
+  ],
+  "integrity_policy": {
+    "native_interface_only": false,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": [],
+    "forbid_read": [
+      "ground_truth",
+      "evaluator"
+    ]
+  },
+  "evaluator": {
+    "func": "exact_match",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "task-0015/eval.py",
+              "path": "/home/user/vericax/eval.py"
+            }
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "True\n"
+      }
+    }
+  },
+  "limits": {
+    "cli_max_steps": 100,
+    "gui_max_steps": null,
+    "active_time_seconds": 18000
+  },
+  "related_apps": [
+    "fenics"
+  ],
+  "capability": "open-environment",
+  "splits": [
+    "v0.2-cae-cli-25"
+  ],
+  "possibility_of_env_change": "low",
+  "solver_probe": "python3 -c 'import dolfinx;print(dolfinx.__version__)'"
+}
