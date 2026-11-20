@@ -1,0 +1,80 @@
+{
+  "id": "cae--cli--calculix--task-0007",
+  "schema_version": "0.1",
+  "snapshot": "CalculiX-2.21",
+  "interface": "cli",
+  "instruction": "Work from a terminal with CalculiX 2.21 (`/usr/bin/ccx`).\n\nProblem: a 3D cantilever block 100 mm long, 10 mm wide and 10 mm high is clamped at x = 0 and loaded by a total tip force of -100 N in the y direction at x = 100. Build the solid model and the deck `/home/user/Desktop/solution.inp`:\n- structured C3D8 mesh: 40 elements along x, 4 along y and 4 along z (2.5 mm elements; 1025 nodes and 640 elements; node and element ids are yours)\n- nodes must lie on the grid x = 0..100, y = 0..10, z = 0..10 with 2.5 mm spacing\n- material: E = 210000 MPa, nu = 0.3, one `*Solid Section` covering every element\n- boundary: all three dofs fixed on the whole x = 0 face; no other constraints\n- load: -100 N total in the y direction (dof 2) at x = 100, divided equally over the 25 tip-face nodes (-4 N each); list the 25 nodes explicitly, one *Cload line per node\n- step: `*Static`\n\nCalculiX allows at most 16 entries per data line; split long `*Nset`/`*Elset` lists across multiple lines. Results reach `.dat` through `*Node Print` (which needs an explicit node set).\n\nSubmit the job with `/usr/bin/ccx` and produce `/home/user/Desktop/solution.dat`.\n\nWrite `/home/user/Desktop/summary.txt` as one number: `tip_uy`, the y displacement of the node at the center of the tip face (x = 100, y = 5, z = 5), in mm.\n\nThe evaluator re-solves your deck independently; the reported number must come from your own run.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {
+            "local_path": "task-0007/init_file/brief.md",
+            "path": "/home/user/Desktop/brief.md"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/solution.inp",
+    "/home/user/Desktop/solution.dat",
+    "/home/user/Desktop/summary.txt"
+  ],
+  "integrity_policy": {
+    "native_interface_only": true,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": [
+      "numpy",
+      "scipy"
+    ],
+    "forbid_read": [
+      "ground_truth",
+      "evaluator"
+    ]
+  },
+  "evaluator": {
+    "func": "exact_match",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "task-0007/eval.py",
+              "path": "/home/user/vericax/eval.py"
+            }
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "True\n"
+      }
+    }
+  },
+  "limits": {
+    "cli_max_steps": 100,
+    "gui_max_steps": null,
+    "active_time_seconds": 18000
+  },
+  "related_apps": [
+    "calculix"
+  ],
+  "capability": "single-execution",
+  "splits": [
+    "v0.2-cae-cli-25"
+  ],
+  "possibility_of_env_change": "low",
+  "solver_probe": "/usr/bin/ccx -v 2>&1 | head -5"
+}

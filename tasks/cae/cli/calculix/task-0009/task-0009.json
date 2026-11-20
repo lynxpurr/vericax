@@ -1,0 +1,82 @@
+{
+  "id": "cae--cli--calculix--task-0009",
+  "schema_version": "0.1",
+  "snapshot": "CalculiX-2.21",
+  "interface": "cli",
+  "instruction": "Work from a terminal with CalculiX 2.21 (`/usr/bin/ccx`).\n\nProblem: study mesh refinement on a 3D cantilever block 100 x 10 x 10 mm, clamped at x = 0, with a total tip load of -100 N in y at x = 100. Build TWO decks that model the same problem:\n- `/home/user/Desktop/coarse.inp`: C3D8 mesh 20 x 2 x 2 (2.5 mm along x, 5 mm across y/z; 189 nodes, 160 elements)\n- `/home/user/Desktop/fine.inp`: C3D8 mesh 40 x 4 x 4 (2.5 mm cubes; 1025 nodes, 640 elements)\n- node coordinates on the corresponding grids x = 0..100, y = 0..10, z = 0..10\n- material E = 210000 MPa, nu = 0.3, one `*Solid Section` per deck\n- boundary: all three dofs fixed on the whole x = 0 face\n- load: -100 N total in y (dof 2) at x = 100, divided equally over the tip-face nodes; one *Cload line per node\n- step: `*Static`\n\nCalculiX allows at most 16 entries per data line; split long sets. Results reach `.dat` through `*Node Print` with an explicit node set.\n\nSubmit both jobs with `/usr/bin/ccx`, producing `coarse.dat` and `fine.dat`.\n\nWrite `/home/user/Desktop/summary.txt` as two comma-separated numbers: `coarse_tip_uy, fine_tip_uy` — the y displacement of the node at the center of the tip face (x = 100, y = 5, z = 5) in each model, in mm.\n\nThe evaluator re-runs both decks and checks that the refined result is closer to beam theory while the two results stay consistent.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {
+            "local_path": "task-0009/init_file/brief.md",
+            "path": "/home/user/Desktop/brief.md"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/coarse.inp",
+    "/home/user/Desktop/coarse.dat",
+    "/home/user/Desktop/fine.inp",
+    "/home/user/Desktop/fine.dat",
+    "/home/user/Desktop/summary.txt"
+  ],
+  "integrity_policy": {
+    "native_interface_only": true,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": [
+      "numpy",
+      "scipy"
+    ],
+    "forbid_read": [
+      "ground_truth",
+      "evaluator"
+    ]
+  },
+  "evaluator": {
+    "func": "exact_match",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "task-0009/eval.py",
+              "path": "/home/user/vericax/eval.py"
+            }
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "True\n"
+      }
+    }
+  },
+  "limits": {
+    "cli_max_steps": 100,
+    "gui_max_steps": null,
+    "active_time_seconds": 18000
+  },
+  "related_apps": [
+    "calculix"
+  ],
+  "capability": "cross-stage-consistency",
+  "splits": [
+    "v0.2-cae-cli-25"
+  ],
+  "possibility_of_env_change": "low",
+  "solver_probe": "/usr/bin/ccx -v 2>&1 | head -5"
+}

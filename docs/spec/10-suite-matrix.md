@@ -16,13 +16,13 @@
 
 | capability | 检验重点 | 必需 verifier 层 | 现有 | Phase 2 目标 |
 |---|---|---|---|---|
-| `single-execution` | 一次求解/一次建模，工件正确 | L1–L3 | 0001/0004/0005/0006 + FEniCS 0001 | 6 |
-| `design-optimization` | 可行性门 + 质量分两段式 | L1–L5 | 0002 + FEniCS 0002/0003 | 5 |
-| `cross-stage-consistency` | 多步骤/多工件在一套模型内自洽 | L1–L4 | 0003 | 4 |
-| `software-selection` | 选对工具并交付；verifier 能判工件来自哪个工具 | L1–L3 + provenance | — | 4 |
+| `single-execution` | 一次求解/一次建模，工件正确 | L1–L3 | 0001/0004/0005/0006/0007 + FEniCS 0001 | 6 |
+| `design-optimization` | 可行性门 + 质量分两段式 | L1–L5 | 0002 + FEniCS 0002/0003/0004/0005 | 5 |
+| `cross-stage-consistency` | 多步骤/多工件在一套模型内自洽 | L1–L4 | 0003/0008/0009 | 4 |
+| `software-selection` | 选对工具并交付；verifier 能判工件来自哪个工具 | L1–L3 + L6 | — | 4 |
 | `observation-reconstruct` | 从图纸/报告/截图重建模型 | L1–L3 | — | 3 |
 | `open-environment` | agent 自行安装/配置工具并交付 | L1–L3 | — | 3 |
-| 合计 | | | 9 | **25** |
+| 合计 | | | 14 | **25** |
 
 > 规模下限：20 题（每 capability ≥3，且 ≥2 求解器）。25 是目标值；达不到 25 时优先保 capability 覆盖，不靠单类堆题。
 
@@ -39,8 +39,14 @@
 | `cae--cli--calculix--task-0006` | single-execution | CalculiX 2.21 | L1–L3 | 13/13 | `v0.2-cae-cli-25` |
 | `cae--cli--fenics--task-0002` | design-optimization | FEniCS 0.10.0.post2 | L1–L5 | 16/16 | `v0.2-cae-cli-25` |
 | `cae--cli--fenics--task-0003` | design-optimization | FEniCS 0.10.0.post2 | L1–L5 | 16/16 | `v0.2-cae-cli-25` |
+| `cae--cli--calculix--task-0007` | single-execution | CalculiX 2.21 | L1–L3 | 14/14 | `v0.2-cae-cli-25` |
+| `cae--cli--calculix--task-0008` | cross-stage-consistency | CalculiX 2.21 | L1–L4 | 15/15 | `v0.2-cae-cli-25` |
+| `cae--cli--calculix--task-0009` | cross-stage-consistency | CalculiX 2.21 | L1–L4 | 13/13 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0004` | design-optimization | FEniCS 0.10.0.post2 | L1–L5 | 15/15 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0005` | design-optimization | FEniCS 0.10.0.post2 | L1–L5 | 15/15 | `v0.2-cae-cli-25` |
+| `cae--cli--cross-solver--task-0001` | single-execution (L6 prototype) | CalculiX 2.21 | L1–L3 + L6 | 15/15 | `v0.2-cae-cli-l6-pilot` |
 
-2026-11-20（P0 重审计 + P1 试点）后计数如上；`v0.1-cae-cli-pilot` 保留 3 题，
+2026-11-20（P0 重审计 + P1 试点 + P1 第二批）后计数如上；`v0.1-cae-cli-pilot` 保留 3 题，
 `v0.2-cae-cli-25` 随 P1 增长。审计记录以各任务包的 `ground_truth/audit.md`
 为准（robust 10/10）。
 
@@ -48,9 +54,9 @@
 
 | 求解器 | 版本/镜像 | 状态 | Phase 2 题量 | 备注 |
 |---|---|---|---|---|
-| **CalculiX** | 2.21 / `CalculiX-2.21.qcow2` | 已验证（6 题） | 14 | 现有 3 题 + P1 新增 3 题 + 8 新题 |
-| **FEniCS** | 0.10.0.post2 / `FEniCS.qcow2` | **已验证（3 题）** | 7 | 第二求解器；task-0001 审计 15/15；P1 新增 design-optimization ×2 |
-| **cross-solver** | 两个镜像 | 新能力 | 4 | `software-selection` 专用；verifier 需 provenance 判据 |
+| **CalculiX** | 2.21 / `CalculiX-2.21.qcow2` | 已验证（9 题） | 14 | 现有 3 题 + P1 新增 6 题 + 5 新题 |
+| **FEniCS** | 0.10.0.post2 / `FEniCS.qcow2` | **已验证（5 题）** | 7 | 第二求解器；task-0001 审计 15/15；P1 新增 design-optimization ×4 |
+| **cross-solver** | merged image（P2 决定） | 新能力 | 4 | `software-selection` 专用；L6 判据见 spec/02 §1；merged image 由 P3 产出 |
 
 D5 已定（2026-11-18），执行顺序：
 
@@ -137,7 +143,9 @@ D5 已定（2026-11-18），执行顺序：
 - **D5 自建镜像（P3）与 P1 并行**：越晚换镜像，越多题要重烘 pins、重跑审计。
 - **verifier 软约束放宽到 ≤450 行**（spec/02 §5）。
 
-**待决**：P2/P3/P4/P5 的具体开工时点与授权。
+**P2 状态（2026-11-20）**：L6 判据已写入 spec/02 §1/§2/§6，task schema 增加 `provenance` 块（spec/01）。原型 `cae--cli--cross-solver--task-0001` 审计 15/15、robust 10/10、L0 pass、fake smoke 1.0；`capability` 如实写 `single-execution`，用固定 audit token + 伪造非空 field / 错误 token / foreign result 负例验证**拒绝**判据。真正的 `software-selection` 仍未验证，需 P3c merged image。
+
+**待决**：P3/P4/P5 的具体开工时点与授权。
 
 **P0 已完成（2026-11-20）**：4 题全部 A≥2、六类反作弊负例齐全、`robust: 10/10 consistent`；`audit_task.py --repeat N` 与 `pack_task.py` 打包门已生效（spec/02 §4.1）。
 
@@ -163,7 +171,7 @@ D5 已定（2026-11-18），执行顺序：
 |---|---|---|
 | 第二求解器镜像 | D5 | Phase 2 能否按 25 题排期 |
 | 发布时点 | D4 | 商标检索、org 占位、split 冻结时间 |
-| 任务作者产能 | 人力 | P1 试点后 9 题；距 20 下限 11 题、距 25 目标 16 题 |
+| 任务作者产能 | 人力 | P1 第二批后 14 题；距 20 下限 6 题、距 25 目标 11 题 |
 | provenance 判据 | 新 verifier 能力 | `software-selection` 4 题的前置；可能需要在 spec/02 增补一层 |
 | 图纸/报告输入格式 | task schema | `observation-reconstruct` 的 init_file 类型 |
 | open-environment 网络策略 | spec/09 | 默认 sandbox 无外网；按任务开包源 |

@@ -142,7 +142,7 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 - 只读注入冻结工件到 `VERICAX_AGENT_ROOT`。
 - 可写：一个临时 scratch 目录（verifier 可重解开）。
 - 无外网；只保留 runtime 的 controller 控制通道。
-- 环境：`VERICAX_AGENT_ROOT`、`VERICAX_CCX=/usr/bin/ccx`、`VERICAX_TASK_ID`。
+- 环境：`VERICAX_AGENT_ROOT`、`VERICAX_CCX=/usr/bin/ccx`、`VERICAX_TASK_ID`；L6 题另加 `VERICAX_EPISODE_ID`、`VERICAX_CHALLENGE`、`VERICAX_TOOL`（required tool）。merged image 用 task JSON 的 `solver_probes` 记录每个工具的版本，不能只靠一个 `solver_version`。
 
 ### 7.2 执行
 
