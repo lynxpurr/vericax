@@ -16,13 +16,13 @@
 
 | capability | 检验重点 | 必需 verifier 层 | 现有 | Phase 2 目标 |
 |---|---|---|---|---|
-| `single-execution` | 一次求解/一次建模，工件正确 | L1–L3 | 0001 | 6 |
-| `design-optimization` | 可行性门 + 质量分两段式 | L1–L5 | 0002 | 5 |
+| `single-execution` | 一次求解/一次建模，工件正确 | L1–L3 | 0001/0004/0005/0006 + FEniCS 0001 | 6 |
+| `design-optimization` | 可行性门 + 质量分两段式 | L1–L5 | 0002 + FEniCS 0002/0003 | 5 |
 | `cross-stage-consistency` | 多步骤/多工件在一套模型内自洽 | L1–L4 | 0003 | 4 |
 | `software-selection` | 选对工具并交付；verifier 能判工件来自哪个工具 | L1–L3 + provenance | — | 4 |
 | `observation-reconstruct` | 从图纸/报告/截图重建模型 | L1–L3 | — | 3 |
 | `open-environment` | agent 自行安装/配置工具并交付 | L1–L3 | — | 3 |
-| 合计 | | | 3 | **25** |
+| 合计 | | | 9 | **25** |
 
 > 规模下限：20 题（每 capability ≥3，且 ≥2 求解器）。25 是目标值；达不到 25 时优先保 capability 覆盖，不靠单类堆题。
 
@@ -30,22 +30,26 @@
 
 | 任务 | capability | 求解器 | 实现层 | 审计 | split |
 |---|---|---|---|---|---|
-| `cae--cli--calculix--task-0001` | single-execution | CalculiX 2.21 | L1–L3 | 7/7 | `[]`（待填） |
-| `cae--cli--calculix--task-0002` | design-optimization | CalculiX 2.21 | L1–L5 | 9/9 | `[]`（待填） |
-| `cae--cli--calculix--task-0003` | cross-stage-consistency | CalculiX 2.21 | L1–L4 | 8/8 | `[]`（待填） |
+| `cae--cli--calculix--task-0001` | single-execution | CalculiX 2.21 | L1–L3 | 10/10 | `v0.1-cae-cli-pilot` |
+| `cae--cli--calculix--task-0002` | design-optimization | CalculiX 2.21 | L1–L5 | 13/13 | `v0.1-cae-cli-pilot` |
+| `cae--cli--calculix--task-0003` | cross-stage-consistency | CalculiX 2.21 | L1–L4 | 11/11 | `v0.1-cae-cli-pilot` |
+| `cae--cli--fenics--task-0001` | single-execution | FEniCS 0.10.0.post2 | L1–L3 | 15/15 | `v0.2-cae-cli-25` |
+| `cae--cli--calculix--task-0004` | single-execution | CalculiX 2.21 | L1–L3 | 14/14 | `v0.2-cae-cli-25` |
+| `cae--cli--calculix--task-0005` | single-execution | CalculiX 2.21 | L1–L3 | 13/13 | `v0.2-cae-cli-25` |
+| `cae--cli--calculix--task-0006` | single-execution | CalculiX 2.21 | L1–L3 | 13/13 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0002` | design-optimization | FEniCS 0.10.0.post2 | L1–L5 | 16/16 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0003` | design-optimization | FEniCS 0.10.0.post2 | L1–L5 | 16/16 | `v0.2-cae-cli-25` |
 
-Phase 1 的动作：
-
-- 把 0001–0003 归入 `splits/v0.1-cae-cli-pilot.txt`；task JSON 的 `splits` 从 `[]` 改为 `["v0.1-cae-cli-pilot"]`。
-- 因为 task JSON 变了，重跑 `pack_task.py` 更新 `resources.sha256`。
-- 这是**未发布任务**的元数据整理，不改变题面/verifier；不触发新 id。
+2026-11-20（P0 重审计 + P1 试点）后计数如上；`v0.1-cae-cli-pilot` 保留 3 题，
+`v0.2-cae-cli-25` 随 P1 增长。审计记录以各任务包的 `ground_truth/audit.md`
+为准（robust 10/10）。
 
 ## 3. 求解器矩阵
 
 | 求解器 | 版本/镜像 | 状态 | Phase 2 题量 | 备注 |
 |---|---|---|---|---|
-| **CalculiX** | 2.21 / `CalculiX-2.21.qcow2` | 已验证（3 题） | 14 | 现有 3 题 + 11 新题 |
-| **FEniCS** | 0.10.0.post2 / `FEniCS.qcow2` | **已验证（1 题）** | 7 | 第二求解器；`cae--cli--fenics--task-0001` 审计 12/12、L0 通过、假 agent tier-1 = 1.0 |
+| **CalculiX** | 2.21 / `CalculiX-2.21.qcow2` | 已验证（6 题） | 14 | 现有 3 题 + P1 新增 3 题 + 8 新题 |
+| **FEniCS** | 0.10.0.post2 / `FEniCS.qcow2` | **已验证（3 题）** | 7 | 第二求解器；task-0001 审计 15/15；P1 新增 design-optimization ×2 |
 | **cross-solver** | 两个镜像 | 新能力 | 4 | `software-selection` 专用；verifier 需 provenance 判据 |
 
 D5 已定（2026-11-18），执行顺序：
@@ -126,7 +130,14 @@ D5 已定（2026-11-18），执行顺序：
 | **P4** | 2-VM 并行调度（soak 已过；全矩阵前做） | 两 episode 并行跑通、互不串扰 | 1–2 人日 |
 | **P5** | 栈扩展 opencode/hermes/openclaw（每栈 adapter + conformance） | n=1 conformance 过 | 每栈 0.5–1 人日 |
 
-**待决**：cross-solver 是否纳入 Phase 2（依赖 P2/P3 结论）；D5 自建镜像时点（建议与 P1 并行）。
+**本轮拍板（2026-11-20）**：
+
+- **P1 试点制**：先写 5 题（FEniCS `design-optimization` ×2、CalculiX `single-execution` ×3），过同一打包门后再续下一批。
+- **cross-solver 纳入 Phase 2**，但先做 P2 provenance spike；判据不能可复现地判"工件来自指定工具"时，`software-selection` 回落到 v0.5。
+- **D5 自建镜像（P3）与 P1 并行**：越晚换镜像，越多题要重烘 pins、重跑审计。
+- **verifier 软约束放宽到 ≤450 行**（spec/02 §5）。
+
+**待决**：P2/P3/P4/P5 的具体开工时点与授权。
 
 **P0 已完成（2026-11-20）**：4 题全部 A≥2、六类反作弊负例齐全、`robust: 10/10 consistent`；`audit_task.py --repeat N` 与 `pack_task.py` 打包门已生效（spec/02 §4.1）。
 
@@ -152,7 +163,7 @@ D5 已定（2026-11-18），执行顺序：
 |---|---|---|
 | 第二求解器镜像 | D5 | Phase 2 能否按 25 题排期 |
 | 发布时点 | D4 | 商标检索、org 占位、split 冻结时间 |
-| 任务作者产能 | 人力 | 22 新题 = 11–22 人日；决定 20 还是 25 |
+| 任务作者产能 | 人力 | P1 试点后 9 题；距 20 下限 11 题、距 25 目标 16 题 |
 | provenance 判据 | 新 verifier 能力 | `software-selection` 4 题的前置；可能需要在 spec/02 增补一层 |
 | 图纸/报告输入格式 | task schema | `observation-reconstruct` 的 init_file 类型 |
 | open-environment 网络策略 | spec/09 | 默认 sandbox 无外网；按任务开包源 |

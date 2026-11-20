@@ -1,0 +1,80 @@
+{
+  "id": "cae--cli--calculix--task-0006",
+  "schema_version": "0.1",
+  "snapshot": "CalculiX-2.21",
+  "interface": "cli",
+  "instruction": "Work from a terminal with CalculiX 2.21 (`/usr/bin/ccx`).\n\nProblem: find the first Euler buckling factor of a uniform steel cantilever column, 100 mm long with a 10 x 10 mm square cross-section, under a 1000 N axial compressive reference load. Build `/home/user/Desktop/solution.inp`:\n- 11 nodes: node i at `(10*(i-1), 0, 0)` for i = 1..11\n- 10 B31 elements: element e connects nodes `e` and `e+1`\n- material: E = 210000 MPa, nu = 0.3, one `*Beam Section` with `section=RECT` and `10.0, 10.0`\n- boundary: node 1 dofs 1-6 clamped to zero; no other constraints\n- step: `*Buckle`, requesting the first mode (`1, 1`)\n- load: a 1000 N axial compressive reference load at node 11, dof 1 (`11, 1, -1000.0`); it is the reference load, not the critical load\n\nSubmit the job with `/usr/bin/ccx` and produce `/home/user/Desktop/solution.dat`. CalculiX writes a `BUCKLING FACTOR OUTPUT` block to `.dat`; the factor multiplies the applied reference load.\n\nWrite `/home/user/Desktop/summary.txt` as two comma-separated numbers: `buckling_factor, pcr_n` where `buckling_factor` is the first factor reported by CalculiX and `pcr_n` is the critical load in newtons (factor times 1000 N).\n\nThe evaluator re-solves your deck independently; the reported numbers must come from your own run.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {
+            "local_path": "task-0006/init_file/brief.md",
+            "path": "/home/user/Desktop/brief.md"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/solution.inp",
+    "/home/user/Desktop/solution.dat",
+    "/home/user/Desktop/summary.txt"
+  ],
+  "integrity_policy": {
+    "native_interface_only": true,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": [
+      "numpy",
+      "scipy"
+    ],
+    "forbid_read": [
+      "ground_truth",
+      "evaluator"
+    ]
+  },
+  "evaluator": {
+    "func": "exact_match",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "task-0006/eval.py",
+              "path": "/home/user/vericax/eval.py"
+            }
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "True\n"
+      }
+    }
+  },
+  "limits": {
+    "cli_max_steps": 100,
+    "gui_max_steps": null,
+    "active_time_seconds": 18000
+  },
+  "related_apps": [
+    "calculix"
+  ],
+  "capability": "single-execution",
+  "splits": [
+    "v0.2-cae-cli-25"
+  ],
+  "possibility_of_env_change": "low",
+  "solver_probe": "/usr/bin/ccx -v 2>&1 | head -5"
+}
