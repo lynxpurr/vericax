@@ -10,6 +10,7 @@ HMAX = float(os.environ.get("FENICS_HMAX", "4.0"))
 NEAR = float(os.environ.get("FENICS_NEAR", "0.18"))
 SLOPE = float(os.environ.get("FENICS_SLOPE", "0.10"))
 CLAMP_LOADED = os.environ.get("FENICS_CLAMP", "0") == "1"
+MESH_STRATEGY = os.environ.get("FENICS_MESH", "eval")
 
 E, NU, SIGMA_LOAD, THICK = 210000.0, 0.3, 100.0, 1.0
 
@@ -26,10 +27,33 @@ if R > 0:
 occ.synchronize()
 gmsh.option.setNumber("Mesh.MeshSizeMax", HMAX)
 gmsh.option.setNumber("Mesh.MeshSizeMin", 0.1)
-fid = gmsh.model.mesh.field.add("MathEval")
-gmsh.model.mesh.field.setString(
-    fid, "F", f"{NEAR} + {SLOPE}*(sqrt(x^2+y^2) - {R})")
-gmsh.model.mesh.field.setAsBackgroundMesh(fid)
+field = gmsh.model.mesh.field
+
+
+def _hole_curves():
+    curves = []
+    for _dim, tag in gmsh.model.getEntities(1):
+        xmin, ymin, _zmin, xmax, ymax, _zmax = gmsh.model.occ.getBoundingBox(1, tag)
+        if (xmax - xmin) ** 2 + (ymax - ymin) ** 2 < 25.0 ** 2:
+            curves.append(tag)
+    return curves
+
+
+if MESH_STRATEGY == "dist" and R > 0:
+    # Different meshing strategy: distance-to-hole + threshold field.
+    f_dist = field.add("Distance")
+    field.setNumbers(f_dist, "CurvesList", _hole_curves())
+    f_thr = field.add("Threshold")
+    field.setNumber(f_thr, "InField", f_dist)
+    field.setNumber(f_thr, "SizeMin", NEAR)
+    field.setNumber(f_thr, "SizeMax", HMAX)
+    field.setNumber(f_thr, "DistMin", 0.0)
+    field.setNumber(f_thr, "DistMax", 40.0)
+    field.setAsBackgroundMesh(f_thr)
+else:
+    fid = field.add("MathEval")
+    field.setString(fid, "F", f"{NEAR} + {SLOPE}*(sqrt(x^2+y^2) - {R})")
+    field.setAsBackgroundMesh(fid)
 gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)
 gmsh.option.setNumber("Mesh.ElementOrder", 1)
 gmsh.model.mesh.generate(2)

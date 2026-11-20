@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -22,6 +24,10 @@ REPO = Path(__file__).resolve().parents[1]
 MANIFEST = "resources.sha256"
 L0_RECORD = "reference_selfcheck.json"   # derived audit output, not a resource
 REQUIRED_FILES = ("eval.py",)
+REQUIRED_NEGATIVE_KINDS = {
+    "empty", "metrics_only", "tampered_input",
+    "skipped_steps", "encoded_payload", "fabricated_field",
+}
 
 
 def task_dir_for(task_id: str) -> Path:
@@ -88,6 +94,56 @@ def main() -> int:
         errors.append("ground_truth/audit.md missing (run scripts/audit_task.py)")
     elif "MISS" in audit.read_text():
         errors.append("audit record contains MISS entries")
+
+    # ---- audit matrix gate (spec/02 section 4.1)
+    audit_text = audit.read_text() if audit.is_file() else ""
+    cases_path = task_dir / "audit_cases.py"
+    if not cases_path.is_file():
+        errors.append("missing audit_cases.py (cannot verify the audit matrix)")
+    else:
+        spec = importlib.util.spec_from_file_location("_vcax_audit_cases", cases_path)
+        module = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(module)
+        except Exception as exc:  # noqa: BLE001 - a broken case file fails the pack
+            errors.append(f"audit_cases.py failed to import: {exc}")
+            module = None
+        if module is not None:
+            labels = [case[0] for case in getattr(module, "CASES", [])]
+            positive = [label for label in labels if label[:1].upper() == "P"]
+            alternative = [label for label in labels if label[:1].upper() == "A"]
+            negative = [label for label in labels if label[:1].upper() == "N"]
+            if len(positive) < 1:
+                errors.append("audit matrix: positive group needs >= 1 case")
+            if len(alternative) < 2:
+                errors.append("audit matrix: alternative group needs >= 2 legal "
+                              f"cases (found {len(alternative)})")
+            if len(negative) < 6:
+                errors.append("audit matrix: negative group needs >= 6 cases "
+                              f"(found {len(negative)})")
+            kinds = getattr(module, "NEGATIVE_KINDS", None)
+            if not isinstance(kinds, dict):
+                errors.append("audit matrix: audit_cases.py must declare NEGATIVE_KINDS")
+            else:
+                unknown = sorted(set(kinds.values()) - REQUIRED_NEGATIVE_KINDS)
+                if unknown:
+                    errors.append(f"audit matrix: unknown negative kinds {unknown}")
+                missing = sorted(REQUIRED_NEGATIVE_KINDS - set(kinds.values()))
+                if missing:
+                    errors.append(f"audit matrix: negative kinds missing {missing}")
+                stray = sorted(label for label in kinds if label not in labels)
+                if stray:
+                    errors.append(f"audit matrix: NEGATIVE_KINDS names unknown cases {stray}")
+    robust = re.search(r"robust: (\d+)/(\d+) consistent", audit_text)
+    if not robust:
+        errors.append("audit record has no robustness record "
+                      "(run scripts/audit_task.py --repeat 10)")
+    else:
+        agreeing, runs = int(robust.group(1)), int(robust.group(2))
+        if runs < 10:
+            errors.append(f"robustness group has only {runs} runs; need >= 10")
+        if agreeing != runs:
+            errors.append(f"robustness group inconsistent ({agreeing}/{runs})")
     l0_path = task_dir / "ground_truth" / L0_RECORD
     if l0_path.is_file():
         try:

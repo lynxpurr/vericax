@@ -86,6 +86,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--task", required=True)
     ap.add_argument("--keep-vm", action="store_true")
+    ap.add_argument("--repeat", type=int, default=1,
+                    help="robustness group: replay the gold submission N times "
+                         "and require identical verdicts (release: >=10)")
     args = ap.parse_args()
 
     task_dir = task_dir_for(args.task)
@@ -196,6 +199,29 @@ def main() -> int:
             results.append((label, detail, ok, err[-300:]))
             print(f"[{'PASS' if ok else 'MISS'}] {label}: {detail}")
 
+        # ---------------- robustness group (spec/02 section 4.1)
+        robust = None
+        if args.repeat > 1:
+            print(f"[robust] replaying gold {args.repeat} times ...")
+            verdicts = []
+            for _index in range(args.repeat):
+                clean()
+                if gold_script.strip():
+                    sh(gold_script)
+                out, _err = verdict()
+                first = out.splitlines()[0].strip() if out else "<no output>"
+                ok, _detail = check_expectation(cases[0][2], out)
+                verdicts.append((first, ok))
+            first_verdict = verdicts[0][0]
+            agreeing = sum(1 for v, ok in verdicts if ok and v == first_verdict)
+            consistent = (all(v == first_verdict for v, _ in verdicts)
+                          and all(ok for _, ok in verdicts))
+            robust = {"runs": args.repeat, "agreeing": agreeing,
+                      "consistent": consistent,
+                      "verdicts": [v for v, _ in verdicts]}
+            print(f"[robust] {agreeing}/{args.repeat} consistent"
+                  f"{'' if consistent else ' (INCONSISTENT)'}")
+
         # leave the gold submission staged for inspection
         clean()
         if gold_script.strip():
@@ -213,12 +239,16 @@ def main() -> int:
         print(line)
     print(f"{passed}/{len(results)} expectations matched")
 
-    (gt_dir / "audit.md").write_text(render_audit_md(task_json, results, gold_summary))
+    (gt_dir / "audit.md").write_text(
+        render_audit_md(task_json, results, gold_summary, robust=robust,
+                        snapshot=task_json.get("snapshot")))
     print(f"audit record -> {gt_dir / 'audit.md'}")
-    return 0 if passed == len(results) else 1
+    ok = passed == len(results) and (robust is None or robust["consistent"])
+    return 0 if ok else 1
 
 
-def render_audit_md(task_json: dict, results, gold_summary: str) -> str:
+def render_audit_md(task_json: dict, results, gold_summary: str,
+                    robust: dict | None = None, snapshot: str | None = None) -> str:
     import datetime
     lines = [
         "# Verifier audit record",
@@ -226,8 +256,16 @@ def render_audit_md(task_json: dict, results, gold_summary: str) -> str:
         f"- date: {datetime.date.today().isoformat()}",
         f"- task: {task_json.get('id')} (evaluator func: "
         f"{task_json.get('evaluator', {}).get('func')})",
-        "- image: same image as evaluation (CalculiX-2.21)",
+        f"- image: {snapshot or task_json.get('snapshot')}",
         f"- reference submission summary: `{gold_summary}`",
+    ]
+    if robust is not None:
+        sample = ", ".join(robust["verdicts"][:5])
+        if len(robust["verdicts"]) > 5:
+            sample += ", ..."
+        lines.append(f"- robust: {robust['agreeing']}/{robust['runs']} consistent "
+                     f"(verdicts: {sample})")
+    lines += [
         "",
         "| case | expectation | actual | verdict |",
         "|---|---|---|---|",
