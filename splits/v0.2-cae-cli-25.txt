@@ -1,1 +1,6 @@
 cae--cli--fenics--task-0001
+cae--cli--calculix--task-0004
+cae--cli--calculix--task-0005
+cae--cli--calculix--task-0006
+cae--cli--fenics--task-0002
+cae--cli--fenics--task-0003

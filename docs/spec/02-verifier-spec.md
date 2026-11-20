@@ -95,7 +95,7 @@ EngiWorld 测裸 LLM 时模型看不到 task-root；VeriCAx 的被测 agent 拥�
 ## 5. Verifier 工程约束
 
 - 无第三方依赖（标准库 + 被测软件官方 API + Pillow），保证评分容器最小化
-- 单 verifier ≤ 300 行为宜；超限说明任务该拆分
+- 单 verifier ≤ 450 行为宜（2026-11-20 由 300 放宽：3 个 CalculiX verifier 为 383–411 行，拆分收益低于改动风险）；超限说明任务该拆分
 - 每个 verifier 顶部声明实现层：`IMPLEMENTS = ("L1", "L2", "L3", "L5")`
 - 版本随任务包走，`resources.sha256` 覆盖 eval.py 自身
 - **不做语义等价的字面量拒绝**：`valid_input` 只做数学校验（载荷和、边界 DOF、关键字存在），不要求唯一字符串拼写；summary 解析容忍表头/空行；等价写法必须都收。EngiWorld 审计中 task-09（`,,5.0,1.0e-5` vs `1,8,5.0,1.0e-5`）、task-12/18（summary 表头）因此误杀。

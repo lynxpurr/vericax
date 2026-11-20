@@ -1,0 +1,80 @@
+{
+  "id": "cae--cli--calculix--task-0005",
+  "schema_version": "0.1",
+  "snapshot": "CalculiX-2.21",
+  "interface": "cli",
+  "instruction": "Work from a terminal with CalculiX 2.21 (`/usr/bin/ccx`).\n\nProblem: find the first natural frequency of a uniform steel cantilever beam, 100 mm long with a 10 x 10 mm square cross-section. Build `/home/user/Desktop/solution.inp`:\n- 11 nodes: node i at `(10*(i-1), 0, 0)` for i = 1..11\n- 10 B31 elements: element e connects nodes `e` and `e+1`\n- material: E = 210000 MPa, nu = 0.3, density = 7.85e-9 t/mm^3 (CalculiX consistent mm-N-s units), one `*Beam Section` with `section=RECT` and `10.0, 10.0`\n- boundary: node 1 dofs 1-6 clamped to zero; no other constraints and no loads\n- step: `*Frequency`, requesting the first eigenmode (`1, 1`)\n\nSubmit the job with `/usr/bin/ccx` and produce `/home/user/Desktop/solution.dat`. CalculiX writes the eigenvalue block to `.dat` automatically; its columns are mode number, eigenvalue, frequency in rad/time, frequency in cycles/time.\n\nWrite `/home/user/Desktop/summary.txt` as two comma-separated numbers: `eigenvalue, f1_hz` where `eigenvalue` is the first eigenvalue reported by CalculiX and `f1_hz` is the corresponding frequency in cycles per second (Hz).\n\nThe evaluator re-solves your deck independently; the reported numbers must come from your own run.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {
+            "local_path": "task-0005/init_file/brief.md",
+            "path": "/home/user/Desktop/brief.md"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/solution.inp",
+    "/home/user/Desktop/solution.dat",
+    "/home/user/Desktop/summary.txt"
+  ],
+  "integrity_policy": {
+    "native_interface_only": true,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": [
+      "numpy",
+      "scipy"
+    ],
+    "forbid_read": [
+      "ground_truth",
+      "evaluator"
+    ]
+  },
+  "evaluator": {
+    "func": "exact_match",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "task-0005/eval.py",
+              "path": "/home/user/vericax/eval.py"
+            }
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "True\n"
+      }
+    }
+  },
+  "limits": {
+    "cli_max_steps": 100,
+    "gui_max_steps": null,
+    "active_time_seconds": 18000
+  },
+  "related_apps": [
+    "calculix"
+  ],
+  "capability": "single-execution",
+  "splits": [
+    "v0.2-cae-cli-25"
+  ],
+  "possibility_of_env_change": "low",
+  "solver_probe": "/usr/bin/ccx -v 2>&1 | head -5"
+}

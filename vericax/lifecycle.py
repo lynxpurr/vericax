@@ -327,7 +327,7 @@ def run_reference_selfcheck(task_id: str, keep_vm: bool = False) -> dict:
     try:
         vm.boot(_vm_task_config(task_dir, task_json))
         vm.wait_healthy()
-        solver_version = scoring._solver_version(vm)
+        solver_version = scoring._solver_version(vm, task_json.get("solver_probe"))
         replay = vm.bash(gold_script, timeout=1800)
         if replay.get("returncode") != 0:
             detail = f"reference case exited rc={replay.get('returncode')}"
