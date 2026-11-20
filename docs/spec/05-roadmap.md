@@ -2,7 +2,7 @@
 
 状态：草案 v0.1（2026-11-18）· 与调研报告 §8.6 档 0/1/2 对齐，换 VeriCAx 口径
 
-> **2026-11-19 状态校准**：Phase 0 设计冻结完成；Phase 1 runner 已实现，验收 5/5（dsh × task-0001 × n=3 = 1.0/1.0/1.0，见 `runs/`）。残留项：三次 dsh run 的 `network_isolation=false`；guest 隔离脚本的修复尚未验证，Phase 1 出口前需一次 smoke/重跑确认。Phase 2 尚未开工。EngiWorld 审计带来的 benchmark-validity gate 作为 Phase 1.5 插入。
+> **2026-11-21 状态校准（取代 2026-11-19 块）**：Phase 0 冻结；Phase 1 验收（dsh × task-0001 × n=3 = 1.0/1.0/1.0；pi × n=1 = 1.0）；Phase 1.5 benchmark-validity gate 完成；Phase 2 的 P0/P1/P2/P3a 完成——P1 21 题（每 capability ≥3）、L6 provenance 判据 + 原型、自建 CalculiX 镜像 L0 + fake smoke。未完成：4 道 `software-selection`（P3c merged image）、P3b FEniCS 自建镜像、P4 2-VM 调度、P5 三栈 adapter；CI 账单未修。Phase 2 出口仍按 spec/10 §8。
 
 ## 档 0 · 闭环 pilot（~1 天）
 
@@ -17,19 +17,19 @@
 
 > 大部分已由 Phase 1 实现（spec/09 §10 清单全勾）；剩余 dsh × task-0001 × n=3。
 
-- [ ] 评分面/执行面分离落地（verifier 带外执行容器）
-- [ ] 反作弊层按 spec/02 §2 逐项实现 + 单元测试（AST 校验器用真实 bypass 样本测）
-- [ ] result schema v0.1 固化 + 复现存档目录结构
-- [ ] verifier 审计套件做成可执行脚本（`vericax.audit --task <id>`）
+- [x] 评分面/执行面分离落地（verifier 带外执行容器）
+- [x] 反作弊层按 spec/02 §2 逐项实现 + 单元测试（AST 校验器用真实 bypass 样本测）
+- [x] result schema v0.1 固化 + 复现存档目录结构
+- [x] verifier 审计套件做成可执行脚本（`vericax.audit --task <id>`）
 
 ## 档 1.5 · benchmark-validity gate（2026-11-19 新增）
 
 - [x] GT self-check：每个任务包用参考 deck 重放并复现 GT summary；fail 不得发布（spec/02 L0）。
-      实现：`vericax audit --task <id> --group reference`；VM 验证待 P4。
+      实现：`vericax audit --task <id> --group reference`；VM 验证已完成（21 题 L0）。
 - [x] `run_mode` / `tree_version` 进 summary（spec/03）。实现：`validity.tree_version` + summary 字段。
 - [ ] CLI artifact-write policy：记录 `artifact_write_rejected` / `agent_stalled`；决定是否支持版本化重试（spec/09 §11）。
 - [x] 模型对比必须同一 `tree_version`；n≥3 才下结论。实现：`report` 按 tree/mode 分组，测试集默认排除。
-- 验收：审计套件含参考自洽组；榜单模板含 tree 版本；Phase 2 第一批题全部过 gate。
+- [x] 验收：审计套件含参考自洽组；榜单模板含 tree 版本；Phase 2 第一批题全部过 gate。
 
 ## 档 2 · v0.5 CAE 全量（~1 周）
 

@@ -61,8 +61,8 @@
 
 | 求解器 | 版本/镜像 | 状态 | Phase 2 题量 | 备注 |
 |---|---|---|---|---|
-| **CalculiX** | 2.21 / `CalculiX-2.21.qcow2` | 已验证（12 题） | 14 | P1 完成 12 题；剩余 2 题到求解器目标 |
-| **FEniCS** | 0.10.0.post2 / `FEniCS.qcow2` | **已验证（9 题）** | 7 | 第二求解器；P1 完成 9 题（DO/observation/open-environment） |
+| **CalculiX** | 2.21 / `CalculiX-2.21.qcow2` | 已验证（12 题） | 12 | P1 完成 12 题 |
+| **FEniCS** | 0.10.0.post2 / `FEniCS.qcow2` | **已验证（9 题）** | 9 | 第二求解器；P1 完成 9 题（DO/observation/open-environment） |
 | **cross-solver** | merged image（P2 决定） | 新能力 | 4 | `software-selection` 专用；L6 判据见 spec/02 §1；merged image 由 P3 产出 |
 
 D5 已定（2026-11-18），执行顺序：
@@ -76,29 +76,29 @@ D5 已定（2026-11-18），执行顺序：
 ### 3.1 现状（2026-11-19 更新）
 
 - FEniCS 镜像已通过 ModelScope 通道获取（`engiworld.prepare_images --source modelscope --image FEniCS`，65 s；`FEniCS.qcow2` 17.0 GB，sha256 与 manifest 一致），dolfinx 0.10.0.post2。
-- 第二求解器 smoke **已完成**：`cae--cli--fenics--task-0001`（带孔板，L1–L3）审计 12/12 全过、L0 参考自检 pass、假 agent tier-1 = 1.0——L1–L3 的验证逻辑与求解器无关得到实证。
-- 剩余 Phase 2 工作：题量（本 solver 再 +6）、cross-solver provenance 判据、自建镜像 recipe（D5 未完成项）。
+- 第二求解器 smoke **已完成**：`cae--cli--fenics--task-0001`（带孔板，L1–L3）P0 重审计 15/15、L0 参考自检 pass、假 agent tier-1 = 1.0——L1–L3 的验证逻辑与求解器无关得到实证。
+- **P1 已完成（2026-11-20/21）**：21 题；P2 L6 spike 完成；P3a 自建 CalculiX 镜像验收。剩余：4 道 `software-selection`（P3c merged image）、P3b FEniCS 自建镜像、P4 2-VM 调度、P5 栈扩展。
 
 ## 4. 题量分解
 
 | capability | CalculiX | FEniCS | cross-solver | 合计 |
 |---|---|---|---|---|
-| single-execution | 4 | 2 | 0 | 6 |
-| design-optimization | 3 | 2 | 0 | 5 |
-| cross-stage-consistency | 3 | 1 | 0 | 4 |
+| single-execution | 5 | 1 | 0 | 6 |
+| design-optimization | 1 | 4 | 0 | 5 |
+| cross-stage-consistency | 4 | 0 | 0 | 4 |
 | software-selection | 0 | 0 | 4 | 4 |
 | observation-reconstruct | 2 | 1 | 0 | 3 |
-| open-environment | 2 | 1 | 0 | 3 |
-| **合计** | **14**（含现有 3） | **7** | **4** | **25** |
+| open-environment | 0 | 3 | 0 | 3 |
+| **合计** | **12** | **9** | **4** | **25** |
 
-新增题数：25 − 3 = **22**。按 0.5–1 人日/题（含审计）估算，约 **11–22 人日**；单作者 2–3 周偏紧，建议两人并行或先做到 20 题下限。
+当前 **21 题已落地**（每 capability ≥3）；剩余 4 题全部是 `software-selection`，待 P3c merged image。新增 18 题（从 Phase 1 的 3 题算起）已全部过 P0 门。
 
 ## 5. Split 纪律
 
 | split | 内容 | 时点 |
 |---|---|---|
 | `v0.1-cae-cli-pilot` | 0001–0003 | Phase 1 回归 |
-| `v0.2-cae-cli-25` | Phase 2 的 25 题；若按下限 20 题，则为 `v0.2-cae-cli-20` | Phase 2 末冻结 |
+| `v0.2-cae-cli-25` | 当前 18 题；目标 25（冻结时按最终题量命名） | Phase 2 末冻结 |
 
 规则：
 
@@ -137,7 +137,7 @@ D5 已定（2026-11-18），执行顺序：
 | 优先级 | 动作 | 验收 | 估算 |
 |---|---|---|---|
 | **P0** | 审计协议可执行化（spec/02 §4.1）：`--repeat 10`、`NEGATIVE_KINDS` 六类、pack 打包门；给现有 4 题补第二条替代路径与缺失负例并重审计 | 4 题 audit.md 显示 A≥2、六类负例、robust 10/10；pack 通过 | 1–1.5 人日 |
-| **P1** | 铺量：先 CalculiX +6、FEniCS +5（到 15 题），再补 design-optimization 到 20 题下限 | 每题过 P0 同款门；split `v0.2-cae-cli-25` 随题增长 | 5–8 人日 |
+| **P1** | 铺量：先 CalculiX +6、FEniCS +5（到 15 题），再补 design-optimization 到 20 题下限 | 每题过 P0 同款门；split `v0.2-cae-cli-25` 随题增长 | **已完成 2026-11-20：21 题**（含每 capability ≥3） |
 | **P2** | cross-solver provenance 判据 spike（写入 spec/02）+ 沙箱形态决策（合并镜像 vs 多 VM） | 判据可复现地判"工件来自指定工具"；1 道原型题 | 2–3 人日 |
 | **P3** | 自建镜像 recipe（D5 未完成项），可与 P1 并行；顺带产出 cross-solver 合并镜像 | 构建可复现 + 一张验证镜像；pins 在同镜像重烘 | 3–5 人日 |
 | **P4** | 2-VM 并行调度（soak 已过；全矩阵前做） | 两 episode 并行跑通、互不串扰 | 1–2 人日 |
@@ -182,10 +182,10 @@ D5 已定（2026-11-18），执行顺序：
 
 | 项 | 依赖 | 影响 |
 |---|---|---|
-| 第二求解器镜像 | D5 | Phase 2 能否按 25 题排期 |
+| 第二求解器镜像 | D5 | P3a CalculiX 自建镜像已验证；P3b FEniCS 自建镜像未做；不阻塞现有 21 题 |
 | 发布时点 | D4 | 商标检索、org 占位、split 冻结时间 |
 | 任务作者产能 | 人力 | P1 完成 21 题（20 下限 + 1，每 capability ≥3）；距 25 目标 4 题（software-selection，待 P3c） |
-| provenance 判据 | 新 verifier 能力 | `software-selection` 4 题的前置；可能需要在 spec/02 增补一层 |
+| provenance 判据 | 新 verifier 能力 | L6 已写入 spec/02；原型验证拒绝判据；真正选择待 P3c merged image |
 | 图纸/报告输入格式 | task schema | `observation-reconstruct` 的 init_file 类型 |
 | open-environment 网络策略 | spec/09 | 默认 sandbox 无外网；按任务开包源 |
 | benchmark 修复 / tree 版本 | 审计 | 未修复题会把 benchmark 缺陷误读为能力差异；EngiWorld 2/20→8/20 主要是 repair |
