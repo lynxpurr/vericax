@@ -6,7 +6,7 @@
 
 verifier 是本基准的第一公民。社区（CAD Bench v2、BIM-Edit、FEABench）已普遍走到"执行/重开验真"，但没人把**反作弊栈 + verifier 反向审计**做成一等公民——这是 VeriCAx 的差异化锚点，本规格因此比任务集更优先冻结。
 
-## 1. 五层范式 + L0 参考自洽（L0 是发布门槛；每道 verifier 必须声明实现的 L1–L5 层；L1/L2 强制，L3/L4 按题型，L5 优化题强制）
+## 1. 五层范式 + L0 参考自洽 + L6 provenance（L0 是发布门槛；每道 verifier 必须声明实现的 L1–L5 层；L1/L2 强制，L3/L4 按题型，L5 优化题强制，L6 `software-selection` 强制）
 
 ### L1 交付完整性（强制）
 - required artifacts 逐一存在且非空（对应实测教训：t02 交付 0 字节 `laminate.dat` 仍"流程完整"，必须由本层拦住）
@@ -37,6 +37,18 @@ verifier 是本基准的第一公民。社区（CAD Bench v2、BIM-Edit、FEABen
 - L0 是发布门槛，不是 agent 评分层；`IMPLEMENTS` 不要求写 L0。
 - 审计证据：EngiWorld CalculiX 20 题中 task-05/17/19 的 GT summary 位移比自己的 GT deck 输出小 **8.444x**；task-04 的 tie 面写错、task-06 的压力面写错。详见研究仓 `engiworld-调研报告.md` §11 与 `results/gt-selfcheck/`。
 
+### L6 工具来源（provenance；`software-selection` 强制，2026-11-20 P2 spike）
+
+本仓的 provenance 指**工件-工具等价性**：提交的工件必须是 required tool 对该输入的**可复现原生输出**。它**不**证明"agent 确实调用了该工具"——后者需要 host 侧进程/宿主机证明（未实现，见 §6 边界）。spec/10 §3 的 cross-solver 任务必须实现 L6；其他 capability 可选。
+
+- **L6.1 原生工件对**：任务必须要求 required tool 的**原生 model + 原生 result**（CalculiX：`.inp` + `.dat`/`.frd`；FEniCS：`mesh.msh` + `XDMF/HDF5` 或 dolfinx checkpoint），并按 job/stem 配对。中性格式（`mesh.msh`、`summary.txt`）不是 provenance 证据；出现其他工具的原生结果族（`.odb`/`.rst`/`.xdmf` 等）或混合分支时拒绝。
+- **L6.2 重跑等价**：verifier 在评分 VM 用 required tool 重跑 submitted model，并比较**提交的原生结果**（逐节点/逐单元场）与新鲜结果，容差在任务包中声明；只比 `summary.txt` 不够。空文件、伪造的非空结果、混合分支结果一律拒绝。FEniCS 不得执行 agent 提交的 `solve.py`（评分 VM 内有 `ground_truth/`）；用 verifier 自己的重解脚本。
+- **L6.3 挑战绑定**：episode 生成 challenge token，写入模型的要求字段/集合名，并必须出现在 solver 生成的输出中；L0/审计可用固定 audit token。P2 采用 **label token**（不改变物理，pins 与 L0 稳定）；**physics token**（扰动载荷/几何，强制真算）留到后续。
+- **L6.4 环境记录**：`image_sha256`、`snapshot`、required tool 的 probe 必须记录；合并镜像需要 `solver_probes` 映射（不能只有一个 `solver_probe`）。verifier 只接受 required tool 的分支，即使镜像里同时存在另一个工具。
+- **L6.5 审计**：正面 + 至少 2 条 required tool 的合法替代路径；负面组必须覆盖：其他工具工件、重放/错误 token、混合原生分支、伪造的非空原生结果。其他工具 fixture 必须带自己的 provenance 记录（生成镜像的 `image_sha256`、工具版本、命令、sha256），不得当作 pin。
+
+**P2 沙箱形态决定（2026-11-20）**：cross-solver 采用**单镜像双求解器**（merged image）。理由：当前契约是单 `snapshot`、单 sandbox、单 proxy endpoint；多 VM 选择需要 proxy 路由、第二产物通道与契约变更，属于 P4 而不是 P2。P3 负责产出 merged image；在它可用前，L6 原型题用 CalculiX 镜像 + 固定 audit token + 其他工具 fixture 验证**拒绝**判据，不声称已完成真正的 `software-selection`。
+
 ## 2. 反作弊规格
 
 | 威胁 | 对策 | 源头先例 |
@@ -47,6 +59,10 @@ verifier 是本基准的第一公民。社区（CAD Bench v2、BIM-Edit、FEABen
 | 通道借道（GUI 题跑 shell） | pyautogui 代码 AST 白名单 + 禁 `os.system/subprocess.*` + 禁终端 hotkey 组合 + 循环打字检测 + 聚合字面量检查；CLI 题禁截屏/鼠标键盘 API | `_validate_pyautogui_cdata`（v1 GUI 引入） |
 | 用文本工具手搓工件 | integrity_policy.native_interface_only：原生 deck 可编辑，评分工件必须经官方接口产出 | CLI integrity rules 先例 |
 | 偷改输入/读参考答案 | L2 防篡改 + runtime 封禁清单 + 带外评分（§3） | 综合先例 |
+| 用别的工具的结果冒充 required tool | L6.1 原生工件对 + L6.2 全字段重跑比较 | EngiWorld `discover_branch` 先例 |
+| 重放旧 episode/旧 token 的工件 | L6.3 challenge 绑定（label token；physics token 留后） | P2 spike |
+| 混合两个工具的原生分支 | L6.1 分支排他：出现第二个原生结果族即拒绝 | P2 spike |
+| 伪造非空的 `.dat`/场文件 | L6.2 逐节点比较提交结果与重跑结果 | P2 spike |
 | 调试死循环刷轮次 | 不属于 verifier 职责，由 runtime 侧早停策略处理（连续 N 步同类错误 → 换策略提示或止损；记录为 `agent_stalled` 类目，不污染分数） | t03 教训（100 轮 357K reasoning） |
 
 ## 3. 评分面与执行面分离（测 agent 栈的关键改造）
@@ -100,3 +116,11 @@ EngiWorld 测裸 LLM 时模型看不到 task-root；VeriCAx 的被测 agent 拥�
 - 版本随任务包走，`resources.sha256` 覆盖 eval.py 自身
 - **不做语义等价的字面量拒绝**：`valid_input` 只做数学校验（载荷和、边界 DOF、关键字存在），不要求唯一字符串拼写；summary 解析容忍表头/空行；等价写法必须都收。EngiWorld 审计中 task-09（`,,5.0,1.0e-5` vs `1,8,5.0,1.0e-5`）、task-12/18（summary 表头）因此误杀。
 - **拒绝原因必须可分类**：`numeric_mismatch` / `format_error` / `equivalent_but_rejected`；`equivalent_but_rejected` 是 verifier 缺陷，必须修，不能计入 agent 能力。
+
+## 6. provenance 边界（P2 spike 结论，2026-11-20）
+
+- **L6 是工件-工具等价性，不是调用证明**。verifier 能证明"该工件是 required tool 对该输入的原生可复现输出"，不能证明"agent 进程确实执行了该工具"。后者需要 host 侧进程追踪/不可变审计，当前 harness 没有；spec、报告和任务说明都必须按前者表述。
+- **真正的 `software-selection` 需要 merged image**。单镜像双求解器是当前单 `snapshot`/单 sandbox/单 proxy 契约下唯一可行的形态；多 VM-per-task 属于 P4，不是 P2。
+- **原型题在 merged image 可用前只能是 conformance**：用 CalculiX 镜像 + 固定 audit token + 伪造/其他工具 fixture 验证拒绝判据；`capability` 如实写 `single-execution`，不写成 `software-selection`。
+- **fixture 也要有 provenance**：其他工具 fixture 必须记录生成镜像的 `image_sha256`、工具版本、命令与文件 sha256；它是审计证据，不是 pin。
+- **P2 验收标准**：判据写入 spec/02；原型题过 P0 审计门（P≥1、A≥2、N≥6、六类、robust 10/10）；L0 + fake smoke；明确记录"未验证真正的工具选择"。
