@@ -75,6 +75,22 @@ EngiWorld 测裸 LLM 时模型看不到 task-root；VeriCAx 的被测 agent 拥�
 
 审计记录模板写入任务包 `ground_truth/audit.md`：每组用例、期望、实际、审计人、日期。北极星：误杀 0%、漏放 0%（调研报告 §4/§7 的 t02 案例 = 负面组 ② 的原型）。
 
+### 4.1 可执行化与强制（2026-11-20 拍板，铺题前置门）
+
+审计协议不再只靠文档纪律，由工具链强制执行：
+
+1. **稳健组入口**：`scripts/audit_task.py --repeat N`。跑完全部用例后，在同一 VM 内对
+   GOLD 提交连续判定 N 次，要求判定全一致；`audit.md` 写入一行
+   `- robust: N/N consistent`。发布前 N≥10。
+2. **负面组分类声明**：`audit_cases.py` 必须提供 `NEGATIVE_KINDS` 字典，把每个 N 用例
+   标签映射到六类键之一：
+   `empty | metrics_only | tampered_input | skipped_steps | encoded_payload | fabricated_field`。
+3. **打包门**：`scripts/pack_task.py` 导入 `audit_cases.py` 并校验——
+   正面组 ≥1、替代路径组 ≥2、负面组 ≥6 且六类键齐全、`audit.md` 含 `robust: N/N consistent`
+   且 N≥10；任一不满足，打包失败（`--check` 同样失败）。
+4. **替代路径的判据**：必须与参考解在工作流上不同（不同编码/网格策略/中间格式），
+   不能只是同一文件换空白或改名；审计记录里写清"不同在哪里"。
+
 ## 5. Verifier 工程约束
 
 - 无第三方依赖（标准库 + 被测软件官方 API + Pillow），保证评分容器最小化
