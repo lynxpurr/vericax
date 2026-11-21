@@ -53,5 +53,26 @@
   "calculix": "/usr/bin/ccx -v > /tmp/_ccxv.txt 2>&1; grep -m1 Version /tmp/_ccxv.txt",
   "fenics": "python3 -c 'import dolfinx; print(dolfinx.__version__)'"
  },
- "instruction": "Work from a terminal with dolfinx 0.10 (FEniCSx), `gmsh` and `meshio` available; CalculiX 2.21 is also installed. This is a software-selection task: pick the tool that can actually deliver what the client requires.\n\nThe client needs a steady advection-diffusion transport analysis with a SPATIALLY VARYING diffusivity\n    kappa(x,y) = 10 * (1 + 0.3*sin(pi*x/100)*sin(pi*y/100))\nand a convective velocity b = (1, 0), and requires the deliverables in the FEniCS native pair: a gmsh mesh plus a dolfinx checkpoint (XDMF + HDF5) of the concentration field. Neither the advective term nor the smooth coefficient field exists in CalculiX's equation set.\n\nProblem: a square domain 100 mm x 100 mm. Inflow u = 1 on x = 0; outflow u = 0 on x = 100; natural (zero-flux) boundary on the two horizontal edges.\n\nBuild and deliver in /home/user/Desktop:\n1. `mesh.msh` - a gmsh ASCII mesh (format 2.2) of the full domain with triangular elements, at least 2500 triangles, with a physical curve named exactly `VCAX_AUDIT_0004` covering the outflow edge x = 100.\n2. `solution.xdmf` + `solution.h5` - a dolfinx checkpoint (XDMFFile with HDF5 backend) containing the mesh and the concentration field written as `write_mesh(mesh)` + `write_function(u, 0.0)`.\n3. `summary.txt` - one number: the mean concentration over all mesh vertices.\n\nThe solution MUST use exactly this discretisation: read the submitted mesh.msh with dolfinx.io.gmsh, P1 Lagrange scalar elements (('Lagrange', 1)), the plain Galerkin form kappa*dot(grad(u),grad(v))*dx + dot(b,grad(u))*v*dx (no stabilisation), a direct LU solve (petsc_options {'ksp_type': 'preonly', 'pc_type': 'lu'}), and petsc_options_prefix 'vcax_ss4_'.\n\nThe evaluator re-solves the submitted mesh with the same prescribed discretisation and the exact kappa(x,y), and compares the checkpoint field at every mesh vertex and the summary within 1e-4 relative tolerance. A missing or unreadable checkpoint, a CalculiX .dat result, a fabricated field, or a mesh without the `VCAX_AUDIT_0004` group is rejected."
+ "instruction": "Work from a terminal with dolfinx 0.10 (FEniCSx), `gmsh` and `meshio` available; CalculiX 2.21 is also installed. This is a software-selection task: pick the tool that can actually deliver what the client requires.\n\nThe client needs a steady advection-diffusion transport analysis with a SPATIALLY VARYING diffusivity\n    kappa(x,y) = 10 * (1 + 0.3*sin(pi*x/100)*sin(pi*y/100))\nand a convective velocity b = (1, 0), and requires the deliverables in the FEniCS native pair: a gmsh mesh plus a dolfinx checkpoint (XDMF + HDF5) of the concentration field. Neither the advective term nor the smooth coefficient field exists in CalculiX's equation set.\n\nProblem: a square domain 100 mm x 100 mm. Inflow u = 1 on x = 0; outflow u = 0 on x = 100; natural (zero-flux) boundary on the two horizontal edges.\n\nBuild and deliver in /home/user/Desktop:\n1. `mesh.msh` - a gmsh ASCII mesh (format 2.2) of the full domain with triangular elements, at least 2500 triangles, with a physical curve named exactly `VCAX_AUDIT_0004` covering the outflow edge x = 100.\n2. `solution.xdmf` + `solution.h5` - a dolfinx checkpoint (XDMFFile with HDF5 backend) containing the mesh and the concentration field written as `write_mesh(mesh)` + `write_function(u, 0.0)`.\n3. `summary.txt` - one number: the mean concentration over all mesh vertices.\n\nThe solution MUST use exactly this discretisation: read the submitted mesh.msh with dolfinx.io.gmsh, P1 Lagrange scalar elements (('Lagrange', 1)), the plain Galerkin form kappa*dot(grad(u),grad(v))*dx + dot(b,grad(u))*v*dx (no stabilisation), a direct LU solve (petsc_options {'ksp_type': 'preonly', 'pc_type': 'lu'}), and petsc_options_prefix 'vcax_ss4_'.\n\nThe evaluator re-solves the submitted mesh with the same prescribed discretisation and the exact kappa(x,y), and compares the checkpoint field at every mesh vertex and the summary within 1e-4 relative tolerance. A missing or unreadable checkpoint, a CalculiX .dat result, a fabricated field, or a mesh without the `VCAX_AUDIT_0004` group is rejected.",
+ "provenance": {
+  "required_tool": "fenics",
+  "native_model": "mesh.msh",
+  "native_result": "solution.xdmf",
+  "challenge": "VCAX_AUDIT_0004",
+  "rerun_tolerance": 0.0001,
+  "reject_native_families": [
+   ".dat",
+   ".frd",
+   ".odb",
+   ".rst",
+   ".vtu"
+  ]
+ },
+ "splits": [
+  "v0.2-cae-cli-merged"
+ ],
+ "related_apps": [
+  "calculix",
+  "fenics"
+ ]
 }

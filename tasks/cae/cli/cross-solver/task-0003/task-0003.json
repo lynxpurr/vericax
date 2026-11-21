@@ -53,5 +53,26 @@
   "calculix": "/usr/bin/ccx -v > /tmp/_ccxv.txt 2>&1; grep -m1 Version /tmp/_ccxv.txt",
   "fenics": "python3 -c 'import dolfinx; print(dolfinx.__version__)'"
  },
- "instruction": "Work from a terminal with dolfinx 0.10 (FEniCSx), `gmsh` and `meshio` available; CalculiX 2.21 is also installed. This is a software-selection task: pick the tool that can actually deliver what the client requires.\n\nThe client needs a plane-stress analysis of a square plate with a SMOOTH, spatially varying Young's modulus\n    E(x,y) = 210000 * (1 + 0.5*sin(pi*x/100)*sin(pi*y/100))  MPa\nand requires the deliverables in the FEniCS native pair: a gmsh mesh plus a dolfinx checkpoint (XDMF + HDF5) of the displacement field. The modulus varies continuously, so the required discretised solution (below) cannot be produced by per-element constant material cards.\n\nProblem: a square plate 100 mm x 100 mm, thickness 1 mm, plane stress, nu = 0.3, with the modulus field above. The edge x = 0 is clamped; the edge x = 100 carries a uniform traction (100, 0) MPa.\n\nBuild and deliver in /home/user/Desktop:\n1. `mesh.msh` - a gmsh ASCII mesh (format 2.2) of the full plate with triangular elements, at least 2500 triangles, with a physical curve named exactly `VCAX_AUDIT_0003` covering the loaded edge x = 100.\n2. `solve.py` - the script that produced the results (kept for reproduction; the evaluator does not execute it).\n3. `solution.xdmf` + `solution.h5` - a dolfinx checkpoint (XDMFFile with HDF5 backend) containing the mesh and the displacement field written as `write_mesh(mesh)` + `write_function(u, 0.0)`.\n3. `summary.txt` - one number: mean ux over the loaded-edge nodes, in mm.\n\nThe solution MUST use exactly this discretisation: read the submitted mesh.msh with dolfinx.io.gmshio, P2 Lagrange vector elements (('Lagrange', 2, (2,))), the plain Galerkin plane-stress form with the E(x,y) field evaluated in UFL (no stabilisation), a direct LU solve (petsc_options {'ksp_type': 'preonly', 'pc_type': 'lu'}), and petsc_options_prefix 'vcax_ss3_'.\n\nThe evaluator re-solves the submitted mesh with the same prescribed discretisation and the exact E(x,y) field, and compares the checkpoint field at every mesh vertex and the summary within 1e-4 relative tolerance. A missing or unreadable checkpoint, a CalculiX .dat result, a fabricated field, or a mesh without the `VCAX_AUDIT_0003` group is rejected."
+ "instruction": "Work from a terminal with dolfinx 0.10 (FEniCSx), `gmsh` and `meshio` available; CalculiX 2.21 is also installed. This is a software-selection task: pick the tool that can actually deliver what the client requires.\n\nThe client needs a plane-stress analysis of a square plate with a SMOOTH, spatially varying Young's modulus\n    E(x,y) = 210000 * (1 + 0.5*sin(pi*x/100)*sin(pi*y/100))  MPa\nand requires the deliverables in the FEniCS native pair: a gmsh mesh plus a dolfinx checkpoint (XDMF + HDF5) of the displacement field. The modulus varies continuously, so the required discretised solution (below) cannot be produced by per-element constant material cards.\n\nProblem: a square plate 100 mm x 100 mm, thickness 1 mm, plane stress, nu = 0.3, with the modulus field above. The edge x = 0 is clamped; the edge x = 100 carries a uniform traction (100, 0) MPa.\n\nBuild and deliver in /home/user/Desktop:\n1. `mesh.msh` - a gmsh ASCII mesh (format 2.2) of the full plate with triangular elements, at least 2500 triangles, with a physical curve named exactly `VCAX_AUDIT_0003` covering the loaded edge x = 100.\n2. `solve.py` - the script that produced the results (kept for reproduction; the evaluator does not execute it).\n3. `solution.xdmf` + `solution.h5` - a dolfinx checkpoint (XDMFFile with HDF5 backend) containing the mesh and the displacement field written as `write_mesh(mesh)` + `write_function(u, 0.0)`.\n3. `summary.txt` - one number: mean ux over the loaded-edge nodes, in mm.\n\nThe solution MUST use exactly this discretisation: read the submitted mesh.msh with dolfinx.io.gmshio, P2 Lagrange vector elements (('Lagrange', 2, (2,))), the plain Galerkin plane-stress form with the E(x,y) field evaluated in UFL (no stabilisation), a direct LU solve (petsc_options {'ksp_type': 'preonly', 'pc_type': 'lu'}), and petsc_options_prefix 'vcax_ss3_'.\n\nThe evaluator re-solves the submitted mesh with the same prescribed discretisation and the exact E(x,y) field, and compares the checkpoint field at every mesh vertex and the summary within 1e-4 relative tolerance. A missing or unreadable checkpoint, a CalculiX .dat result, a fabricated field, or a mesh without the `VCAX_AUDIT_0003` group is rejected.",
+ "provenance": {
+  "required_tool": "fenics",
+  "native_model": "mesh.msh",
+  "native_result": "solution.xdmf",
+  "challenge": "VCAX_AUDIT_0003",
+  "rerun_tolerance": 0.0001,
+  "reject_native_families": [
+   ".dat",
+   ".frd",
+   ".odb",
+   ".rst",
+   ".vtu"
+  ]
+ },
+ "splits": [
+  "v0.2-cae-cli-merged"
+ ],
+ "related_apps": [
+  "calculix",
+  "fenics"
+ ]
 }
