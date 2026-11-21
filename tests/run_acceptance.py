@@ -33,6 +33,15 @@ TASKS = [
     "cae--cli--calculix--task-0002",
     "cae--cli--calculix--task-0003",
 ]
+
+# P3c software-selection tasks: run on the merged image (set VERICAX_IMAGE to
+# VeriCAx-merged.qcow2 when invoking the acceptance runner for these).
+MERGED_TASKS = [
+    "cae--cli--cross-solver--task-0002",
+    "cae--cli--cross-solver--task-0003",
+    "cae--cli--cross-solver--task-0004",
+    "cae--cli--cross-solver--task-0005",
+]
 PURITY_TARGETS = [
     "vericax/lifecycle.py", "vericax/freeze.py", "vericax/scoring.py",
     "vericax/summary.py", "vericax/cli.py", "vericax/proxy.py",
