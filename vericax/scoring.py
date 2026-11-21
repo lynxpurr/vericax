@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -77,8 +78,16 @@ def run_scoring(
     cache_dir: Path,
     eval_timeout: int = DEFAULT_EVAL_TIMEOUT,
     solver_probe: str | None = None,
+    challenge: str | None = None,
+    required_tool: str | None = None,
+    image_override: str | Path | None = None,
 ) -> ScoreResult:
-    """Boot the scoring VM, inject verifier + frozen artifacts, run the verifier."""
+    """Boot the scoring VM, inject verifier + frozen artifacts, run the verifier.
+
+    ``challenge`` and ``required_tool`` are the per-episode L6 bindings
+    (spec/02 L6.3, spec/09 section 7.1). They are injected into the scoring
+    instance only; the agent never sees ``VERICAX_TOOL``.
+    """
     result = ScoreResult()
     task_dir = Path(task_dir)
     frozen_artifacts_dir = Path(frozen_artifacts_dir)
@@ -89,7 +98,7 @@ def run_scoring(
     eval_text, result.pins_baked = bake_pins(eval_text, gold_summary)
     result.verifier_sha256 = hashlib.sha256(eval_text.encode()).hexdigest()
 
-    vm = SandboxVM(snapshot, cache_dir=cache_dir)
+    vm = SandboxVM(snapshot, cache_dir=cache_dir, image_override=image_override)
     try:
         vm.boot(None)  # clean VM: no task setup, no init files, no verifier yet
         vm.wait_healthy()
@@ -108,8 +117,13 @@ def run_scoring(
             if artifact.is_file() and artifact.name != "artifacts.json":
                 vm.upload(f"{AGENT_ROOT}/{artifact.name}", artifact.read_bytes())
 
+        env_bits = [f"VERICAX_AGENT_ROOT={AGENT_ROOT}", "VERICAX_CCX=/usr/bin/ccx"]
+        if challenge:
+            env_bits.append(f"VERICAX_CHALLENGE={shlex.quote(challenge)}")
+        if required_tool:
+            env_bits.append(f"VERICAX_TOOL={shlex.quote(required_tool)}")
         run = vm.bash(
-            f"VERICAX_AGENT_ROOT={AGENT_ROOT} VERICAX_CCX=/usr/bin/ccx "
+            f"{' '.join(env_bits)} "
             f"python3 {EVAL_VM_PATH} > {SCORE_VM_ROOT}/_out.txt 2> {SCORE_VM_ROOT}/_err.txt; "
             f'echo "rc=$?"',
             timeout=eval_timeout + 60,

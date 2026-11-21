@@ -173,3 +173,51 @@ scripts/audit_task.py → vericax audit (bootstrap L0) → pack_task.py
 
 fake 冒烟必须带 `--payload-dir`（按 `tests/run_acceptance.py:build_payload` 构造）；裸
 `vericax run --adapter fake` 会在 2 秒内 rc=2（payload 未挂载）。
+
+## 14. P4 并行调度与 L6 challenge 绑定（2026-11-22）
+
+- **先修清理顺序再谈并行**：旧 `run_episode` 在 sandbox 还开着时就启动 scoring VM，单 episode
+  同时占 2 台 VM。按 spec/09 E5 改成 freeze → 关 sandbox → scoring 后，2 个并行 episode 的
+  峰值才是 2 台。验收：两道 fake 各 1.0，并行 wall 423s，两集 wall 合计 841s。
+- **并行只共享两处，都要显式处理**：episode 目录用毫秒 + 3 字节随机（同秒不撞）；镜像 sha
+  缓存改成进程内锁 + `os.replace` 原子写（否则并发读到半截文件）。其余（overlay、容器名、
+  proxy socket、scoring cache）本来就按 episode 分目录。
+- **batch 需要 per-task payload/image 映射**：`--payload-dir-map TASK=DIR` 与
+  `--image SNAPSHOT=PATH`；跨 snapshot 时禁止用单一 `VERICAX_IMAGE`，否则所有题都会被
+  指向同一张镜像。
+- **challenge token 分三处落地**：题面用 `{challenge}` 占位符；agent 容器注入
+  `VERICAX_CHALLENGE`（不注入 `VERICAX_TOOL`，选工具是能力）；scoring 实例注入两者。
+  verifier 用 `os.environ.get("VERICAX_CHALLENGE", <audit token>)`，所以 L0/audit 无 env 时
+  行为不变。5 道 L6 题改完必须 `pack → vericax audit（刷新 tree_version）→ pack --check`。
+- **fake agent 要重写 token**：gold recipe 里是固定 audit token；测试 payload 把
+  `audit_token` 传给 fake_agent，由它把 recipe 中的 audit token 替换成 episode token。
+  `wrong_challenge` 模式故意不替换，用来证明 L6.3 拒绝重放（实测 0.0）。
+- **文档计数核对**：套件实际是 26 个任务包（25 道 Phase 2 目标 + 1 道 L6 原型），
+  `25 题` 的说法漏掉了原型；spec/10 §2 的表有 26 行，§4 矩阵必须把 prototype 计入
+  single-execution，否则总数对不上。
+
+## 15. P5 三栈 adapter 与 phase2 镜像（2026-11-22）
+
+- **直接用官方 Hermes 镜像做基座**：`nousresearch/hermes-agent:v0.21.6` 已带 Python 3.14、
+  Node 26、`/opt/hermes` 与 `HERMES_HOME=/opt/data`；清除其 `ENTRYPOINT`（harness 以
+  adapter argv 为主进程），再 npm 装其余四栈。自己 pip 装 hermes 走不通：
+  `hermes-agent` 的构建后端明确拒绝 wheel/sdist，只支持 installer/Docker/Nix。
+- **npm 12 默认不跑 lifecycle scripts**：不加 `--allow-scripts=opencode-ai,...` 时
+  `opencode.exe` 只是 479 字节的报错 stub，`opencode --version` 直接退出。另外全局 bin
+  在 `/opt/hermes/tools/node-<ver>/bin`，必须加进 PATH（`ENV PATH=...:$PATH`），
+  否则 `command -v opencode` 全部 MISSING。
+- **三个 headless 入口的实测形态**：
+  `opencode run --format json --auto --model deepseek/deepseek-flash <instruction>`；
+  `hermes -z <instruction> --yolo --ignore-user-config --provider deepseek -m deepseek-flash -t terminal`
+  （`-t` 是逗号分隔名，不是 JSON 数组）；`openclaw agent exec --message-file - --json`
+  （instruction 走 stdin，`--code-mode direct`）。
+- **凭据一律 env 注入**：opencode profile 用 `{env:DEEPSEEK_API_KEY}`，openclaw 用
+  `source:"env"` SecretRef，hermes 读同名变量；`[container] env_from` 从宿主转发，
+  不写进镜像/不落盘。profile 里同时 deny 原生文件工具
+  （opencode `permission.read/write/edit=deny`，openclaw `tools.deny=["group:fs"]`），
+  把交付逼回 `vericax-sh`。
+- **cost 允许 null**：hermes 的 usage 写在容器内文件、openclaw 的 `--json` 信封落在
+  stderr 且混有日志，harness 不读容器文件；spec/08 §5 允许 `null`，conformance 只要求
+  三件套归因与分数。opencode 的 `step_finish.part.tokens` 可以正常提取。
+- **conformance 记录用 `kind=test`**：三栈 n=1 全 1.0，但不进能力聚合；`runs/` 里的
+  episode 不进 git。

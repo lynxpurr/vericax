@@ -88,3 +88,14 @@ when that record has no `MISS`.
 python scripts/pack_task.py --task cae--cli--calculix--task-0001          # write manifest
 python scripts/pack_task.py --task cae--cli--calculix--task-0001 --check  # CI mode
 ```
+
+The full local CI gate (the same steps as `.github/workflows/ci.yml` plus the
+offline tests) is:
+
+```bash
+scripts/ci_local.sh
+```
+
+GitHub Actions is currently blocked at the account level — every run fails
+before step 1 with a billing notice. See [ci.md](ci.md) for the exact status
+and the two human options.

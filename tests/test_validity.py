@@ -54,6 +54,53 @@ class SummaryComparisonTests(unittest.TestCase):
         self.assertFalse(validity.compare_summaries(None, "1.0"))
 
 
+class ChallengeBindingTests(unittest.TestCase):
+    def _task(self, instruction, provenance=None):
+        task = {"instruction": instruction, "id": "t"}
+        if provenance is not None:
+            task["provenance"] = provenance
+        return task
+
+    def test_placeholder_is_rendered_per_episode(self):
+        text = lifecycle.instruction_text(
+            self._task("name the set {challenge}"), ["/tmp/a"], 0, challenge="VCAX_EP_AB")
+        self.assertIn("name the set VCAX_EP_AB", text)
+        self.assertNotIn("{challenge}", text)
+
+    def test_placeholder_without_token_is_an_error(self):
+        with self.assertRaises(SystemExit):
+            lifecycle.instruction_text(
+                self._task("name the set {challenge}"), ["/tmp/a"], 0)
+
+    def test_l6_task_without_placeholder_gets_a_fallback_paragraph(self):
+        text = lifecycle.instruction_text(
+            self._task("legacy text", {"challenge": "VCAX_AUDIT_1"}),
+            ["/tmp/a"], 0, challenge="VCAX_EP_AB")
+        self.assertIn("Episode challenge token", text)
+        self.assertIn("VCAX_EP_AB", text)
+
+    def test_non_l6_task_gets_no_token(self):
+        self.assertIsNone(lifecycle.episode_challenge(self._task("plain")))
+        self.assertIsNotNone(lifecycle.episode_challenge(
+            self._task("plain", {"challenge": "VCAX_AUDIT_1"})))
+        self.assertNotEqual(
+            lifecycle.episode_challenge(self._task("plain", {"challenge": "VCAX_AUDIT_1"})),
+            lifecycle.episode_challenge(self._task("plain", {"challenge": "VCAX_AUDIT_1"})))
+
+    def test_summary_records_binding(self):
+        data = summary.build_summary(
+            task_id="t", episode_id="e", run_index=1, run_total=1,
+            agent={"name": "a"}, harness={"name": "a"}, model={"name": "m"},
+            score=1.0, scoring_basis=summary.SCORING_BASIS_NATIVE,
+            native_evaluator_executed=True, error=None, error_category=None,
+            result_dir="/tmp/e", artifact_uri=None, cost=None,
+            wall_duration_seconds=1.0, active_duration_seconds=1.0,
+            active_time_limit_seconds=10, split_version="v", image_sha256="x",
+            challenge="VCAX_EP_AB", required_tool="calculix")
+        self.assertEqual(data["challenge"], "VCAX_EP_AB")
+        self.assertEqual(data["required_tool"], "calculix")
+
+
 class CostExtractionTests(unittest.TestCase):
     def _adapter(self, event_types):
         return adapters.Adapter(
@@ -78,6 +125,15 @@ class CostExtractionTests(unittest.TestCase):
         cost = lifecycle._extract_cost(self._adapter([]), stdout)
         self.assertEqual(cost["llm_calls"], 1)
         self.assertEqual(cost["prompt_tokens"], 3)
+
+    def test_single_pretty_json_envelope(self):
+        # openclaw --json prints one indented envelope, not NDJSON.
+        envelope = json.dumps(
+            {"usage": {"input": 9, "output": 1, "cost": {"total": 0.0}}}, indent=2)
+        cost = lifecycle._extract_cost(self._adapter([]), envelope)
+        self.assertEqual(cost["llm_calls"], 1)
+        self.assertEqual(cost["prompt_tokens"], 9)
+        self.assertEqual(cost["completion_tokens"], 1)
 
 
 class ReportTests(unittest.TestCase):

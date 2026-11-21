@@ -16,13 +16,13 @@
 
 | capability | 检验重点 | 必需 verifier 层 | 现有 | Phase 2 目标 |
 |---|---|---|---|---|
-| `single-execution` | 一次求解/一次建模，工件正确 | L1–L3 | 0001/0004/0005/0006/0007 + FEniCS 0001 | 6 |
+| `single-execution` | 一次求解/一次建模，工件正确 | L1–L3 | 0001/0004/0005/0006/0007 + FEniCS 0001 + cross-solver 0001（L6 原型） | 6 |
 | `design-optimization` | 可行性门 + 质量分两段式 | L1–L5 | 0002 + FEniCS 0002/0003/0004/0005 | 5 |
 | `cross-stage-consistency` | 多步骤/多工件在一套模型内自洽 | L1–L4 | 0003/0008/0009/0010 | 4 |
 | `software-selection` | 选对工具并交付；verifier 能判工件来自哪个工具 | L1–L3 + L6 | — | 4 |
 | `observation-reconstruct` | 从图纸/报告/截图重建模型 | L1–L3 | 0011/0012/0013 | 3 |
 | `open-environment` | agent 自行安装/配置工具并交付 | L1–L3 | 0014/0015/0016 | 3 |
-| 合计 | | | 21 | **25** |
+| 合计 | | | 22（21 道目标 + 1 道 L6 原型） | **25** |
 
 > 规模下限：20 题（每 capability ≥3，且 ≥2 求解器）。25 是目标值；达不到 25 时优先保 capability 覆盖，不靠单类堆题。
 
@@ -61,6 +61,10 @@
 `v0.2-cae-cli-25` 随 P1 增长，`v0.2-cae-cli-merged` 为 P3c merged image 专用 split（4 题）。审计记录以各任务包的
 `ground_truth/audit.md` 为准（robust 10/10）。
 
+**任务包计数（2026-11-22 校准）**：表内共 **26 个任务包** = 25 道 Phase 2 目标（6/5/4/4/3/3）+ 1 道
+`cross-solver task-0001` L6 原型（capability 如实记为 `single-execution`）。split 文件合计 26 个唯一 id；
+`v0.2-cae-cli-25` 的名字是冻结的 split 版本号，不因多出的原型题改名。
+
 ## 3. 求解器矩阵
 
 | 求解器 | 版本/镜像 | 状态 | Phase 2 题量 | 备注 |
@@ -73,29 +77,30 @@ D5 已定（2026-11-18），执行顺序：
 
 - **v0/v0.5：复用 EngiWorld 镜像**（CalculiX-2.21 已在本机验证；FEniCS 候选镜像需确认版本、工件格式、pins 与审计可复现）。
 - **Phase 1：写自建镜像构建 recipe**，并产出一张自建镜像验证可复现（不切换）。
-- **Phase 2：切换自建 VeriCAx 镜像**并重跑审计；所有 pins 必须在同镜像内重新烘焙（换镜像 = 重跑审计，spec/04 §6）。三张自建镜像已全部验收（P3a CalculiX 2026-11-20、P3b FEniCS 2026-11-21、P3c merged 2026-11-21）；merged 镜像承载 4 道 `software-selection`（`v0.2-cae-cli-merged`）。套件既有 21 题仍跑 EngiWorld 镜像，切换到自建镜像尚未执行。
+- **Phase 2：切换自建 VeriCAx 镜像**并重跑审计；所有 pins 必须在同镜像内重新烘焙（换镜像 = 重跑审计，spec/04 §6）。三张自建镜像已全部验收（P3a CalculiX 2026-11-20、P3b FEniCS 2026-11-21、P3c merged 2026-11-21）；merged 镜像承载 4 道 `software-selection`（`v0.2-cae-cli-merged`）。套件既有 22 个任务包仍跑 EngiWorld 镜像，切换到自建镜像尚未执行。
 
 无论哪条路径，**换镜像 = 重跑审计**；pinned 参考值与镜像绑定（spec/04 §6）。
 
-### 3.1 现状（2026-11-19 更新）
+### 3.1 现状（2026-11-22 更新）
 
 - FEniCS 镜像已通过 ModelScope 通道获取（`engiworld.prepare_images --source modelscope --image FEniCS`，65 s；`FEniCS.qcow2` 17.0 GB，sha256 与 manifest 一致），dolfinx 0.10.0.post2。
 - 第二求解器 smoke **已完成**：`cae--cli--fenics--task-0001`（带孔板，L1–L3）P0 重审计 15/15、L0 参考自检 pass、假 agent tier-1 = 1.0——L1–L3 的验证逻辑与求解器无关得到实证。
-- **P1 已完成（2026-11-20/21）**：21 题；P2 L6 spike 完成；P3a/P3b/P3c 三张自建镜像验收；**Phase 2 套件目标 25 题已达成**（2026-11-21，4 道 `software-selection` 落地）。剩余：P4 2-VM 调度、P5 栈扩展、E CI 账单。
+- **P1 已完成（2026-11-20/21）**：21 题；P2 L6 spike 完成（+1 道 prototype）；P3a/P3b/P3c 三张自建镜像验收；**Phase 2 套件目标 25 题已达成**（2026-11-21，4 道 `software-selection` 落地；任务包共 26 个）。剩余：P4 2-VM 调度、P5 栈扩展、E CI 账单。
 
 ## 4. 题量分解
 
 | capability | CalculiX | FEniCS | cross-solver | 合计 |
 |---|---|---|---|---|
-| single-execution | 5 | 1 | 0 | 6 |
+| single-execution | 5 | 1 | 1 | 7 |
 | design-optimization | 1 | 4 | 0 | 5 |
 | cross-stage-consistency | 4 | 0 | 0 | 4 |
 | software-selection | 0 | 0 | 4 | 4 |
 | observation-reconstruct | 2 | 1 | 0 | 3 |
 | open-environment | 0 | 3 | 0 | 3 |
-| **合计** | **12** | **9** | **4** | **25** |
+| **合计** | **12** | **9** | **5** | **26** |
 
-当前 **25 题已落地**（每 capability ≥3，21 题跑 EngiWorld 镜像 + 4 题跑 merged 镜像）；新增 22 题（从 Phase 1 的 3 题算起）已全部过 P0 门。
+当前 **26 个任务包已落地**（25 道 Phase 2 目标 + 1 道 L6 原型；每 capability ≥3，22 个跑 EngiWorld 镜像
++ 4 个跑 merged 镜像）；从 Phase 1 的 3 题算起新增 23 个，已全部过 P0 门。
 
 ## 5. Split 纪律
 
@@ -145,8 +150,8 @@ D5 已定（2026-11-18），执行顺序：
 | **P1** | 铺量：先 CalculiX +6、FEniCS +5（到 15 题），再补 design-optimization 到 20 题下限 | 每题过 P0 同款门；split `v0.2-cae-cli-25` 随题增长 | **已完成 2026-11-20：21 题**（含每 capability ≥3） |
 | **P2** | cross-solver provenance 判据 spike（写入 spec/02）+ 沙箱形态决策（合并镜像 vs 多 VM） | 判据可复现地判"工件来自指定工具"；1 道原型题 | 2–3 人日 |
 | **P3** | 自建镜像 recipe（D5 未完成项），可与 P1 并行；顺带产出 cross-solver 合并镜像 | 构建可复现 + 一张验证镜像；pins 在同镜像重烘 | 3–5 人日 |
-| **P4** | 2-VM 并行调度（soak 已过；全矩阵前做） | 两 episode 并行跑通、互不串扰 | 1–2 人日 |
-| **P5** | 栈扩展 opencode/hermes/openclaw（每栈 adapter + conformance） | n=1 conformance 过 | 每栈 0.5–1 人日 |
+| **P4** | 2-VM 并行调度（soak 已过；全矩阵前做） | 两 episode 并行跑通、互不串扰 | **已完成 2026-11-22**（`batch --parallel 2`；另含每 episode challenge token 管道） |
+| **P5** | 栈扩展 opencode/hermes/openclaw（每栈 adapter + conformance） | n=1 conformance 过 | **已完成 2026-11-22**（三栈各 n=1 = 1.0） |
 
 **本轮拍板（2026-11-20）**：
 
@@ -163,9 +168,16 @@ D5 已定（2026-11-18），执行顺序：
 
 **P1 完成（2026-11-20）**：21 题（single 6 / design 5 / cross-stage 4 / observation 3 / open-environment 3），满足 20 题下限与每 capability ≥3。
 
-**Phase 2 套件完成（2026-11-21）**：25 题（在 P1 基础上 +4 `software-selection`），capability 矩阵 6/5/4/4/3/3。
+**Phase 2 套件完成（2026-11-21）**：25 道目标题（在 P1 基础上 +4 `software-selection`），capability 矩阵 6/5/4/4/3/3；
+连同 L6 原型共 26 个任务包。
 
-**待决**：P4/P5 的具体开工时点与授权；E（CI 账单）。
+**P4 完成（2026-11-22）**：`vericax batch --parallel 2` 两 episode 并行（各 1.0，wall 423s）；E5 顺序改为 freeze → 关 sandbox → scoring；L6 每 episode challenge token 管道落地（动态 token 1.0 / audit-token 重放 0.0），5 道 L6 任务 L0 重跑通过。详见 spec/09 §11。
+
+**P5 完成（2026-11-22）**：`opencode 1.19.5` / `hermes 0.21.6` / `openclaw 2026.9.9` 三栈 adapter + `vericax-agent:phase2` 镜像；task-0001 × n=1 全部 1.0（native evaluator，sandbox/scoring 网络隔离均 true，三件套归因完整）。Hermes/OpenClaw 的 cost 为 `null`（usage 在容器内文件/混合 stderr，harness 不读；spec/08 §5 允许）。详见 `tests/conformance_adapters.py` 与 spec/08 §10。
+
+**E（CI 账单）**：GitHub 账户级阻塞，作业在 0 步前不启动；已加 `scripts/ci_local.sh`（CI 三步 + offline tests）与 pre-push 门，`docs/ci.md` 记录两个人类选项。修账单需账户所有者操作，代码侧已无可做项。
+
+**待决**：E 的账户级修复方式（付款/提高额度，或另行决定是否公开仓库）。
 
 **P0 已完成（2026-11-20）**：4 题全部 A≥2、六类反作弊负例齐全、`robust: 10/10 consistent`；`audit_task.py --repeat N` 与 `pack_task.py` 打包门已生效（spec/02 §4.1）。
 
@@ -189,9 +201,9 @@ D5 已定（2026-11-18），执行顺序：
 
 | 项 | 依赖 | 影响 |
 |---|---|---|
-| 第二求解器镜像 | D5 | P3a/P3b/P3c 自建镜像已验证；不阻塞现有 25 题；默认镜像切换未执行 |
+| 第二求解器镜像 | D5 | P3a/P3b/P3c 自建镜像已验证；不阻塞现有 26 个任务包；默认镜像切换未执行 |
 | 发布时点 | D4 | 商标检索、org 占位、split 冻结时间 |
-| 任务作者产能 | 人力 | Phase 2 完成 25 题（每 capability ≥3）；v0.5 扩到 5 求解器 × 20 待 P5 |
+| 任务作者产能 | 人力 | Phase 2 完成 25 道目标题 + 1 道 L6 原型（每 capability ≥3）；v0.5 扩到 5 求解器 × 20 待 P5 |
 | provenance 判据 | 新 verifier 能力 | L6 已写入 spec/02；原型 + P3c 四题在 merged image 上验证（native 对、token 绑定、全场重解比对） |
 | 图纸/报告输入格式 | task schema | `observation-reconstruct` 的 init_file 类型 |
 | open-environment 网络策略 | spec/09 | 默认 sandbox 无外网；按任务开包源 |

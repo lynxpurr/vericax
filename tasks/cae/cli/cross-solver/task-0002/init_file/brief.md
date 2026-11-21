@@ -9,5 +9,5 @@ that native pair for a buckling analysis.
 Problem: uniform column 100 mm, 10 x 10 mm square section, clamped at
 x = 0, axial reference load -1000 N at the tip. The evaluator re-runs the
 deck and compares the buckling factors and the **full-field** eigenmode, not
-only the summary. The node set `VCAX_AUDIT_0002` must appear in the deck and
-in the printed result.
+only the summary. The challenge node set named in your task instruction must
+appear in the deck and in the printed result.

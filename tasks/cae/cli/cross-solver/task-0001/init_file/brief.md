@@ -14,13 +14,13 @@ Build `/home/user/Desktop/solution.inp`:
   `10.0, 10.0`
 - boundary: node 1 dofs 1-6 clamped
 - step: `*Static`, tip load `11, 2, -100.0`
-- define a node set named exactly `VCAX_AUDIT_0001` with all 11 nodes and
-  request `*Node Print, NSET=VCAX_AUDIT_0001`, `U`
+- define a node set named exactly as the challenge token in your task
+  instruction, with all 11 nodes, and request `*Node Print, NSET=<that name>`, `U`
 
 Submit with `/usr/bin/ccx` and produce `solution.dat`. Write `summary.txt` as
 one number: `tip_uy`, the y displacement of node 11 (mm).
 
 The evaluator re-runs `ccx` and compares every nodal displacement in your
-`solution.dat` for `VCAX_AUDIT_0001` to its fresh run within 1e-4 relative
+`solution.dat` for that set to its fresh run within 1e-4 relative
 tolerance. A fabricated non-empty `.dat`, a result from another solver, a
 mixed native result, or a different challenge token is rejected.

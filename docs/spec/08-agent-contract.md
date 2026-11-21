@@ -50,7 +50,7 @@ spec/03 目前使用 `agent` / `model` / `harness` 三个字段。本 spec 冻�
 | **D4** | ✅ 已定（2026-11-18） | 发布时点：Phase 1 验收后开源代码/spec/任务包；公开榜单等 v0.5（≥2 栈 × n≥3）；开源前完成商标四连查与 org 占位 | 商标/组织动作进 spec/06 清单；不阻塞 Phase 1 |
 | **D5** | ✅ 已定（2026-11-18） | 镜像策略：v0/v0.5 沿用 EngiWorld 镜像；Phase 1 写构建 recipe 并产出一张自建镜像验证可复现；Phase 2 切换自建镜像并重跑审计（pins 与镜像绑定） | `spec/10` §3 执行；Phase 2 前不动现有 pins |
 
-> **执行状态（2026-11-21）**：P3a 自建 CalculiX 镜像已验证（Ubuntu 24.04 + `ccx` 2.21-1，L0 + fake smoke）；P3b FEniCS 自建镜像与 P3c merged cross-solver 镜像未做。套件仍跑 EngiWorld 镜像；切换 = 重烘 pins + 重跑审计（spec/04 §6）。D3 的 2-VM soak 已过，但并行调度（P4）仍未实现。
+> **执行状态（2026-11-22）**：P3a/P3b/P3c 三张自建镜像均已验收（CalculiX 2.21、FEniCS 0.10.0.post2、merged cross-solver）；套件既有 22 个任务包（21 道目标 + L6 原型）仍跑 EngiWorld 镜像，切换 = 重烘 pins + 重跑审计（spec/04 §6）。P4 已完成：`vericax batch --parallel 2`（spec/09 §11），E5 清理顺序落实，L6 每 episode challenge token 管道上线。P5 的 opencode/hermes/openclaw adapter 与 phase2 agent 镜像在 2026-11-22 落地，n=1 conformance 见 spec/10 §7。
 
 ## 3. Episode 生命周期
 
@@ -91,8 +91,11 @@ agent 进程看到的环境变量（最小集）：
 | `VERICAX_DEADLINE_EPOCH` | agent 容器 | UTC Unix 秒；硬截止 | 是 |
 | `VERICAX_WORKDIR` | agent 容器（值为 sandbox 路径） | 默认工作目录（如 `/home/user/Desktop`） | 是 |
 | `VERICAX_ARTIFACTS` | agent 容器 | `artifact_paths` 的 JSON 数组（机器可读） | 否 |
+| `VERICAX_CHALLENGE` | agent 容器（L6 题） | 每 episode 的挑战 token；题面 `{challenge}` 已渲染为同值 | L6 题是 |
+| `VERICAX_TOOL` | **仅 scoring 实例** | `provenance.required_tool`；不注入 agent，选工具是题面能力 | L6 题是 |
 
 禁止注入：任何 `VERICAX_EVAL_*`、`VERICAX_GROUND_TRUTH*`、宿主仓库路径、宿主机绝对路径。
+`VERICAX_CHALLENGE` 只用于把工件绑定到本次 episode；`VERICAX_TOOL` 只告诉评分面该题要求哪个工具分支。
 
 `VERICAX_DEADLINE_EPOCH` 的语义是**硬截止**：agent 应在此之前自行结束；到点后 eval harness 先 SIGTERM，宽限期后 SIGKILL，并杀掉整个进程组/cgroup。
 
@@ -249,6 +252,11 @@ spec/03 当前枚举：`environment_error | infra_incomplete | active_time_budge
 3. ✅ **pi × task-0001 × n=1**（2026-11-19）：score=1.0，活跃 102s，三件套归因完整，cost 从 stderr NDJSON 提取；原生 write/edit 工具被 adapter 禁用，工件全部经 sandbox 产出。
 4. ✅ **作弊提交全拒**：空交付 / 假 summary / 篡改 summary 均 0.0；VM 内后台写者不改变 tier-1 结论（1.0 vs 1.0）。
 5. ✅ **静态检查**：lifecycle/freeze/score 路径无 `if stack ==`。
+6. ✅ **opencode 1.19.5 × task-0001 × n=1**（2026-11-22）：score=1.0，active 10s，cost 5 calls（prompt 3,243 / completion 1,084），经 tier-1；容器镜像 `vericax-agent:phase2`。
+7. ✅ **hermes 0.21.6 × task-0001 × n=1**（2026-11-22）：score=1.0，active 108s，cost `null`（usage 写容器内文件），经 tier-1。
+8. ✅ **openclaw 2026.9.9 × task-0001 × n=1**（2026-11-22）：score=1.0，active 22s，cost `null`（usage 信封在 stderr 混合流），经 tier-1。
+
+三栈均记录 sandbox/scoring `network_isolation=true`，三件套归因完整；conformance 记录为 `kind=test`，不进入能力聚合。Phase 2 加这三家栈只新增 adapter/配置/镜像，未改生命周期契约（A1 纯度检查通过）。
 
 Phase 2 加 opencode/hermes/openclaw 时，预期**只新增 adapter 和 conformance 用例**，不改契约。
 

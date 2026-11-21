@@ -202,7 +202,9 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 
 ## 11. 待定
 
-- ~~2 VM 并行（Phase 2 先 soak）~~ **soak 已通过（2026-11-19）**：`tests/soak_two_vms.py` 同时启动两台 sandbox VM（各 179s ready，wall 209s），两台均健康、init 注入成功、guest 隔离生效、独立关闭；并发*调度*仍留 Phase 2 实现。
+- ~~2 VM 并行（Phase 2 先 soak）~~ **soak 已通过（2026-11-19）**：`tests/soak_two_vms.py` 同时启动两台 sandbox VM（各 179s ready，wall 209s），两台均健康、init 注入成功、guest 隔离生效、独立关闭。
+- **P4 并发调度已完成（2026-11-22）**：`vericax batch --parallel 2` 用线程池跑 `run_episode`，每个 episode 独立 overlay、agent 容器、proxy socket、cache 与 scoring 实例；`--image SNAPSHOT=PATH` 支持跨镜像批。E5 清理顺序已落实为 **freeze → 关 sandbox → scoring**（此前 scoring 与 sandbox 并行，单 episode 就占 2 台 VM）。验收：两道 fake episode 并行各 1.0，wall 423s（两集串行合计 841s），无 infra/串扰。`MAX_VALIDATED_PARALLEL=2`，更高并发打警告。
+- **L6 每 episode challenge 绑定（P4，2026-11-22）**：`episode_challenge` 为 L6 题生成 `VCAX_EP_<16 hex>`；题面的 `{challenge}` 占位符在 `instruction_text` 渲染；agent 容器注入 `VERICAX_CHALLENGE`（**不注入** `VERICAX_TOOL`，选工具是题面能力），scoring 实例注入 `VERICAX_CHALLENGE` + `VERICAX_TOOL`（spec/09 §7.1）；L0/audit 无 env，退回 `provenance.challenge` 固定 token。验收：task-0002 动态 token=1.0；伪造 episode 仍用 audit token=0.0（L6.3 拒绝重放）。5 道 L6 任务 L0 全部重跑通过。
 - GUI 通道（v1.5；截图/鼠标键盘与 CLI 分榜）。
 - 自建评分镜像（依赖 D5）。
 - 远程/云 sandbox（不在 v0/v0.5 范围）。

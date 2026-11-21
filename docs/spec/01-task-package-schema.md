@@ -55,6 +55,7 @@ tasks/<domain>/<interface>/<software>/task-<NNNN>/
     "native_model": "solution.inp",
     "native_result": "solution.dat",
     "challenge": "VCAX_<token>",                   // 审计用固定 token；生产按 episode 生成
+                                                   // 题面用 {challenge} 占位符；agent 收到 VERICAX_CHALLENGE
     "rerun_tolerance": 1.0e-4,
     "reject_native_families": [".xdmf", ".h5", ".vtu", ".odb", ".rst"]
   },

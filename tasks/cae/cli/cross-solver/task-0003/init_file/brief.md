@@ -8,4 +8,5 @@ deliverables (gmsh mesh + dolfinx checkpoint) are the FEniCS native pair.
 
 The evaluator re-solves the submitted mesh with the exact E(x,y) field and
 compares the checkpoint field at every mesh vertex, not only the summary.
-The physical curve `VCAX_AUDIT_0003` must name the loaded edge in the mesh.
+The challenge physical curve named in your task instruction must name the
+loaded edge in the mesh.

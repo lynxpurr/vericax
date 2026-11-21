@@ -33,15 +33,34 @@ BOOT_TIMEOUT = 900  # spec/04: readiness window; observed boot ~177s
 
 
 # ---------------------------------------------------------------- instruction
-def instruction_text(task_json: dict, artifact_paths: list[str], deadline_epoch: float) -> str:
+def instruction_text(task_json: dict, artifact_paths: list[str], deadline_epoch: float,
+                     challenge: str | None = None) -> str:
     """Task instruction plus the stack-independent sandbox contract footer.
 
     The footer is contract-level content (identical for every task and stack);
     it exists because no agent stack can know the vericax-sh interface without
     being told (spec/08 sections 4 and 6.4).
+
+    L6 tasks put ``{challenge}`` where the episode-specific set/group name
+    belongs (spec/02 L6.3). The token is rendered here so every run of the
+    same package binds its own label; the audit/L0 path passes no token and
+    keeps the task's fixed ``provenance.challenge`` value.
     """
+    if "{challenge}" in task_json["instruction"]:
+        if not challenge:
+            raise SystemExit("task instruction needs {challenge} but no episode token was generated")
+        instruction = task_json["instruction"].replace("{challenge}", challenge)
+    else:
+        instruction = task_json["instruction"]
+        if challenge:
+            # Backward-compatible fallback for a package that predates the
+            # placeholder: append an explicit binding paragraph. New L6
+            # packages use the placeholder and do not hit this branch.
+            instruction = instruction.rstrip() + (
+                f"\n\nEpisode challenge token: use `{challenge}` wherever this task "
+                "names a challenge set/group.")
     lines = [
-        task_json["instruction"].rstrip(),
+        instruction.rstrip(),
         "",
         "--- VeriCAx sandbox contract (added by the eval harness) ---",
         "Your shell runs in your own container, NOT in the engineering VM.",
@@ -152,17 +171,37 @@ def _vm_task_config(task_dir: Path, task_json: dict) -> dict:
 
 
 def _episode_dir(task_id: str, adapter_name: str, run_index: int) -> Path:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    # Milliseconds + 3 random bytes keep parallel episodes from colliding even
+    # when two threads enter the same second (P4).
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
     short = task_id.rsplit("--", 1)[-1]
-    episode_id = f"ep-{short}-{adapter_name}-{run_index:02d}-{stamp}-{secrets.token_hex(2)}"
+    episode_id = f"ep-{short}-{adapter_name}-{run_index:02d}-{stamp}-{secrets.token_hex(3)}"
     return REPO / "runs" / episode_id
+
+
+def episode_challenge(task_json: dict, override: str | None = None) -> str | None:
+    """Per-episode L6 token (spec/02 L6.3), or None for non-L6 tasks.
+
+    ``provenance.challenge`` is the task's fixed audit token: it is what L0
+    and ``audit_task.py`` use. A real episode gets a fresh label so a replayed
+    artifact from an older episode no longer carries the required set/group.
+    """
+    if override:
+        return override
+    provenance = task_json.get("provenance") or {}
+    if "{challenge}" in task_json.get("instruction", "") or provenance.get("challenge"):
+        return "VCAX_EP_" + secrets.token_hex(8).upper()
+    return None
 
 
 def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
     """Data-driven cost extraction; returns spec/03 cost fields or None.
 
     Reads adapter.output.cost_path (a dotted path into each JSON event) and
-    sums token usage across events. No stack branching happens here.
+    sums token usage across events. No stack branching happens here. Two
+    shapes are accepted: NDJSON (dsh/pi/opencode) and one pretty-printed JSON
+    envelope (openclaw --json); the envelope fallback only runs when no line
+    parsed as an event.
     """
     if not adapter.cost_path:
         return None
@@ -171,14 +210,11 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
               "reasoning_tokens": 0}
     usd = 0.0
     seen = False
-    for line in stdout.splitlines():
-        line = line.strip()
-        if not line.startswith("{"):
-            continue
-        try:
-            event = json.loads(line)
-        except ValueError:
-            continue
+
+    def consume(event: object) -> None:
+        nonlocal seen, usd
+        if not isinstance(event, dict):
+            return
         node: object = event
         for key in keys:
             if isinstance(node, dict) and key in node:
@@ -187,9 +223,9 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
                 node = None
                 break
         if not isinstance(node, dict):
-            continue
+            return
         if adapter.cost_event_types and event.get("type") not in adapter.cost_event_types:
-            continue
+            return
         seen = True
         totals["llm_calls"] += 1
         aliases = {
@@ -206,6 +242,23 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
         cost_node = node.get("cost")
         if isinstance(cost_node, dict) and isinstance(cost_node.get("total"), (int, float)):
             usd += float(cost_node["total"])
+
+    parsed_lines = 0
+    for line in stdout.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        parsed_lines += 1
+        consume(event)
+    if parsed_lines == 0:
+        try:
+            consume(json.loads(stdout))
+        except ValueError:
+            pass
     if not seen:
         return None
     totals["usd_estimate"] = round(usd, 6) if usd else None
@@ -435,8 +488,14 @@ def run_episode(
     run_mode: str = summary_mod.RUN_MODE_RERUN,
     kind: str = "capability",
     tree_version: str | None = None,
+    challenge: str | None = None,
+    image_override: str | Path | None = None,
 ) -> tuple[dict, Path]:
-    """One full episode. Returns (summary_dict, episode_dir)."""
+    """One full episode. Returns (summary_dict, episode_dir).
+
+    ``challenge`` overrides the generated L6 token (tests/audit only). Normal
+    runs let ``episode_challenge`` mint a fresh one per episode.
+    """
     if run_mode not in summary_mod.RUN_MODES:
         raise SystemExit(f"run_mode must be one of {summary_mod.RUN_MODES}")
     if kind not in summary_mod.EPISODE_KINDS:
@@ -452,8 +511,10 @@ def run_episode(
     freeze.check_basename_uniqueness(artifact_paths)
 
     snapshot = task_json.get("snapshot", "CalculiX-2.21")
-    image_path = config.image_path(snapshot)
+    image_path = config.image_path(snapshot, override=image_override)
     image_sha = config.image_sha256(image_path)
+    required_tool = (task_json.get("provenance") or {}).get("required_tool")
+    challenge = episode_challenge(task_json, challenge)
 
     episode_dir = _episode_dir(task_id, adapter.name, run_index)
     episode_dir.mkdir(parents=True, exist_ok=True)
@@ -466,7 +527,8 @@ def run_episode(
     deadline_epoch = time.time() + effective_limit
 
     inst_path = episode_dir / "instruction.md"
-    inst_path.write_text(instruction_text(task_json, artifact_paths, deadline_epoch))
+    inst_path.write_text(instruction_text(
+        task_json, artifact_paths, deadline_epoch, challenge=challenge))
 
     wall_started = time.monotonic()
     vm: SandboxVM | None = None
@@ -486,7 +548,8 @@ def run_episode(
         # ---- prepare: sandbox boot (one retry, spec/09 section 8)
         while True:
             boot_attempts += 1
-            vm = SandboxVM(snapshot, cache_dir=episode_dir / "cache")
+            vm = SandboxVM(snapshot, cache_dir=episode_dir / "cache",
+                           image_override=image_override)
             try:
                 vm.boot(_vm_task_config(task_dir, task_json))
                 break
@@ -534,6 +597,12 @@ def run_episode(
             "VERICAX_WORKDIR": adapter.working_dir,
             "VERICAX_ARTIFACTS": json.dumps(artifact_paths),
         })
+        if challenge:
+            # The token is already in the instruction; exposing it as an env
+            # var keeps scripted agents on the same contract without having to
+            # parse markdown. VERICAX_TOOL is deliberately NOT injected here:
+            # selecting the tool is part of the software-selection task.
+            env["VERICAX_CHALLENGE"] = challenge
         (logs_dir / "launch.json").write_text(json.dumps({
             "adapter": adapter.name, "command": command, "image": adapter.container_image,
         }, indent=2) + "\n")
@@ -564,6 +633,14 @@ def run_episode(
         manifest = freeze.freeze(
             vm, artifact_paths, episode_dir, image_sha, task_id, episode_dir.name)
 
+        # ---- close the sandbox before scoring (spec/09 E5 cleanup order:
+        # kill agent -> close proxy -> freeze -> close sandbox -> scoring).
+        # Keeping the sandbox alive during scoring would hold two VMs per
+        # episode and make 2-episode parallelism a 4-VM load.
+        (logs_dir / "vm_processes_after.txt").write_text(vm.process_snapshot())
+        vm.close()
+        vm = None
+
         # ---- termination semantics (spec/08 section 7)
         if agent_result.killed_by_deadline:
             error_category = CAT_TIME_BUDGET
@@ -582,6 +659,9 @@ def run_episode(
                     snapshot=snapshot,
                     cache_dir=episode_dir / "scoring-cache",
                     solver_probe=task_json.get("solver_probe"),
+                    challenge=challenge,
+                    required_tool=required_tool,
+                    image_override=image_override,
                 )
                 (logs_dir / "evaluator.stdout").write_text(
                     score_result.logs.get("evaluator_stdout", ""))
@@ -608,7 +688,10 @@ def run_episode(
         if proxy is not None:
             proxy.stop()
         if vm is not None:
-            (logs_dir / "vm_processes_after.txt").write_text(vm.process_snapshot())
+            try:
+                (logs_dir / "vm_processes_after.txt").write_text(vm.process_snapshot())
+            except Exception:  # noqa: BLE001 - forensics only
+                pass
             vm.close()
         cleanup_container(container_name)
 
@@ -657,6 +740,8 @@ def run_episode(
         deadline_epoch=int(deadline_epoch),
         sandbox_network_isolated=sandbox_isolated,
         scoring_network_isolated=score_result.network_isolated if score_result else None,
+        challenge=challenge,
+        required_tool=required_tool,
     )
     summary_path = summary_mod.write_summary(episode_dir, summary)
     print(f"run: episode {episode_dir.name} recorded -> {summary_path}")

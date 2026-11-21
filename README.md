@@ -22,11 +22,12 @@ is stabilised; it will be published under MIT. Current contents:
 
 | Area | State |
 |---|---|
-| Specifications | `docs/spec/00`–`10`; 2026-11-19 calibration (L0 GT self-check, `run_mode`/`tree_version`, CLI artifact-write policy) |
-| Task packages | 3 CalculiX tasks, each with a passing audit record |
-| Tooling | audit harness, package validator, VM probe, dependency resolver |
-| Phase 1 runner | implemented: `vericax` lifecycle, `vericax-sh`, agent containers; acceptance 4/5; dsh n=3 pending `DEEPSEEK_API_KEY` |
-| Second solver | planned (FEniCS) |
+| Specifications | `docs/spec/00`–`10`; latest calibration 2026-11-22 (P4 parallel scheduling, per-episode L6 challenge tokens, P5 stack expansion) |
+| Task packages | 26 packages (25 Phase-2 targets + 1 L6 prototype) across CalculiX, FEniCS and a merged cross-solver image; every package has an audit record and L0 self-check |
+| Tooling | audit harness, package validator, VM probe, dependency resolver, parallel `vericax batch`, local CI gate |
+| Agent stacks | dsh 0.2.1-rc.5, pi 1.4.0, opencode 1.19.5, hermes 0.21.6, openclaw 2026.9.9; all five have n≥1 conformance episodes |
+| Runtime | Phase 2 complete: tier-1 scoring, per-episode overlays, 2-VM parallel batches, L6 provenance/challenge binding |
+| CI | GitHub Actions is account-blocked before step 1; `scripts/ci_local.sh` is the authoritative gate (see `docs/ci.md`) |
 
 ## Layout
 
@@ -94,9 +95,10 @@ sibling directory. `vericax.toml` is gitignored.
 ## Roadmap
 
 - [x] Specifications and the audit protocol
-- [x] Three audited CalculiX tasks covering L1–L5
-- [ ] Fourth pilot task on a second solver (FEniCS), proving the layers are solver-agnostic
-- [ ] Tier 1 trusted loop: out-of-band verifier execution and the anti-cheat layer as runtime code
+- [x] Three audited CalculiX pilot tasks covering L1–L5
+- [x] Second solver (FEniCS) and a 26-package suite across two solvers and a merged image
+- [x] Tier 1 trusted loop: out-of-band verifier execution and the anti-cheat layer as runtime code
+- [x] Five agent stacks and 2-VM parallel scheduling with per-episode challenge binding
 - [ ] Public task suite and image release under the `vericax` organisation
 
 ## Contributing

@@ -1,0 +1,39 @@
+# hermes adapter (spec/08 section 5, P5): one-shot `hermes -z`.
+# Hermes 0.21.6 is baked into the phase2 image at /opt/hermes with
+# HERMES_HOME=/opt/data; every episode runs in a fresh container, so the
+# writable data root is per-episode by construction. `--ignore-user-config`
+# keeps the host machine's config out of the run; provider/model and the tool
+# surface come from this adapter. `-t ["terminal"]` removes the native file
+# tools, forcing delivery through bash + vericax-sh.
+name = "hermes"
+version = "0.21.6"
+
+[launch]
+command = ["hermes", "-z", "{instruction}", "--yolo", "--ignore-user-config",
+           "--provider", "deepseek", "-m", "deepseek-flash",
+           "-t", "terminal"]
+instruction = "argv"
+approval = []
+grace_seconds = 10
+
+[sandbox]
+shell = "path"
+shell_target = "vericax-sh"
+file_tools = "disable"
+working_dir = "/home/user/Desktop"
+
+[output]
+format = "text"
+# Hermes writes usage to --usage-file inside the container; the harness does
+# not read container files, so cost stays null (spec/08 section 5 permits it).
+
+[state]
+
+[model]
+name = "deepseek-flash"
+endpoint = "deepseek-official"
+
+[container]
+image = "vericax-agent:phase2"
+env_from = ["DEEPSEEK_API_KEY"]
+env = { HERMES_HOME = "/opt/data" }
