@@ -2,7 +2,7 @@
 
 状态：草案 v0.1（2026-11-18）· 与调研报告 §8.6 档 0/1/2 对齐，换 VeriCAx 口径
 
-> **2026-11-21 状态校准（取代 2026-11-19 块）**：Phase 0 冻结；Phase 1 验收（dsh × task-0001 × n=3 = 1.0/1.0/1.0；pi × n=1 = 1.0）；Phase 1.5 benchmark-validity gate 完成；Phase 2 的 P0/P1/P2/P3a 完成——P1 21 题（每 capability ≥3）、L6 provenance 判据 + 原型、自建 CalculiX 镜像 L0 + fake smoke。未完成：4 道 `software-selection`（P3c merged image）、P3b FEniCS 自建镜像、P4 2-VM 调度、P5 三栈 adapter；CI 账单未修。Phase 2 出口仍按 spec/10 §8。
+> **2026-11-21 状态校准（取代 2026-11-19 块，P3c 后更新）**：Phase 0 冻结；Phase 1 验收（dsh × task-0001 × n=3 = 1.0/1.0/1.0；pi × n=1 = 1.0）；Phase 1.5 benchmark-validity gate 完成；**Phase 2 套件目标完成**——25 题（每 capability ≥3，含 4 道 `software-selection`）、L6 provenance 判据在 merged 镜像上实证、三张自建镜像（CalculiX/FEniCS/merged）clean-build 验收。未完成：P4 2-VM 调度、P5 三栈 adapter；CI 账单未修。Phase 2 出口仍按 spec/10 §8。
 
 ## 档 0 · 闭环 pilot（~1 天）
 

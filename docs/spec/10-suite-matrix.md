@@ -73,7 +73,7 @@ D5 已定（2026-11-18），执行顺序：
 
 - **v0/v0.5：复用 EngiWorld 镜像**（CalculiX-2.21 已在本机验证；FEniCS 候选镜像需确认版本、工件格式、pins 与审计可复现）。
 - **Phase 1：写自建镜像构建 recipe**，并产出一张自建镜像验证可复现（不切换）。
-- **Phase 2：切换自建 VeriCAx 镜像**并重跑审计；所有 pins 必须在同镜像内重新烘焙（换镜像 = 重跑审计，spec/04 §6）。P3a 自建 CalculiX 镜像已于 2026-11-20 验证（L0 + fake smoke），尚未切换；P3b FEniCS / P3c merged 待做。
+- **Phase 2：切换自建 VeriCAx 镜像**并重跑审计；所有 pins 必须在同镜像内重新烘焙（换镜像 = 重跑审计，spec/04 §6）。三张自建镜像已全部验收（P3a CalculiX 2026-11-20、P3b FEniCS 2026-11-21、P3c merged 2026-11-21）；merged 镜像承载 4 道 `software-selection`（`v0.2-cae-cli-merged`）。套件既有 21 题仍跑 EngiWorld 镜像，切换到自建镜像尚未执行。
 
 无论哪条路径，**换镜像 = 重跑审计**；pinned 参考值与镜像绑定（spec/04 §6）。
 
@@ -81,7 +81,7 @@ D5 已定（2026-11-18），执行顺序：
 
 - FEniCS 镜像已通过 ModelScope 通道获取（`engiworld.prepare_images --source modelscope --image FEniCS`，65 s；`FEniCS.qcow2` 17.0 GB，sha256 与 manifest 一致），dolfinx 0.10.0.post2。
 - 第二求解器 smoke **已完成**：`cae--cli--fenics--task-0001`（带孔板，L1–L3）P0 重审计 15/15、L0 参考自检 pass、假 agent tier-1 = 1.0——L1–L3 的验证逻辑与求解器无关得到实证。
-- **P1 已完成（2026-11-20/21）**：21 题；P2 L6 spike 完成；P3a 自建 CalculiX 镜像验收。剩余：4 道 `software-selection`（P3c merged image）、P3b FEniCS 自建镜像、P4 2-VM 调度、P5 栈扩展。
+- **P1 已完成（2026-11-20/21）**：21 题；P2 L6 spike 完成；P3a/P3b/P3c 三张自建镜像验收；**Phase 2 套件目标 25 题已达成**（2026-11-21，4 道 `software-selection` 落地）。剩余：P4 2-VM 调度、P5 栈扩展、E CI 账单。
 
 ## 4. 题量分解
 
@@ -95,14 +95,15 @@ D5 已定（2026-11-18），执行顺序：
 | open-environment | 0 | 3 | 0 | 3 |
 | **合计** | **12** | **9** | **4** | **25** |
 
-当前 **21 题已落地**（每 capability ≥3）；剩余 4 题全部是 `software-selection`，待 P3c merged image。新增 18 题（从 Phase 1 的 3 题算起）已全部过 P0 门。
+当前 **25 题已落地**（每 capability ≥3，21 题跑 EngiWorld 镜像 + 4 题跑 merged 镜像）；新增 22 题（从 Phase 1 的 3 题算起）已全部过 P0 门。
 
 ## 5. Split 纪律
 
 | split | 内容 | 时点 |
 |---|---|---|
 | `v0.1-cae-cli-pilot` | 0001–0003 | Phase 1 回归 |
-| `v0.2-cae-cli-25` | 当前 18 题；目标 25（冻结时按最终题量命名） | Phase 2 末冻结 |
+| `v0.2-cae-cli-25` | 18 题（EngiWorld 镜像） | Phase 2 末冻结 |
+| `v0.2-cae-cli-merged` | 4 题 `software-selection`（merged 镜像） | Phase 2 末冻结 |
 
 规则：
 
@@ -154,15 +155,17 @@ D5 已定（2026-11-18），执行顺序：
 - **D5 自建镜像（P3）与 P1 并行**：越晚换镜像，越多题要重烘 pins、重跑审计。
 - **verifier 软约束放宽到 ≤450 行**（spec/02 §5）。
 
-**P2 状态（2026-11-20）**：L6 判据已写入 spec/02 §1/§2/§6，task schema 增加 `provenance` 块（spec/01）。原型 `cae--cli--cross-solver--task-0001` 审计 15/15、robust 10/10、L0 pass、fake smoke 1.0；`capability` 如实写 `single-execution`，用固定 audit token + 伪造非空 field / 错误 token / foreign result 负例验证**拒绝**判据。真正的 `software-selection` 仍未验证，需 P3c merged image。
+**P2 状态（2026-11-20，P3c 后更新）**：L6 判据已写入 spec/02 §1/§2/§6，task schema 增加 `provenance` 块（spec/01，P3c 四题已填写）。原型 `cae--cli--cross-solver--task-0001` 审计 15/15、robust 10/10、L0 pass、fake smoke 1.0；`capability` 如实写 `single-execution`。**真正的 `software-selection` 已于 P3c 验证**：cross-solver task-0002…0005 在 merged image 上完成 L1–L3+L6 全管线（各 audit 15/15、robust 10/10、L0、fake smoke 1.0）。
 
-**P3 状态（2026-11-20）**：P3a 完成——clean build 自建 Ubuntu 24.04 + `ccx` 2.21-1 镜像（sha256 `91b1d6c8…47cd`），task-0001 L0 pass + fake smoke 1.0。套件仍跑 EngiWorld 镜像；切换需重烘 pins 并重跑审计（spec/04 §6）。P3b FEniCS / P3c merged cross-solver 镜像待做。
+**P3 状态（2026-11-21）**：三张自建镜像全部 clean-build 验收——P3a CalculiX 2.21（`91b1d6c8…47cd`）、P3b FEniCS 0.10.0.post2（`b0e2f239…ebc4`，PPA 0.10 绑定包已删、按固定上游 tag 重建）、P3c merged（`e6514410…a262`，双求解器，三家族 L0 全过）。套件既有 21 题仍跑 EngiWorld 镜像；切换需重烘 pins 并重跑审计（spec/04 §6），未执行。
 
 **open-environment 的 v0.2 形态（2026-11-20）**：最小实现是**本地 wheelhouse**——`init_file/wheels/` 提供工具轮子（scikit-fem、pygmsh），agent 在无外网的 sandbox 里自行创建/配置环境并安装；互联网/包源按任务放开留 v0.5。该形态用于 0014/0015，任务 JSON 的 `integrity_policy` 允许相应第三方包。
 
-**P1 完成（2026-11-20）**：21 题（single 6 / design 5 / cross-stage 4 / observation 3 / open-environment 3），满足 20 题下限与每 capability ≥3；距 25 目标 4 题，全部是 `software-selection`（待 P3c merged image）。
+**P1 完成（2026-11-20）**：21 题（single 6 / design 5 / cross-stage 4 / observation 3 / open-environment 3），满足 20 题下限与每 capability ≥3。
 
-**待决**：P3b/P3c、P4/P5 的具体开工时点与授权。
+**Phase 2 套件完成（2026-11-21）**：25 题（在 P1 基础上 +4 `software-selection`），capability 矩阵 6/5/4/4/3/3。
+
+**待决**：P4/P5 的具体开工时点与授权；E（CI 账单）。
 
 **P0 已完成（2026-11-20）**：4 题全部 A≥2、六类反作弊负例齐全、`robust: 10/10 consistent`；`audit_task.py --repeat N` 与 `pack_task.py` 打包门已生效（spec/02 §4.1）。
 
@@ -186,10 +189,10 @@ D5 已定（2026-11-18），执行顺序：
 
 | 项 | 依赖 | 影响 |
 |---|---|---|
-| 第二求解器镜像 | D5 | P3a CalculiX 自建镜像已验证；P3b FEniCS 自建镜像未做；不阻塞现有 21 题 |
+| 第二求解器镜像 | D5 | P3a/P3b/P3c 自建镜像已验证；不阻塞现有 25 题；默认镜像切换未执行 |
 | 发布时点 | D4 | 商标检索、org 占位、split 冻结时间 |
-| 任务作者产能 | 人力 | P1 完成 21 题（20 下限 + 1，每 capability ≥3）；距 25 目标 4 题（software-selection，待 P3c） |
-| provenance 判据 | 新 verifier 能力 | L6 已写入 spec/02；原型验证拒绝判据；真正选择待 P3c merged image |
+| 任务作者产能 | 人力 | Phase 2 完成 25 题（每 capability ≥3）；v0.5 扩到 5 求解器 × 20 待 P5 |
+| provenance 判据 | 新 verifier 能力 | L6 已写入 spec/02；原型 + P3c 四题在 merged image 上验证（native 对、token 绑定、全场重解比对） |
 | 图纸/报告输入格式 | task schema | `observation-reconstruct` 的 init_file 类型 |
 | open-environment 网络策略 | spec/09 | 默认 sandbox 无外网；按任务开包源 |
 | benchmark 修复 / tree 版本 | 审计 | 未修复题会把 benchmark 缺陷误读为能力差异；EngiWorld 2/20→8/20 主要是 repair |
