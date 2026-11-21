@@ -117,7 +117,7 @@ def main() -> int:
         provider_name="docker", path_to_vm=str(image), os_type="Ubuntu",
         action_space="pyautogui", require_a11y_tree=False,
         screen_size=(1920, 1080), headless=True, client_password="",
-        cache_dir=str(REPO / "cache" / "audit"),
+        cache_dir=str(REPO / "cache" / "audit" / args.task),
     )
 
     def sh(script: str, timeout: int = 600) -> None:

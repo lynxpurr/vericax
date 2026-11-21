@@ -1,6 +1,6 @@
 # Verifier audit record
 
-- date: 2026-11-21
+- date: 2026-11-22
 - task: cae--cli--cross-solver--task-0004 (evaluator func: exact_match)
 - image: VeriCAx-merged
 - reference submission summary: `0.8881431462826315`

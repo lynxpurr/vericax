@@ -1,6 +1,6 @@
 # Verifier audit record
 
-- date: 2026-11-20
+- date: 2026-11-22
 - task: cae--cli--cross-solver--task-0001 (evaluator func: exact_match)
 - image: CalculiX-2.21
 - reference submission summary: `-0.191155`
