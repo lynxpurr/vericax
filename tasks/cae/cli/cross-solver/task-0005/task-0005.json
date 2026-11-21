@@ -1,0 +1,56 @@
+{
+ "id": "cae--cli--cross-solver--task-0005",
+ "schema_version": "0.1",
+ "snapshot": "VeriCAx-merged",
+ "interface": "cli",
+ "source": "original",
+ "config": [
+  {
+   "type": "upload_file",
+   "parameters": {
+    "files": [
+     {
+      "local_path": "task-0005/init_file/brief.md",
+      "path": "/home/user/Desktop/brief.md"
+     }
+    ]
+   }
+  }
+ ],
+ "artifact_paths": [
+  "/home/user/Desktop/solution.inp",
+  "/home/user/Desktop/solution.dat",
+  "/home/user/Desktop/summary.txt"
+ ],
+ "integrity_policy": {
+  "native_interface_only": true,
+  "allow_native_deck_edit": true,
+  "forbid_gui_control": true,
+  "forbid_third_party_imports": [
+   "scipy",
+   "sympy",
+   "sklearn",
+   "torch",
+   "pyvista"
+  ],
+  "forbid_read": [
+   "ground_truth",
+   "evaluator"
+  ]
+ },
+ "evaluator": {
+  "func": "exact_match"
+ },
+ "limits": {
+  "cli_max_steps": 100,
+  "gui_max_steps": null,
+  "active_time_seconds": 18000
+ },
+ "capability": "software-selection",
+ "solver_probe": "/usr/bin/ccx -v > /tmp/_ccxv.txt 2>&1; grep -m1 Version /tmp/_ccxv.txt; python3 -c 'import dolfinx; print(dolfinx.__version__)'",
+ "solver_probes": {
+  "calculix": "/usr/bin/ccx -v > /tmp/_ccxv.txt 2>&1; grep -m1 Version /tmp/_ccxv.txt",
+  "fenics": "python3 -c 'import dolfinx; print(dolfinx.__version__)'"
+ },
+ "instruction": "Work from a terminal with CalculiX 2.21 (`/usr/bin/ccx`) and dolfinx 0.10 (FEniCSx) available; this is a software-selection task, so pick the tool that can actually deliver what the client requires.\n\nThe client needs a modal verification of a thin plate and requires the deliverables in the solver's native archive format: an Abaqus-style input deck plus the solver's own printed eigenvalue table and mode shapes. Only one of the two installed tools produces that native pair.\n\nProblem: a thin square plate 100 mm x 100 mm, thickness 1 mm, plane stress, modelled as a 10 x 10 grid of CPS4 elements (121 nodes, node i at coordinates derived from the grid; the evaluator checks the exact grid). Material E = 210000 MPa, nu = 0.3. The edge x = 0 is clamped (all 11 nodes, dofs 1-2). Build /home/user/Desktop/solution.inp:\n- exactly one *Step containing a *Frequency analysis (no *Static) requesting at least one eigenvalue\n- define a node set named exactly `VCAX_AUDIT_0005` containing all 121 nodes, and request its displacements with `*Node Print, NSET=VCAX_AUDIT_0005`, `U`\n\nSubmit the job with `/usr/bin/ccx` and produce /home/user/Desktop/solution.dat.\n\nWrite /home/user/Desktop/summary.txt as one number: f1, the first natural frequency in Hz computed from the mode-1 eigenvalue of your run (f = sqrt(lambda)/(2*pi)).\n\nThe evaluator re-runs `ccx` on your deck and compares the eigenvalue table and every nodal mode-1 displacement in your `solution.dat` (for the set `VCAX_AUDIT_0005`) to its own fresh run, within 1e-4 relative tolerance. A fabricated non-empty .dat, a result from another solver (e.g. an XDMF/HDF5 checkpoint), a mixed native result, or a result from a different challenge token is rejected. The reported summary must come from your own run."
+}

@@ -52,10 +52,14 @@
 | `cae--cli--fenics--task-0015` | open-environment | FEniCS 0.10.0.post2 | L1–L3 | 13/13 | `v0.2-cae-cli-25` |
 | `cae--cli--fenics--task-0016` | open-environment | FEniCS 0.10.0.post2 | L1–L3 | 11/11 | `v0.2-cae-cli-25` |
 | `cae--cli--cross-solver--task-0001` | single-execution (L6 prototype) | CalculiX 2.21 | L1–L3 + L6 | 15/15 | `v0.2-cae-cli-l6-pilot` |
+| `cae--cli--cross-solver--task-0002` | software-selection | CalculiX（*Buckle）| L1–L3 + L6 | 15/15 | `v0.2-cae-cli-merged` |
+| `cae--cli--cross-solver--task-0003` | software-selection | FEniCS（异质模量）| L1–L3 + L6 | 15/15 | `v0.2-cae-cli-merged` |
+| `cae--cli--cross-solver--task-0004` | software-selection | FEniCS（平流-扩散）| L1–L3 + L6 | 15/15 | `v0.2-cae-cli-merged` |
+| `cae--cli--cross-solver--task-0005` | software-selection | CalculiX（*Frequency）| L1–L3 + L6 | 15/15 | `v0.2-cae-cli-merged` |
 
-2026-11-20（P0 重审计 + P1 试点 + P1 第二批 + P1 完成）后计数如上；`v0.1-cae-cli-pilot` 保留 3 题，
-`v0.2-cae-cli-25` 随 P1 增长。审计记录以各任务包的 `ground_truth/audit.md`
-为准（robust 10/10）。
+2026-11-21（P0 重审计 + P1 试点 + P1 第二批 + P1 完成 + P3c）后计数如上；`v0.1-cae-cli-pilot` 保留 3 题，
+`v0.2-cae-cli-25` 随 P1 增长，`v0.2-cae-cli-merged` 为 P3c merged image 专用 split（4 题）。审计记录以各任务包的
+`ground_truth/audit.md` 为准（robust 10/10）。
 
 ## 3. 求解器矩阵
 
@@ -63,7 +67,7 @@
 |---|---|---|---|---|
 | **CalculiX** | 2.21 / `CalculiX-2.21.qcow2` | 已验证（12 题） | 12 | P1 完成 12 题 |
 | **FEniCS** | 0.10.0.post2 / `FEniCS.qcow2` | **已验证（9 题）** | 9 | 第二求解器；P1 完成 9 题（DO/observation/open-environment） |
-| **cross-solver** | merged image（P2 决定） | 新能力 | 4 | `software-selection` 专用；L6 判据见 spec/02 §1；merged image 由 P3 产出 |
+| **cross-solver** | 2.21 + 0.10.0.post2 / `VeriCAx-merged.qcow2`（P3c 自建，sha `e6514410…a262`） | **已验证（4 题 + 原型）** | 4 | `software-selection` 专用；L6 判据见 spec/02 §1；merged image 2026-11-21 验收（calculix/fenics/cross-solver 三家族 L0 + 4 题全管线） |
 
 D5 已定（2026-11-18），执行顺序：
 

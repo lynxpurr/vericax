@@ -47,7 +47,7 @@ verifier 是本基准的第一公民。社区（CAD Bench v2、BIM-Edit、FEABen
 - **L6.4 环境记录**：`image_sha256`、`snapshot`、required tool 的 probe 必须记录；合并镜像需要 `solver_probes` 映射（不能只有一个 `solver_probe`）。verifier 只接受 required tool 的分支，即使镜像里同时存在另一个工具。
 - **L6.5 审计**：正面 + 至少 2 条 required tool 的合法替代路径；负面组必须覆盖：其他工具工件、重放/错误 token、混合原生分支、伪造的非空原生结果。其他工具 fixture 必须带自己的 provenance 记录（生成镜像的 `image_sha256`、工具版本、命令、sha256），不得当作 pin。
 
-**P2 沙箱形态决定（2026-11-20）**：cross-solver 采用**单镜像双求解器**（merged image）。理由：当前契约是单 `snapshot`、单 sandbox、单 proxy endpoint；多 VM 选择需要 proxy 路由、第二产物通道与契约变更，属于 P4 而不是 P2。P3 负责产出 merged image；在它可用前，L6 原型题用 CalculiX 镜像 + 固定 audit token + 其他工具 fixture 验证**拒绝**判据，不声称已完成真正的 `software-selection`。
+**P2 沙箱形态决定（2026-11-20）**：cross-solver 采用**单镜像双求解器**（merged image）。理由：当前契约是单 `snapshot`、单 sandbox、单 proxy endpoint；多 VM 选择需要 proxy 路由、第二产物通道与契约变更，属于 P4 而不是 P2。P3 产出 merged image（2026-11-21 验收，`VeriCAx-merged.qcow2`）；4 道 `software-selection` 题（cross-solver task-0002…0005）在 merged image 上完成 L1–L3+L6 全管线（audit 15/15、robust 10/10、L0、fake smoke 1.0），`software-selection` capability 就绪。L6 原型题保留 CalculiX 镜像 + 固定 audit token 作拒绝判据回归。
 
 ## 2. 反作弊规格
 

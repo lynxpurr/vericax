@@ -75,7 +75,14 @@ def _verify_task_package(task_dir: Path) -> None:
 
     manifest = task_dir / "resources.sha256"
     if not manifest.is_file():
-        raise SystemExit(f"package has no manifest: {task_dir}")
+        # Bootstrap: a brand-new task has neither manifest nor L0 record, and
+        # the pack gate refuses to write a manifest without a passing L0
+        # record, so the first `vericax audit` must be allowed through without
+        # a manifest. Publishing stays gated at pack time.
+        l0 = task_dir / "ground_truth" / pack_task.L0_RECORD
+        if l0.is_file():
+            raise SystemExit(f"package has no manifest: {task_dir}")
+        return
     files = pack_task.package_files(task_dir)
     expected = manifest.read_text().strip().splitlines()
     actual = [f"{pack_task.sha256(p)}  {p.relative_to(task_dir).as_posix()}" for p in files]
@@ -381,12 +388,17 @@ def run_reference_selfcheck(task_id: str, keep_vm: bool = False) -> dict:
             vm.close()
 
     passed = bool(summary_matched and verifier_ok)
+    manifest = task_dir / "resources.sha256"
     record = {
         "task_id": task_id,
         "performed": True,
         "passed": passed,
         "checked_at": datetime.now(timezone.utc).isoformat(),
-        "tree_version": validity.tree_version(task_dir),
+        # Bootstrap L0 (new task, no manifest yet) records a null tree
+        # version; re-run the L0 after `pack_task.py` writes the manifest and
+        # the record gains its final digest.
+        "tree_version": (validity.tree_version(task_dir)
+                         if manifest.is_file() else None),
         "image_sha256": image_sha,
         "solver_version": solver_version,
         "gt_deck": "audit_cases.CASES[0]",
