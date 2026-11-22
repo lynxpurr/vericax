@@ -1,0 +1,83 @@
+{
+  "id": "cae--cli--fenics--task-0005",
+  "schema_version": "0.1",
+  "snapshot": "FEniCS",
+  "interface": "cli",
+  "instruction": "Work from a terminal in this FEniCS environment (FEniCSx / dolfinx 0.10 is installed for python3; `gmsh` and `meshio` are available).\n\nProblem: a 2D plane-stress cantilever 100 mm long and 20 mm wide (thickness 1 mm) has a circular lightening hole of radius R centred at (40, 0). A total tip force of -100 N in the y direction is applied as a uniform shear traction over the tip edge. The hole radius R is your design variable (2 <= R <= 8 mm).\n\nDeliver in /home/user/Desktop:\n1. `mesh.msh` - gmsh ASCII mesh (2.2 or 4.1) of the plate with the circular hole, triangular elements, at least 2500 triangles and at least 60 element edges around the hole; no nodes inside the hole.\n2. `solve.py` - the Python script that builds and solves the model (kept for reproduction; the evaluator does not execute it).\n3. `summary.txt` - exactly one line with two comma-separated numbers: `R, tip_uy` where `R` is the meshed hole radius (mm) and `tip_uy` is the average y displacement of the nodes on the tip edge (x >= 100 - 1e-3), in mm.\n\nObjective: remove mass, i.e. make R as large as possible, subject to a tip-deflection limit |tip_uy| <= 0.27 mm. Material: E = 210000 MPa, nu = 0.3, plane stress, thickness 1 mm. The score is the normalized mass reduction from the R=2 mm baseline to the best feasible design: `score = clamp((R^2 - 4) / (6.4^2 - 4), 0, 1)`. A design that exceeds the deflection limit, leaves the radius bounds, or violates the mesh requirements scores 0.\n\nSolve with dolfinx. The evaluator re-solves the submitted mesh independently; the reported numbers must come from your own computation on that mesh.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {
+            "local_path": "task-0005/init_file/brief.md",
+            "path": "/home/user/Desktop/brief.md"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/mesh.msh",
+    "/home/user/Desktop/summary.txt",
+    "/home/user/Desktop/solve.py"
+  ],
+  "integrity_policy": {
+    "native_interface_only": true,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": [
+      "scipy",
+      "sympy",
+      "sklearn",
+      "torch",
+      "pyvista"
+    ],
+    "forbid_read": [
+      "ground_truth",
+      "evaluator"
+    ]
+  },
+  "evaluator": {
+    "func": "quantified_score",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "task-0005/eval.py",
+              "path": "/home/user/vericax/eval.py"
+            }
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    },
+    "metric": {
+      "name": "normalized mass reduction",
+      "baseline_score": 0.0,
+      "direction": "maximize",
+      "output_field": "score"
+    }
+  },
+  "limits": {
+    "cli_max_steps": 100,
+    "gui_max_steps": null,
+    "active_time_seconds": 18000
+  },
+  "related_apps": [
+    "fenics"
+  ],
+  "capability": "design-optimization",
+  "splits": [
+    "v0.2-cae-cli-25"
+  ],
+  "possibility_of_env_change": "low",
+  "solver_probe": "python3 -c 'import dolfinx;print(dolfinx.__version__)'"
+}

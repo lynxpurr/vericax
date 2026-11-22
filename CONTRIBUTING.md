@@ -3,6 +3,19 @@
 Thanks for helping build an artifact-centric benchmark. Two contribution paths:
 **new tasks** and **verifier/tooling improvements**.
 
+## Branching
+
+`main` is the release branch, `develop` is the integration branch and the
+repository default. Every change starts on a `feature/<slug>` branch off
+`develop` and lands through a pull request; releases are `develop -> main` PRs
+that get tagged. Full model, release steps and the server-side ruleset to apply
+later: [BRANCHING.md](BRANCHING.md).
+
+```bash
+./scripts/install_git_hooks.sh      # once per clone: blocks direct pushes
+./scripts/start_feature.sh <slug>   # branch off an up-to-date develop
+```
+
 ## Ground rules
 
 1. **Scores only come from re-opening artifacts.** A verifier that trusts the

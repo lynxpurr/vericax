@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Reject direct pushes to the protected branches.
+#
+# Install once per clone:  ./scripts/install_git_hooks.sh
+# Emergency override:      ALLOW_DIRECT_PUSH=1 git push origin develop
+set -euo pipefail
+
+protected="main develop"
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+    # branch deletions are a different action; let the server decide
+    case "$remote_ref" in
+        refs/heads/*) ;;
+        *) continue ;;
+    esac
+    branch="${remote_ref#refs/heads/}"
+    for p in $protected; do
+        if [ "$branch" = "$p" ]; then
+            if [ "${ALLOW_DIRECT_PUSH:-0}" = "1" ]; then
+                echo "warning: direct push to '$branch' allowed by ALLOW_DIRECT_PUSH=1" >&2
+                break
+            fi
+            cat >&2 <<EOF
+push rejected: '$branch' is protected.
+
+  main    release branch   (merge develop through a pull request)
+  develop integration      (merge feature/* through a pull request)
+
+Create a branch and open a PR instead:
+
+  git switch develop && git pull
+  git switch -c feature/<slug>
+  git push -u origin feature/<slug>
+  gh pr create --base develop --fill
+
+Emergency override: ALLOW_DIRECT_PUSH=1 git push
+EOF
+            exit 1
+        fi
+    done
+done
+
+# CI is account-blocked on GitHub (see docs/ci.md); run its local replica
+# before allowing a push. SKIP_LOCAL_CI=1 is the documented emergency escape.
+if [ "${SKIP_LOCAL_CI:-0}" != "1" ]; then
+    "$(git rev-parse --show-toplevel)/scripts/ci_local.sh"
+fi
+exit 0

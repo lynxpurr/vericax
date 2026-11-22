@@ -1,0 +1,83 @@
+{
+  "id": "cae--cli--fenics--task-0003",
+  "schema_version": "0.1",
+  "snapshot": "FEniCS",
+  "interface": "cli",
+  "instruction": "Work from a terminal in this FEniCS environment (FEniCSx / dolfinx 0.10 is installed for python3; the `gmsh` binary is on PATH, and `meshio` is available).\n\nProblem: a thin square plate 200 mm x 200 mm with a central circular hole of radius R is loaded by a uniform uniaxial tension sigma_xx = 100 MPa along one pair of opposite edges. Model ONE QUARTER of the plate (a 100 mm x 100 mm domain with the hole quarter at the origin) using symmetry:\n- domain: x in [0, 100], y in [0, 100], excluding the quarter disk x^2 + y^2 <= R^2 at the origin\n- the hole radius R is your design variable, with 5 <= R <= 35 mm\n- symmetry: ux = 0 on the edge x = 0; uy = 0 on the edge y = 0\n- the hole boundary and the edge y = 100 are traction-free\n- material: E = 210000 MPa, nu = 0.3, plane stress, thickness 1 mm\n- load: uniform traction t = (100, 0) MPa on the edge x = 100\n\nDeliver in /home/user/Desktop:\n1. `mesh.msh` - a gmsh ASCII mesh (2.2 or 4.1) of the quarter domain with triangular elements, refined around the hole so the peak stress is mesh-converged: at least 80 element edges along the hole arc, at least 3000 triangular elements in total, and no nodes inside the hole.\n2. `solve.py` - the Python script that builds and solves the model (kept for reproduction; the evaluator does not execute it).\n3. `summary.txt` - exactly one line with three comma-separated numbers: `R, sigma_xx_max, ux_max` where\n   - `R` is the hole radius you meshed, in mm;\n   - `sigma_xx_max` is the maximum sigma_xx over the mesh vertices on the hole boundary (|sqrt(x^2+y^2) - R| <= 1e-3), in MPa. Evaluate the stress at vertices by projecting the stress field to a continuous field (for example P1) before taking the maximum;\n   - `ux_max` is the maximum ux over the mesh vertices on the loaded edge (x >= 100 - 1e-3), in mm.\n\nObjective: remove mass, i.e. make R as large as possible, subject to a peak-stress limit of 400 MPa on the hole boundary. The score is the normalized mass reduction from the R=10 mm baseline toward the best feasible design at the limit (R ~= 31.56 mm): `score = clamp((R^2 - 100) / (31.56^2 - 100), 0, 1)`. A design whose re-solved peak stress exceeds 400 MPa, or that violates the radius bounds or mesh requirements, scores 0.\n\nSolve with dolfinx. The evaluator re-solves the submitted mesh independently, so the reported numbers must come from your own computation on that mesh.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {
+            "local_path": "task-0003/init_file/brief.md",
+            "path": "/home/user/Desktop/brief.md"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/mesh.msh",
+    "/home/user/Desktop/summary.txt",
+    "/home/user/Desktop/solve.py"
+  ],
+  "integrity_policy": {
+    "native_interface_only": true,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": [
+      "scipy",
+      "sympy",
+      "sklearn",
+      "torch",
+      "pyvista"
+    ],
+    "forbid_read": [
+      "ground_truth",
+      "evaluator"
+    ]
+  },
+  "evaluator": {
+    "func": "quantified_score",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "task-0003/eval.py",
+              "path": "/home/user/vericax/eval.py"
+            }
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    },
+    "metric": {
+      "name": "normalized mass reduction",
+      "baseline_score": 0.0,
+      "direction": "maximize",
+      "output_field": "score"
+    }
+  },
+  "limits": {
+    "cli_max_steps": 100,
+    "gui_max_steps": null,
+    "active_time_seconds": 18000
+  },
+  "related_apps": [
+    "fenics"
+  ],
+  "capability": "design-optimization",
+  "splits": [
+    "v0.2-cae-cli-25"
+  ],
+  "possibility_of_env_change": "low",
+  "solver_probe": "python3 -c 'import dolfinx;print(dolfinx.__version__)'"
+}

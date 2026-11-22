@@ -1,0 +1,32 @@
+# VeriCAx agent container recipe, phase 2 (P5: five target stacks).
+#
+# Base is the pinned upstream Hermes image: it already carries Python 3.14,
+# Node 26 and the Hermes 0.21.6 runtime at /opt/hermes with HERMES_HOME=/opt/data.
+# The other four stacks are installed from npm at the same pinned versions the
+# adapters declare. No repository content and no credentials are baked in:
+# credentials arrive at run time via adapter [container] env_from.
+#
+# Build: containers/agent/build-phase2.sh  -> vericax-agent:phase2
+FROM nousresearch/hermes-agent:v0.21.6
+
+# Pinned stack versions match adapters/*.toml (spec/08 section 5, D1).
+# npm 12 ignores lifecycle scripts unless allow-listed; opencode's postinstall
+# downloads its native binary, and dsh/node-pty/koffi build native helpers.
+# Without this list opencode.exe is only a 479-byte error stub.
+RUN npm install -g --allow-scripts=opencode-ai,@google/genai,esbuild,koffi,@deepseek-ai/dsh-subprocess-local,node-pty,protobufjs,openclaw \
+    "@deepseek-ai/dsh@0.2.1-rc.5" \
+    "@earendil-works/pi-coding-agent@1.4.0" \
+    "opencode-ai@1.19.5" \
+    "openclaw@2026.9.9"
+
+# The base image's npm prefix lives under the pinned Node tool store.
+ENV PATH=/opt/hermes/tools/node-26.7.0-linux-x64/bin:$PATH
+
+COPY vericax-sh /usr/local/bin/vericax-sh
+RUN chmod 0755 /usr/local/bin/vericax-sh
+
+WORKDIR /vericax
+
+# The base image's entrypoint is the Hermes dispatch script; the harness makes
+# the adapter's launch argv the container's main process, so clear it.
+ENTRYPOINT []

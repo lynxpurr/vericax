@@ -1,0 +1,84 @@
+{
+  "id": "cae--cli--calculix--task-0012",
+  "schema_version": "0.1",
+  "snapshot": "CalculiX-2.21",
+  "interface": "cli",
+  "instruction": "Work from a terminal with CalculiX 2.21 (`/usr/bin/ccx`).\n\n`/home/user/Desktop/report.md` is the ONLY source of the truss data. Read the report (nodes, members, area, supports, load, material), then reconstruct and solve the two-bar truss with T3D2 elements:\n- 3 nodes and 2 members exactly as reported\n- one `*Solid Section` with the reported area line\n- supports exactly as reported (both base nodes pinned in x/y, all nodes fixed in z)\n- apply the reported load at node 3\n\nSubmit with `/usr/bin/ccx` and produce `/home/user/Desktop/solution.inp` and `/home/user/Desktop/solution.dat`. Results reach `.dat` through `*Node Print` with an explicit node set.\n\nWrite `/home/user/Desktop/summary.txt` as two comma-separated numbers: `ux3, uy3` — the x and y displacements of node 3, in mm.\n\nThe evaluator re-solves your deck independently; the reported numbers must come from your own run.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {
+            "local_path": "task-0012/init_file/brief.md",
+            "path": "/home/user/Desktop/brief.md"
+          },
+          {
+            "local_path": "task-0012/init_file/report.md",
+            "path": "/home/user/Desktop/report.md"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/solution.inp",
+    "/home/user/Desktop/solution.dat",
+    "/home/user/Desktop/summary.txt"
+  ],
+  "integrity_policy": {
+    "native_interface_only": true,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": [
+      "numpy",
+      "scipy"
+    ],
+    "forbid_read": [
+      "ground_truth",
+      "evaluator"
+    ]
+  },
+  "evaluator": {
+    "func": "exact_match",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "task-0012/eval.py",
+              "path": "/home/user/vericax/eval.py"
+            }
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "True\n"
+      }
+    }
+  },
+  "limits": {
+    "cli_max_steps": 100,
+    "gui_max_steps": null,
+    "active_time_seconds": 18000
+  },
+  "related_apps": [
+    "calculix"
+  ],
+  "capability": "observation-reconstruct",
+  "splits": [
+    "v0.2-cae-cli-25"
+  ],
+  "possibility_of_env_change": "low",
+  "solver_probe": "/usr/bin/ccx -v 2>&1 | head -5"
+}

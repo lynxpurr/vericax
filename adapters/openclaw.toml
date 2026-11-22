@@ -1,0 +1,43 @@
+# openclaw adapter (spec/08 section 5, P5): isolated headless agent turn.
+# `agent exec --message-file -` reads the task from stdin, so the instruction
+# never lands in argv. --config pins the run to the adapter-owned profile and
+# --state-dir keeps sessions under the per-run mount. Credentials are a
+# SecretRef to DEEPSEEK_API_KEY, forwarded from the host.
+name = "openclaw"
+version = "2026.9.9"
+
+[launch]
+command = ["openclaw", "agent", "exec",
+           "--config", "/root/.openclaw/openclaw.json",
+           "--state-dir", "/root/.openclaw",
+           "--model", "deepseek/deepseek-flash",
+           "--code-mode", "direct", "--json", "--timeout", "18000",
+           "--message-file", "-"]
+instruction = "stdin"
+approval = []
+grace_seconds = 10
+
+[sandbox]
+shell = "path"
+shell_target = "vericax-sh"
+file_tools = "disable"
+working_dir = "/home/user/Desktop"
+
+[output]
+format = "json"
+# The stable --json envelope carries one usage object at the top level.
+cost_path = "usage"
+cost_event_types = []
+
+[state]
+dir = ".openclaw"
+template_dir = "openclaw-profile"
+
+[model]
+name = "deepseek-flash"
+endpoint = "deepseek-official"
+
+[container]
+image = "vericax-agent:phase2"
+env_from = ["DEEPSEEK_API_KEY"]
+env = { OPENCLAW_STATE_DIR = "/root/.openclaw", OPENCLAW_CONFIG_PATH = "/root/.openclaw/openclaw.json" }

@@ -1,0 +1,47 @@
+# pi adapter (spec/08 section 5, D1): non-interactive print mode.
+# pi has native read/write/edit tools (file-channel risk, spec/08 section 6.4);
+# the adapter disables the write/edit tools so artifacts can only be produced
+# through bash + vericax-sh inside the sandbox. `--no-session` keeps runs
+# stateless (invariant E2).
+name = "pi"
+version = "1.4.0"
+
+[launch]
+command = ["pi", "--mode", "json", "--no-session", "--print", "--exclude-tools", "write,edit", "{instruction}"]
+instruction = "argv"
+approval = []
+grace_seconds = 10
+
+[sandbox]
+shell = "path"
+shell_target = "vericax-sh"
+file_tools = "disable"
+working_dir = "/home/user/Desktop"
+
+[output]
+format = "json"
+# pi --mode json emits per-message usage objects (input/output/reasoning).
+# Only message_end carries the final usage for one LLM call; the message_update
+# stream repeats partial usage and must not be summed (G3: 652 update events
+# were previously counted as 652 calls).
+cost_path = "message.usage"
+cost_event_types = ["message_end"]
+
+[state]
+# pi keeps auth + provider catalogs under $HOME/.pi/agent; the harness copies
+# the declared seeds into the per-run state dir and mounts it read-write there
+# (E2: no cross-run state sharing).
+dir = ".pi/agent"
+seed = [
+    "~/.pi/agent/auth.json",
+    "~/.pi/agent/models.json",
+    "~/.pi/agent/models-store.json",
+]
+
+[model]
+name = "xiaomi-mimo"
+endpoint = "mimo-v2.6-pro"
+
+[container]
+image = "vericax-agent:phase1"
+env_from = []

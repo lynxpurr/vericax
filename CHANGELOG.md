@@ -4,14 +4,86 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0-alpha] - 2026-11-22
+
+Alpha release of the 26-package suite on the three self-built VM images.
+Conformance for the three new stacks is n=1; leaderboard-style comparisons
+require n>=3 runs.
+
+### Added
+- `vericax batch --parallel 2` (P4): concurrent episodes with per-episode
+  overlay/container/proxy/cache/scoring, `--payload-dir-map` and
+  `--image SNAPSHOT=PATH` for mixed task sets. Two fake episodes scored 1.0
+  each in 423 s wall (841 s serial).
+- Per-episode L6 challenge binding (P4): `{challenge}` instruction placeholder,
+  `VERICAX_CHALLENGE` in the agent container, `VERICAX_CHALLENGE` +
+  `VERICAX_TOOL` in the scoring instance. Replayed audit-token artifact is
+  rejected (1.0 dynamic vs 0.0 replay).
+- Adapters and phase-2 agent image for `opencode 1.19.5`, `hermes 0.21.6`,
+  `openclaw 2026.9.9` (P5); n=1 conformance on task-0001 is 1.0 for all three.
+- `scripts/ci_local.sh` (CI replica + offline tests), wired into the pre-push
+  hook; `docs/ci.md` records the GitHub Actions billing blocker (E).
+- `scripts/audit_suite.py`: audit → pack → L0 → pack-check for every package,
+  two tasks in flight; used for the default-image switch.
+- Self-built default images: all 26 packages re-audited on CalculiX
+  `91b1d6c8…`, FEniCS `b0e2f239…` and merged `e6514410…` (2026-11-22).
+- task-0014/0016 wheelhouses include `scipy 1.13.1`, the runtime dependency of
+  scikit-fem/trimesh that the self-built FEniCS image does not ship.
+- `vericax audit --task <id> --group reference`: the L0 benchmark-validity gate.
+  It replays the reference case, compares the produced summary with the shipped
+  GT summary, runs the verifier, and writes
+  `ground_truth/reference_selfcheck.json` (excluded from `resources.sha256`).
+- `summary.json` provenance: `run_mode`, `tree_version`, `reference_selfcheck`
+  and `kind`. `vericax report` groups by tree/run mode and excludes test/debug
+  episodes by default.
+- Adapter `output.cost_event_types`; pi uses `message_end` at `message.usage`,
+  so streamed `message_update` events are no longer counted as LLM calls.
+- `tests/test_audit_tooling.py`: offline tests for verdict expectations, the
+  rejection margin and the per-case workspace restore. `scripts/ci_local.sh`
+  and the GitHub workflow run 29 tests in total.
+
+### Changed
+- `run_episode` now closes the sandbox before booting the scoring instance
+  (spec/09 E5), so N parallel episodes hold at most N VMs.
+- L6 task instructions use `{challenge}`; `provenance.challenge` remains the
+  fixed audit token. Verifiers read `VERICAX_CHALLENGE`/`VERICAX_TOOL` with
+  audit-safe defaults.
+- Spec calibration from the 2026-11-18/19 EngiWorld audit: L0 GT self-check
+  (`02`), `run_mode`/`tree_version`/`reference_selfcheck` (`03`), tolerant
+  verifier parsing, CLI artifact-write policy (`04`/`08`/`09`), and the
+  benchmark-validity gate (`05`/`10`). Provenance updated.
+- Added `docs/lessons-2026-11-19.md` with the audit-calibration rationale.
+- `scripts/audit_task.py` snapshots the Desktop after VM reset and restores it
+  before every case, and removes regular files created in `/tmp` by the previous
+  case. Declared artifacts, solver side files and undeclared scratch can no
+  longer leak across audit cases.
+- Numeric audit records include the rejection margin
+  (`min(accepted) - max(rejected)`); an audit fails when the positive and
+  negative score bands overlap. Exact-match tasks record `n/a`.
+- `integrity_policy.allow_native_deck_edit` is confirmed in spec/01 section 2
+  and spec/02 section 2 as a channel declaration: native decks may be edited,
+  but the verifier re-runs the submitted deck and the L6.2 comparison plus the
+  N5 fabricated-summary negative cover the anti-forgery path.
+- Release preparation: image build recipes now require
+  `VERICAX_OSWORLD_SERVER` instead of falling back to an author-specific path;
+  the code-of-conduct reporting channel, provenance wording and the task
+  proposal capability list were aligned with the public-release policy.
+
+### Fixed
+- pi cost accounting on the recorded task-0001 episode: 7 LLM calls / 4,593
+  input / 2,897 output / 1,399 reasoning tokens instead of summing every
+  streamed update event.
 
 ### Planned
-- Fourth pilot task on a second solver (FEniCS) to demonstrate that the verifier
-  layers are solver-agnostic.
-- Tier 1 (trusted loop): out-of-band verifier execution and the anti-cheat layer
-  from `docs/spec/02` section 2 implemented as reusable runtime code.
-- Public release of the task suite under the `vericax` organisation.
+- Public alpha release of the task suite and tooling. Moving to a dedicated
+  organisation is deferred until the `vericax` name is held.
+
+### Known limitations
+- Conformance for opencode/hermes/openclaw is n=1; no leaderboard claims yet.
+- FEniCS ground-truth `.h5` bytes differ between regenerations; pins and
+  summaries are stable, and `tree_version` identifies the audited tree.
+- `cross-solver/task-0005`'s verifier is 454 lines, a recorded exception in
+  spec/02 section 5.
 
 ## [0.1.0] - 2026-11-18
 

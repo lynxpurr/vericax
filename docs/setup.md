@@ -12,7 +12,7 @@ are large and are *not* part of this repository.
 | `/dev/kvm` accessible | without it QEMU falls back to slow emulation |
 | netfilter legacy modules | `ip_tables`, `iptable_nat`, `iptable_filter`, `iptable_mangle` must be loaded on the host; otherwise QEMU silently degrades to user-mode networking and the VM never becomes reachable. Persist with e.g. `/etc/modules-load.d/vericax-netfilter.conf` |
 | `zstd` | to decompress image archives |
-| Python 3.10+ | 3.12 recommended; the runtime venv is separate |
+| Python 3.12 with venv | the runtime pins `numpy~=1.26`, which has no Python 3.14 wheels. On Debian/Ubuntu install `python3.12-venv`, or create the venv with `uv venv --python 3.12`; the runtime venv is separate |
 
 Deployment pitfalls observed in practice are listed in
 [`docs/spec/04-environment-spec.md`](spec/04-environment-spec.md) section 3.
@@ -26,8 +26,16 @@ the one released with EngiWorld (MIT):
 ```bash
 git clone https://github.com/Hongcheng-Gao/EngiWorld.git
 cd EngiWorld/runtime
-python3 -m venv .venv
+python3 -m venv .venv            # needs python3.12-venv on Ubuntu
 .venv/bin/pip install -e ".[worker-api,download]"
+```
+
+If the system Python is 3.13/3.14 or `ensurepip` is unavailable, create the
+venv with uv instead:
+
+```bash
+uv venv --python 3.12 --seed .venv
+uv pip install --python .venv/bin/python -e ".[worker-api,download]"
 ```
 
 `pip install -e` matters: several entry points resolve the engine relative to the
@@ -35,8 +43,24 @@ source tree, and a non-editable install points them into `site-packages`.
 
 ## 3. VM images (external)
 
-Images are published as `qcow2.zst` archives with a manifest and checksums. For
-the CalculiX pilot tasks:
+The suite default since 2026-11-22 is the three **self-built** images produced
+by `containers/images/*/build.sh`:
+
+| snapshot name | build output |
+|---|---|
+| `CalculiX-2.21.qcow2` | `~/vericax-image-build/calculix/out/` |
+| `FEniCS.qcow2` | `~/vericax-image-build/fenics/out/` |
+| `VeriCAx-merged.qcow2` | `~/vericax-image-build/merged/out/` |
+
+The build recipes pin every package; see the per-image `README.md`. Set
+`VERICAX_OSWORLD_SERVER` to the runtime's `engine/desktop_env/server`
+directory when building; the scripts refuse to guess a path. Pinned verifier
+references are bound to the image they were measured on, so switching images
+requires a full re-audit (`scripts/audit_suite.py`).
+
+The older EngiWorld images are still supported for reference. They are
+published as `qcow2.zst` archives with a manifest and checksums. For the
+CalculiX pilot tasks:
 
 ```bash
 # from the runtime/ directory, with its venv
@@ -54,12 +78,28 @@ China. The downloader verifies the archive against the published SHA-256.
 cp vericax.toml.example vericax.toml   # gitignored
 ```
 
+`scripts/check_setup.py` checks all three suite snapshots by default. When only
+one image is present, pass `--snapshot CalculiX-2.21` (repeatable) to check just
+that one:
+
 ```toml
 [runtime]
 path = "/path/to/EngiWorld/runtime"
 
 [images]
-dir = "/path/to/environment-images/images"
+# One directory holding all three self-built qcow2 files by snapshot name.
+dir = "/path/to/vericax-image-build/suite"
+```
+
+The build outputs live in separate directories; link them under one suite
+directory (or copy them):
+
+```bash
+mkdir -p /path/to/vericax-image-build/suite
+cd /path/to/vericax-image-build/suite
+ln -s ../calculix/out/CalculiX-2.21.qcow2 CalculiX-2.21.qcow2
+ln -s ../fenics/out/FEniCS.qcow2           FEniCS.qcow2
+ln -s ../merged/out/VeriCAx-merged.qcow2   VeriCAx-merged.qcow2
 ```
 
 Environment variables win over the file: `VERICAX_RUNTIME`,
@@ -88,3 +128,14 @@ when that record has no `MISS`.
 python scripts/pack_task.py --task cae--cli--calculix--task-0001          # write manifest
 python scripts/pack_task.py --task cae--cli--calculix--task-0001 --check  # CI mode
 ```
+
+The full local CI gate (the same steps as `.github/workflows/ci.yml` plus the
+offline tests) is:
+
+```bash
+scripts/ci_local.sh
+```
+
+GitHub Actions is currently blocked at the account level — every run fails
+before step 1 with a billing notice. See [ci.md](ci.md) for the exact status
+and the two human options.

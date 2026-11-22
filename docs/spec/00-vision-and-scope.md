@@ -23,7 +23,7 @@ VeriCAx 是**工件级验真（artifact-centric verification）优先**的 CAx a
 | CAE-bench | FEA/CFD/多体/耐久 | 待查 | 待查 | 待细读后补 |
 | CAD Bench v2 / CAD-bench | Build123d/FreeCAD | 代码 | verifier 排行榜 | 无反作弊栈、无审计协议 |
 | CADTestBench (NeurIPS'26) | Text-to-CAD 单点生成 | — | 测试用例 | 非工作流、非 agent |
-| caX-bench (Ai Build, 商标) | CAD/CAE/CAM cost-accuracy | — | 未公开细节 | 我们公开、可复现、审计型 |
+| caX-bench | CAD/CAE/CAM cost-accuracy | — | 未公开细节 | 我们公开、可复现、审计型 |
 
 **定位句（对外统一口径）**：*VeriCAx: Artifact-Centric Evaluation of General Agents in Professional CAx Environments*。
 

@@ -27,6 +27,7 @@
 | **netfilter legacy 模块** | 容器内 iptables 失败 → QEMU 静默退化 user-mode（只转 22/3389）→ guest 服务端口永不可达 → readiness 300s 超时。现象极迷惑：VM 明明启动到 graphical.target | 载入 `ip_tables iptable_nat iptable_filter iptable_mangle`；持久化：`sudo tee /etc/modules-load.d/vericax-netfilter.conf <<< "ip_tables"`。sudo 不可用时的替代：特权容器 `--entrypoint modprobe` + 挂载解压后的模块树（见调研报告 §6） |
 | **pip 安装路径断裂** | 包安装到 site-packages 后相对路径定位 engine 失效 | 源码仓一律 `pip install -e`；或显式 `ENGINE_PATH` 环境变量且代码走 env 优先 |
 | **代理计费** | ModelScope/dashscope 国内直连，默认 shell 挂 Clash | 下载/评分进程统一 `unset HTTP_PROXY HTTPS_PROXY ALL_PROXY ...` |
+| **CLI 工件写入策略** | runtime 的 CLI integrity policy 拒绝直接写入/覆盖 scored artifact（deck/summary 等）；首次写错后 shell 不能简单重写；agent 常转去探测 CGX，形成长循环 | 不要按 verifier 失败归因；记录 `artifact_write_rejected`/`agent_stalled`；任务书明确合法生成路径；修复语义见 spec/09 §11 开放问题 |
 
 readiness 探测：轮询 `localhost:<port>/screenshot`（10s 超时 ×300s 窗口）；boot-to-ready 实测 177s。
 
@@ -58,6 +59,8 @@ v0 直接复用 EngiWorld runtime（MIT）+ 上述坑位补丁；v1 抽象成 `v
 
 **审计教训（写进流程）**：task-0001 首版用 2 单元 + "最大应力"作为评分量，审计正例被解析解带子拒收——审计协议在冻结前抓到的是**题目设计缺陷**，不是代码 bug。这正是 spec/02 §4 存在的理由：先审计 verifier，再发布任务。
 
+**GT 自校验（2026-11-19 审计增补）**：发布前用 `ground_truth/*.inp` 原样跑 `ccx`，确认 `.dat` 复现 GT summary。EngiWorld 审计发现 task-05/17/19 的 GT summary 位移比 GT deck 输出小 **8.444x**（C3D8 vs C3D8R）、task-04 的 tie 面写错、task-06 的压力面写错；base 模板与 GT deck 的单元类型/面编号必须一致，任务书必须写明 verifier 会检查的设置。
+
 ## 7. 与外部资产的关系（部署边界）
 
 VeriCAx 不 vendor 运行时与镜像。`scripts/_config.py` 是唯一的解析入口：
@@ -67,4 +70,4 @@ VeriCAx 不 vendor 运行时与镜像。`scripts/_config.py` 是唯一的解析�
 | runtime（含 `engine/desktop_env`） | `VERICAX_RUNTIME` | `vericax.toml` → `[runtime] path` |
 | 镜像目录（含 `<snapshot>.qcow2`） | `VERICAX_IMAGE_DIR`（或单文件 `VERICAX_IMAGE`） | `vericax.toml` → `[images] dir` |
 
-v0 复用 EngiWorld runtime 与其公开镜像；v0.5 起发布自有镜像集（VeriCAx-Images）时，只换配置指向，任务包与 verifier 不受影响。
+v0 复用 EngiWorld runtime 与其公开镜像；v0.5 起发布自有镜像集（VeriCAx-Images）时，只换配置指向，任务包与 verifier 不受影响。**2026-11-22**：Phase 2 套件已切换到三张自建镜像（CalculiX/FEniCS/merged），26 个包在同一批镜像上重审计并刷新 pins；EngiWorld 镜像保留作对照。换镜像仍必须重跑审计（§6）。

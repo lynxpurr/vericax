@@ -45,11 +45,30 @@ tasks/<domain>/<interface>/<software>/task-<NNNN>/
     }
   },
   "limits": {"cli_max_steps": 100, "gui_max_steps": null, "active_time_seconds": 18000},  // ▲ 收进任务包（EngiWorld 放全局 profile）
+  "solver_probe": "ccx -v 2>&1 | head -2",         // ▲ 可选：评分前记录求解器版本的命令（缺省按 CalculiX）
+  "solver_probes": {                               // ▲ merged image 时按工具给 probe（L6.4）
+    "calculix": "ccx -v 2>&1 | head -2",
+    "fenics": "python3 -c 'import dolfinx;print(dolfinx.__version__)'"
+  },
+  "provenance": {                                  // ▲ L6 题必填（spec/02 §1 L6；software-selection 强制）
+    "required_tool": "calculix",
+    "native_model": "solution.inp",
+    "native_result": "solution.dat",
+    "challenge": "VCAX_<token>",                   // 审计用固定 token；生产按 episode 生成
+                                                   // 题面用 {challenge} 占位符；agent 收到 VERICAX_CHALLENGE
+    "rerun_tolerance": 1.0e-4,
+    "reject_native_families": [".xdmf", ".h5", ".vtu", ".odb", ".rst"]
+  },
   "related_apps": ["calculix"],
   "splits": ["v0.1-cae-cli-100"],                  // ▲ 所属 split（版本化，见 §3）
   "possibility_of_env_change": "low"
 }
 ```
+
+`integrity_policy.allow_native_deck_edit` 是**通道声明**而非信任假设（2026-11-22 正式确认）：
+`true` 允许 agent 文本编辑原生 driver 文件，但评分工件仍须由 verifier 用提交的 deck
+独立重跑产生/复核（spec/02 §2）；`false` 用于没有可编辑原生 deck 的交付形态
+（cross-solver task-0003/0004 的 XDMF/HDF5）。harness 不据此改变运行时行为。
 
 ## 3. Split 纪律（EngiWorld main-300/main-306 并存教训）
 
@@ -59,7 +78,7 @@ tasks/<domain>/<interface>/<software>/task-<NNNN>/
 
 ## 4. 难度与类型标注（▲，供留存率分析）
 
-可选字段 `capability`：`single-execution | software-selection | observation-reconstruct | design-optimization | cross-software | open-environment`。
+可选字段 `capability`：`single-execution | design-optimization | cross-stage-consistency | software-selection | observation-reconstruct | open-environment`（spec/10 §1 的六类；`cross-software` 保留为 v1 跨软件扩展，不并入）。
 对齐调研报告 §8.2 的六域映射，用于计算"单软件→跨软件留存率"（EngiWorld 68/64/30/11% 的 VeriCAx 版）。
 
 ## 5. 打包与校验流程

@@ -1,0 +1,88 @@
+{
+  "id": "cae--cli--fenics--task-0016",
+  "schema_version": "0.1",
+  "snapshot": "FEniCS",
+  "interface": "cli",
+  "instruction": "The image has no internet. A local wheelhouse is at `/home/user/Desktop/wheels`; it contains `trimesh` 5.2.1 and its `scipy` 1.13.1 dependency.\n\n1. Install trimesh and its scipy dependency from the wheelhouse, for example with `python3 -m pip install --user --no-index --find-links wheels trimesh==5.2.1 scipy==1.13.1`.\n2. Load `/home/user/Desktop/part.stl` with trimesh and compute the volume and the total surface area of the solid.\n3. Deliver in /home/user/Desktop:\n   - `solve.py` - the script that loads the STL with trimesh and writes the summary; it must import `trimesh`.\n   - `summary.txt` - one line, two comma-separated numbers: `volume, area`.\n\nThe evaluator checks both values and that solve.py uses trimesh. Do not hard-code the answer.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {
+            "local_path": "task-0016/init_file/brief.md",
+            "path": "/home/user/Desktop/brief.md"
+          },
+          {
+            "local_path": "task-0016/init_file/part.stl",
+            "path": "/home/user/Desktop/part.stl"
+          },
+          {
+            "local_path": "task-0016/init_file/wheels/trimesh-5.2.1-py3-none-any.whl",
+            "path": "/home/user/Desktop/wheels/trimesh-5.2.1-py3-none-any.whl"
+          },
+          {
+            "local_path": "task-0016/init_file/wheels/scipy-1.13.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+            "path": "/home/user/Desktop/wheels/scipy-1.13.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/solve.py",
+    "/home/user/Desktop/summary.txt"
+  ],
+  "integrity_policy": {
+    "native_interface_only": false,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": [],
+    "forbid_read": [
+      "ground_truth",
+      "evaluator"
+    ]
+  },
+  "evaluator": {
+    "func": "exact_match",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "task-0016/eval.py",
+              "path": "/home/user/vericax/eval.py"
+            }
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "True\n"
+      }
+    }
+  },
+  "limits": {
+    "cli_max_steps": 100,
+    "gui_max_steps": null,
+    "active_time_seconds": 18000
+  },
+  "related_apps": [
+    "fenics"
+  ],
+  "capability": "open-environment",
+  "splits": [
+    "v0.2-cae-cli-25"
+  ],
+  "possibility_of_env_change": "low",
+  "solver_probe": "python3 -c 'import dolfinx;print(dolfinx.__version__)'"
+}

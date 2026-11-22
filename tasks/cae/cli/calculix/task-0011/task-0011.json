@@ -1,0 +1,84 @@
+{
+  "id": "cae--cli--calculix--task-0011",
+  "schema_version": "0.1",
+  "snapshot": "CalculiX-2.21",
+  "interface": "cli",
+  "instruction": "Work from a terminal with CalculiX 2.21 (`/usr/bin/ccx`).\n\n`/home/user/Desktop/drawing.svg` is the ONLY source of the geometry and the tip load. Read the drawing, then reconstruct and solve the stepped cantilever:\n- steel, E = 210000 MPa, nu = 0.3\n- use 10 mm B31 elements along the beam; 13 nodes numbered 1..13 from the clamped root to the tip\n- the root and tip segments use the square RECT sections dimensioned in the drawing\n- clamp the root node in dofs 1-6; apply the drawing's tip load in the negative y direction\n\nSubmit with `/usr/bin/ccx` and produce `/home/user/Desktop/solution.inp` and `/home/user/Desktop/solution.dat`. Results reach `.dat` through `*Node Print` with an explicit node set.\n\nWrite `/home/user/Desktop/summary.txt` as one number: `tip_uy`, the y displacement of the tip node, in mm.\n\nThe evaluator re-solves your deck independently; the reported number must come from your own run.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {
+            "local_path": "task-0011/init_file/brief.md",
+            "path": "/home/user/Desktop/brief.md"
+          },
+          {
+            "local_path": "task-0011/init_file/drawing.svg",
+            "path": "/home/user/Desktop/drawing.svg"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/solution.inp",
+    "/home/user/Desktop/solution.dat",
+    "/home/user/Desktop/summary.txt"
+  ],
+  "integrity_policy": {
+    "native_interface_only": true,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": [
+      "numpy",
+      "scipy"
+    ],
+    "forbid_read": [
+      "ground_truth",
+      "evaluator"
+    ]
+  },
+  "evaluator": {
+    "func": "exact_match",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "task-0011/eval.py",
+              "path": "/home/user/vericax/eval.py"
+            }
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "True\n"
+      }
+    }
+  },
+  "limits": {
+    "cli_max_steps": 100,
+    "gui_max_steps": null,
+    "active_time_seconds": 18000
+  },
+  "related_apps": [
+    "calculix"
+  ],
+  "capability": "observation-reconstruct",
+  "splits": [
+    "v0.2-cae-cli-25"
+  ],
+  "possibility_of_env_change": "low",
+  "solver_probe": "/usr/bin/ccx -v 2>&1 | head -5"
+}

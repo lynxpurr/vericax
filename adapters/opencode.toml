@@ -1,0 +1,41 @@
+# opencode adapter (spec/08 section 5, P5): non-interactive `opencode run`.
+# The provider block uses {env:DEEPSEEK_API_KEY}; the harness forwards that
+# variable from the host at launch (never baked into the image). Native
+# read/write/edit are denied by the profile's permission map, so the only way
+# to touch the sandbox is bash + vericax-sh (spec/08 section 6.4).
+name = "opencode"
+version = "1.19.5"
+
+[launch]
+command = ["opencode", "run", "--format", "json", "--auto",
+           "--model", "deepseek/deepseek-flash", "{instruction}"]
+instruction = "argv"
+approval = []
+grace_seconds = 10
+
+[sandbox]
+shell = "path"
+shell_target = "vericax-sh"
+file_tools = "disable"
+working_dir = "/home/user/Desktop"
+
+[output]
+format = "json"
+# `step_finish` carries the final usage for one LLM call in part.tokens.
+cost_path = "part.tokens"
+cost_event_types = ["step_finish"]
+
+[state]
+# XDG_CONFIG_HOME/XDG_DATA_HOME both point at /root/.local/share, so the
+# per-run state dir holds opencode.json and the session DB together.
+dir = ".local/share/opencode"
+template_dir = "opencode-profile"
+
+[model]
+name = "deepseek-flash"
+endpoint = "deepseek-official"
+
+[container]
+image = "vericax-agent:phase2"
+env_from = ["DEEPSEEK_API_KEY"]
+env = { XDG_CONFIG_HOME = "/root/.local/share", XDG_DATA_HOME = "/root/.local/share", XDG_CACHE_HOME = "/root/.cache" }

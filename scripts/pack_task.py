@@ -8,19 +8,66 @@ manifest itself: task JSON, verifier, init resources and ground truth. The
 verifier's own hash is included, so silently editing the scoring logic
 invalidates the package — same discipline as pinning inputs for anti-tamper.
 
+Gate policy:
+
+* The audit matrix is checked structurally (groups, six negative kinds,
+  robustness record) **and row by row**: the case table in
+  ``ground_truth/audit.md`` must contain exactly the cases declared in
+  ``audit_cases.py`` and every row must be ``PASS``. A hand-written or stale
+  record therefore cannot pass the gate.
+* The L0 reference record (``ground_truth/reference_selfcheck.json``) is a
+  **hard gate when the manifest is written** — no L0, no publish. It is
+  gitignored (a derived artifact), so ``--check`` only warns when it is
+  absent: a fresh checkout cannot verify L0 offline, and the manifest was
+  gated when it was written.
+
 --check verifies an existing manifest without rewriting it.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 MANIFEST = "resources.sha256"
+L0_RECORD = "reference_selfcheck.json"   # derived audit output, not a resource
 REQUIRED_FILES = ("eval.py",)
+REQUIRED_NEGATIVE_KINDS = {
+    "empty", "metrics_only", "tampered_input",
+    "skipped_steps", "encoded_payload", "fabricated_field",
+}
+
+
+def parse_audit_table(text: str) -> list[tuple[str, str]]:
+    """Return ``(label, verdict)`` rows from the generated audit table.
+
+    The record renders as ``| case | expectation | actual | verdict |``
+    (``scripts/audit_task.py::render_audit_md``). Rows are only collected from
+    inside that table; anything else in the file is ignored.
+    """
+    rows: list[tuple[str, str]] = []
+    in_table = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            in_table = False
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        if len(cells) < 4:
+            continue
+        if cells[0].lower() == "case":
+            in_table = True
+            continue
+        if set(cells[0]) <= set("-: "):
+            continue
+        if in_table:
+            rows.append((cells[0], cells[-1]))
+    return rows
 
 
 def task_dir_for(task_id: str) -> Path:
@@ -41,7 +88,7 @@ def package_files(task_dir: Path) -> list[Path]:
     for path in sorted(task_dir.rglob("*")):
         if not path.is_file():
             continue
-        if path.name == MANIFEST:
+        if path.name in (MANIFEST, L0_RECORD):
             continue
         if "__pycache__" in path.parts:
             continue
@@ -87,6 +134,92 @@ def main() -> int:
         errors.append("ground_truth/audit.md missing (run scripts/audit_task.py)")
     elif "MISS" in audit.read_text():
         errors.append("audit record contains MISS entries")
+
+    # ---- audit matrix gate (spec/02 section 4.1)
+    audit_text = audit.read_text() if audit.is_file() else ""
+    cases_path = task_dir / "audit_cases.py"
+    if not cases_path.is_file():
+        errors.append("missing audit_cases.py (cannot verify the audit matrix)")
+    else:
+        spec = importlib.util.spec_from_file_location("_vcax_audit_cases", cases_path)
+        module = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(module)
+        except Exception as exc:  # noqa: BLE001 - a broken case file fails the pack
+            errors.append(f"audit_cases.py failed to import: {exc}")
+            module = None
+        if module is not None:
+            labels = [case[0] for case in getattr(module, "CASES", [])]
+            positive = [label for label in labels if label[:1].upper() == "P"]
+            alternative = [label for label in labels if label[:1].upper() == "A"]
+            negative = [label for label in labels if label[:1].upper() == "N"]
+            if len(positive) < 1:
+                errors.append("audit matrix: positive group needs >= 1 case")
+            if len(alternative) < 2:
+                errors.append("audit matrix: alternative group needs >= 2 legal "
+                              f"cases (found {len(alternative)})")
+            if len(negative) < 6:
+                errors.append("audit matrix: negative group needs >= 6 cases "
+                              f"(found {len(negative)})")
+            kinds = getattr(module, "NEGATIVE_KINDS", None)
+            if not isinstance(kinds, dict):
+                errors.append("audit matrix: audit_cases.py must declare NEGATIVE_KINDS")
+            else:
+                unknown = sorted(set(kinds.values()) - REQUIRED_NEGATIVE_KINDS)
+                if unknown:
+                    errors.append(f"audit matrix: unknown negative kinds {unknown}")
+                missing = sorted(REQUIRED_NEGATIVE_KINDS - set(kinds.values()))
+                if missing:
+                    errors.append(f"audit matrix: negative kinds missing {missing}")
+                stray = sorted(label for label in kinds if label not in labels)
+                if stray:
+                    errors.append(f"audit matrix: NEGATIVE_KINDS names unknown cases {stray}")
+            table_rows = parse_audit_table(audit_text)
+            if not table_rows:
+                errors.append("audit record has no case table "
+                              "(rerun scripts/audit_task.py)")
+            else:
+                labels_in_table = [label for label, _ in table_rows]
+                duplicate = sorted({label for label in labels_in_table
+                                    if labels_in_table.count(label) > 1})
+                if duplicate:
+                    errors.append(f"audit table has duplicate rows: {duplicate}")
+                table = dict(table_rows)
+                missing_rows = [label for label in labels if label not in table]
+                extra_rows = [label for label in table if label not in labels]
+                if missing_rows:
+                    errors.append(f"audit table is missing cases: {missing_rows}")
+                if extra_rows:
+                    errors.append(f"audit table has unknown rows: {extra_rows}")
+                not_pass = [label for label, verdict in table_rows
+                            if verdict.upper() != "PASS"]
+                if not_pass:
+                    errors.append(f"audit table rows are not PASS: {not_pass}")
+    robust = re.search(r"robust: (\d+)/(\d+) consistent", audit_text)
+    if not robust:
+        errors.append("audit record has no robustness record "
+                      "(run scripts/audit_task.py --repeat 10)")
+    else:
+        agreeing, runs = int(robust.group(1)), int(robust.group(2))
+        if runs < 10:
+            errors.append(f"robustness group has only {runs} runs; need >= 10")
+        if agreeing != runs:
+            errors.append(f"robustness group inconsistent ({agreeing}/{runs})")
+    l0_path = task_dir / "ground_truth" / L0_RECORD
+    if l0_path.is_file():
+        try:
+            l0 = json.loads(l0_path.read_text())
+        except ValueError:
+            errors.append(f"{L0_RECORD} is not valid JSON")
+        else:
+            if not l0.get("passed"):
+                errors.append("L0 reference self-check did not pass")
+    elif args.check:
+        print(f"warning: no {L0_RECORD} in this checkout (it is gitignored); "
+              f"L0 was gated when the manifest was written", file=sys.stderr)
+    else:
+        errors.append(f"missing {L0_RECORD}: run `vericax audit --task "
+                      f"{args.task}` before writing the manifest")
 
     if errors:
         print("PACKAGE INVALID:")

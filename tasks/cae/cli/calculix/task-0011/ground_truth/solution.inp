@@ -1,0 +1,48 @@
+*Heading
+VeriCAX task-0011 reconstructed stepped beam
+*Node
+1, 0.000000, 0.0, 0.0
+2, 10.000000, 0.0, 0.0
+3, 20.000000, 0.0, 0.0
+4, 30.000000, 0.0, 0.0
+5, 40.000000, 0.0, 0.0
+6, 50.000000, 0.0, 0.0
+7, 60.000000, 0.0, 0.0
+8, 70.000000, 0.0, 0.0
+9, 80.000000, 0.0, 0.0
+10, 90.000000, 0.0, 0.0
+11, 100.000000, 0.0, 0.0
+12, 110.000000, 0.0, 0.0
+13, 120.000000, 0.0, 0.0
+*Element, type=B31, elset=RootElems
+1, 1, 2
+2, 2, 3
+3, 3, 4
+4, 4, 5
+5, 5, 6
+6, 6, 7
+7, 7, 8
+*Element, type=B31, elset=TipElems
+8, 8, 9
+9, 9, 10
+10, 10, 11
+11, 11, 12
+12, 12, 13
+*Nset, nset=All_Nodes
+1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
+*Material, name=Steel
+*Elastic
+210000.0, 0.3
+*Beam Section, elset=RootElems, material=Steel, section=RECT
+12.0, 12.0
+*Beam Section, elset=TipElems, material=Steel, section=RECT
+8.0, 8.0
+*Boundary
+1, 1, 6, 0.0
+*Step
+*Static
+*Cload
+13, 2, -80.0
+*Node Print, NSET=All_Nodes
+U
+*End Step

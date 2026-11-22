@@ -1,0 +1,31 @@
+# VeriCAx dsh profile: the stock headless composition, with the model route
+# retargeted to an OpenAI-compatible gateway (Aliyun Bailian Token Plan).
+#
+# The gateway speaks chat-completions, so the native Messages-only
+# `deepseek-official` adapter cannot reach it; `dsh-llm-pi-ai` accepts a
+# hand-declared openai-completions route. The API key never appears here:
+# `apiKeyEnv` resolves BAILIAN_API_KEY from the container environment, which
+# the harness injects at run time from the host (adapter [container] env_from).
+
+- id: llm-pi-ai
+  config:
+    providers:
+      bailian-token-plan:
+        displayName: Bailian Token Plan
+        apiKeyEnv: BAILIAN_API_KEY
+        api: openai-completions
+        baseURL: https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
+        compat:
+          thinkingFormat: deepseek
+        models:
+          - id: deepseek-v4.1-flash-1017
+            name: DeepSeek V4.1 Flash (Bailian Token Plan)
+            contextWindow: 131072
+            maxTokens: 32768
+
+# The base bundle pins deepseek-official/deepseek-flash; a patch entry replaces
+# the target's whole configuration, so both fields are restated here.
+- id: agent-default-model
+  config:
+    provider: bailian-token-plan
+    model: deepseek-v4.1-flash-1017

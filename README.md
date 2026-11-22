@@ -17,23 +17,29 @@ The first principle:
 
 ## Status
 
-Alpha, under active development. The repository is private while the pilot slice
-is stabilised; it will be published under MIT. Current contents:
+Alpha, under active development. Code, task definitions, verifiers and audit
+records are released under MIT. Current contents:
 
 | Area | State |
 |---|---|
-| Specifications | `docs/spec/00`–`07` drafted |
-| Task packages | 3 CalculiX tasks, each with a passing audit record |
-| Tooling | audit harness, package validator, VM probe, dependency resolver |
-| Second solver | planned (FEniCS) |
+| Specifications | `docs/spec/00`–`10`; latest calibration 2026-11-22 (P4 parallel scheduling, per-episode L6 challenge tokens, P5 stack expansion) |
+| Task packages | 26 packages (25 Phase-2 targets + 1 L6 prototype) across CalculiX, FEniCS and a merged cross-solver image; every package has an audit record and L0 self-check |
+| Default images | three self-built qcow2 (CalculiX 2.21, FEniCS 0.10.0.post2, merged); all 26 packages re-audited on them on 2026-11-22 |
+| Tooling | audit harness, package validator, VM probe, dependency resolver, parallel `vericax batch`, `scripts/audit_suite.py`, local CI gate |
+| Agent stacks | dsh 0.2.1-rc.5, pi 1.4.0, opencode 1.19.5, hermes 0.21.6, openclaw 2026.9.9; all five have n≥1 conformance episodes |
+| Runtime | Phase 2 complete: tier-1 scoring, per-episode overlays, 2-VM parallel batches, L6 provenance/challenge binding |
+| CI | `scripts/ci_local.sh` mirrors the workflow and adds the offline tests; see `docs/ci.md` for the Actions billing history |
 
 ## Layout
 
 ```
 docs/spec/         specifications (the current bulk of the project)
 docs/setup.md      how to obtain the external runtime and VM images
+docs/lessons-2026-11-19.md  audit-calibration lessons behind the 2026-11-19 spec changes
 tasks/             task packages: <domain>/<interface>/<software>/task-<NNNN>/
 scripts/           audit_task.py, pack_task.py, vm_exec.py, _config.py, check_setup.py
+containers/        agent and VM image build recipes (CalculiX, FEniCS, merged)
+tests/             offline validity and audit-tooling tests; conformance/acceptance runners
 tasks/_template/   starting point for a new task package
 ```
 
@@ -43,7 +49,7 @@ See [docs/setup.md](docs/setup.md). In short: bring an external evaluation
 runtime and a VM image, point `vericax.toml` at them, then
 
 ```bash
-python scripts/check_setup.py
+python scripts/check_setup.py --snapshot CalculiX-2.21   # drop the flag for all three images
 <runtime-venv>/bin/python scripts/audit_task.py \
   --task cae--cli--calculix--task-0001
 ```
@@ -92,10 +98,11 @@ sibling directory. `vericax.toml` is gitignored.
 ## Roadmap
 
 - [x] Specifications and the audit protocol
-- [x] Three audited CalculiX tasks covering L1–L5
-- [ ] Fourth pilot task on a second solver (FEniCS), proving the layers are solver-agnostic
-- [ ] Tier 1 trusted loop: out-of-band verifier execution and the anti-cheat layer as runtime code
-- [ ] Public task suite and image release under the `vericax` organisation
+- [x] Three audited CalculiX pilot tasks covering L1–L5
+- [x] Second solver (FEniCS) and a 26-package suite across two solvers and a merged image
+- [x] Tier 1 trusted loop: out-of-band verifier execution and the anti-cheat layer as runtime code
+- [x] Five agent stacks and 2-VM parallel scheduling with per-episode challenge binding
+- [ ] Public alpha release of the task suite and tooling (organisation move deferred)
 
 ## Contributing
 
