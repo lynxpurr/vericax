@@ -1,11 +1,9 @@
 name: ci
 
-# NOTE (2026-11-22): on a private repository this workflow can fail before step
-# 1 with "The job was not started because recent account payments have failed
-# or your spending limit needs to be increased." That is an account-level
-# billing blocker, not a code failure; the same steps pass locally. Until the
-# public `ci` badge is confirmed green, scripts/ci_local.sh is the authoritative
-# gate (and the pre-push hook runs it). See docs/ci.md.
+# NOTE (2026-11-22): while the repository was private this workflow was blocked
+# by account-level billing before the first step. The repository is public now
+# and the workflow runs on standard runners; scripts/ci_local.sh remains the
+# offline replica and pre-push gate. See docs/ci.md.
 on:
   push:
     branches: [main, develop]
