@@ -45,7 +45,7 @@ MERGED_TASKS = [
 PURITY_TARGETS = [
     "vericax/lifecycle.py", "vericax/freeze.py", "vericax/scoring.py",
     "vericax/summary.py", "vericax/cli.py", "vericax/proxy.py",
-    "vericax/agent_runner.py", "vericax/adapters.py",
+    "vericax/agent_runner.py", "vericax/adapters.py", "vericax/batch.py",
 ]
 PURITY_PATTERNS = [
     (r"\bstack\s*==", "stack equality"),
@@ -74,7 +74,10 @@ def build_payload(mode: str, task_id: str) -> Path:
     payload = Path(tempfile.mkdtemp(prefix="vcax-payload-"))
     shutil.copy2(REPO / "tests" / "fake_agent.py", payload / "fake_agent.py")
     config: dict = {"mode": mode, "task_id": task_id}
-    if mode in ("solve", "tamper", "background"):
+    task_dir = REPO / "tasks" / task_id.replace("--", "/")
+    task_json = json.loads((task_dir / f"{task_dir.name}.json").read_text())
+    config["audit_token"] = (task_json.get("provenance") or {}).get("challenge")
+    if mode in ("solve", "tamper", "background", "wrong_challenge"):
         (payload / "recipe.sh").write_text(gold_script(task_id))
     if mode == "summary_only":
         config["fabricate"] = {

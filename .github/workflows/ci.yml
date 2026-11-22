@@ -1,9 +1,16 @@
 name: ci
 
+# NOTE (2026-11-22): this workflow currently fails before step 1 with
+# "The job was not started because recent account payments have failed or your
+# spending limit needs to be increased." That is an account-level billing
+# blocker, not a code failure; the same steps pass locally. Until billing is
+# fixed, scripts/ci_local.sh is the authoritative gate (and the pre-push hook
+# runs it). See docs/ci.md.
 on:
   push:
     branches: [main, develop]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read

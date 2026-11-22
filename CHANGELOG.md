@@ -7,6 +7,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- `vericax batch --parallel 2` (P4): concurrent episodes with per-episode
+  overlay/container/proxy/cache/scoring, `--payload-dir-map` and
+  `--image SNAPSHOT=PATH` for mixed task sets. Two fake episodes scored 1.0
+  each in 423 s wall (841 s serial).
+- Per-episode L6 challenge binding (P4): `{challenge}` instruction placeholder,
+  `VERICAX_CHALLENGE` in the agent container, `VERICAX_CHALLENGE` +
+  `VERICAX_TOOL` in the scoring instance. Replayed audit-token artifact is
+  rejected (1.0 dynamic vs 0.0 replay).
+- Adapters and phase-2 agent image for `opencode 1.19.5`, `hermes 0.21.6`,
+  `openclaw 2026.9.9` (P5); n=1 conformance on task-0001 is 1.0 for all three.
+- `scripts/ci_local.sh` (CI replica + offline tests), wired into the pre-push
+  hook; `docs/ci.md` records the GitHub Actions billing blocker (E).
 - `vericax audit --task <id> --group reference`: the L0 benchmark-validity gate.
   It replays the reference case, compares the produced summary with the shipped
   GT summary, runs the verifier, and writes
@@ -18,6 +30,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   so streamed `message_update` events are no longer counted as LLM calls.
 
 ### Changed
+- `run_episode` now closes the sandbox before booting the scoring instance
+  (spec/09 E5), so N parallel episodes hold at most N VMs.
+- L6 task instructions use `{challenge}`; `provenance.challenge` remains the
+  fixed audit token. Verifiers read `VERICAX_CHALLENGE`/`VERICAX_TOOL` with
+  audit-safe defaults.
 - Spec calibration from the 2026-11-18/19 EngiWorld audit: L0 GT self-check
   (`02`), `run_mode`/`tree_version`/`reference_selfcheck` (`03`), tolerant
   verifier parsing, CLI artifact-write policy (`04`/`08`/`09`), and the

@@ -39,4 +39,10 @@ EOF
         fi
     done
 done
+
+# CI is account-blocked on GitHub (see docs/ci.md); run its local replica
+# before allowing a push. SKIP_LOCAL_CI=1 is the documented emergency escape.
+if [ "${SKIP_LOCAL_CI:-0}" != "1" ]; then
+    "$(git rev-parse --show-toplevel)/scripts/ci_local.sh"
+fi
 exit 0

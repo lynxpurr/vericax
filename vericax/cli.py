@@ -12,6 +12,7 @@ import json
 import sys
 from pathlib import Path
 
+from . import batch as batch_mod
 from . import config, lifecycle, scoring, validity
 
 
@@ -56,6 +57,31 @@ def main(argv: list[str] | None = None) -> int:
                    help="aggregate only capability episodes; tests are excluded by default")
     p.add_argument("--tree-version", default=None,
                    help="override the package-manifest tree version")
+    p.add_argument("--image", default=None,
+                   help="override the qcow2 path for this episode (batch image maps)")
+
+    p = sub.add_parser("batch", help="run episodes in parallel (P4: default 2 VMs)")
+    p.add_argument("--task", action="append", default=[],
+                   help="task id (repeatable)")
+    p.add_argument("--split", default=None,
+                   help="split name under splits/ (mutually exclusive with --task)")
+    p.add_argument("--adapter", required=True,
+                   help="adapter name under adapters/ or a TOML path")
+    p.add_argument("--runs", type=int, default=1,
+                   help="runs per task (run_index 1..N, run_total=N)")
+    p.add_argument("--parallel", type=int, default=2,
+                   help="episodes in flight (P4 validated 2)")
+    p.add_argument("--time-limit", type=int, default=None)
+    p.add_argument("--payload-dir", type=Path, default=None,
+                   help="payload dir applied to every task")
+    p.add_argument("--payload-dir-map", action="append", default=[],
+                   metavar="TASK=DIR", help="per-task payload dir (repeatable)")
+    p.add_argument("--image", action="append", default=[], metavar="SNAPSHOT=PATH",
+                   help="per-snapshot qcow2 override (repeatable)")
+    p.add_argument("--no-score", action="store_true")
+    p.add_argument("--run-mode", default="rerun", choices=["rerun", "rescore"])
+    p.add_argument("--kind", default="capability", choices=["capability", "test", "debug"])
+    p.add_argument("--tree-version", default=None)
 
     p = sub.add_parser("score", help="tier-1 score an existing episode's frozen artifacts")
     p.add_argument("--task", required=True)
@@ -63,6 +89,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--from-dir", type=Path, default=None,
                    help="score artifacts from an arbitrary directory instead "
                         "(gold-consistency regression)")
+    p.add_argument("--image", default=None,
+                   help="override the qcow2 path for the scoring instance")
 
     p = sub.add_parser("verify-overlay", help="prove per-episode disk isolation (spec/09 section 8)")
     p.add_argument("--snapshot", default="CalculiX-2.21")
@@ -110,12 +138,46 @@ def main(argv: list[str] | None = None) -> int:
             run_mode=args.run_mode,
             kind=args.kind,
             tree_version=args.tree_version,
+            image_override=args.image,
         )
         print(json.dumps({k: summary[k] for k in
                           ("task_id", "episode_id", "score", "scoring_basis",
                            "error_category", "error", "run_mode", "tree_version",
-                           "kind")}, indent=2))
+                           "kind", "challenge", "required_tool")}, indent=2))
         return 0 if summary["scoring_basis"] != "infra" else 3
+
+    if args.command == "batch":
+        if args.split and args.task:
+            parser.error("batch takes --split or --task, not both")
+        task_ids = list(args.task) or (
+            batch_mod.tasks_from_split(args.split) if args.split else [])
+        payload_map = {}
+        for item in args.payload_dir_map:
+            if "=" not in item:
+                parser.error(f"--payload-dir-map needs TASK=DIR, got {item!r}")
+            task, raw = item.split("=", 1)
+            payload_map[task] = Path(raw)
+        image_map = {}
+        for item in args.image:
+            if "=" not in item:
+                parser.error(f"--image needs SNAPSHOT=PATH, got {item!r}")
+            snapshot, raw = item.split("=", 1)
+            image_map[snapshot] = Path(raw)
+        result = batch_mod.run_batch(
+            task_ids=task_ids,
+            adapter_spec=args.adapter,
+            runs=args.runs,
+            parallel=args.parallel,
+            time_limit=args.time_limit,
+            payload_dir=args.payload_dir,
+            payload_dir_map=payload_map,
+            do_score=not args.no_score,
+            run_mode=args.run_mode,
+            kind=args.kind,
+            tree_version=args.tree_version,
+            image_overrides=image_map,
+        )
+        return 0 if result["verdict"] == "pass" else 3
 
     if args.command == "score":
         if not args.episode and not args.from_dir:
@@ -124,6 +186,16 @@ def main(argv: list[str] | None = None) -> int:
         task_json = lifecycle._load_task(task_dir, args.task)
         artifacts = Path(args.from_dir) if args.from_dir else \
             Path(args.episode) / "artifacts"
+        # Re-scoring must reproduce the episode's L6 binding: the token and
+        # required tool are recorded in summary.json. A bare --from-dir is the
+        # gold-consistency regression and keeps the audit token.
+        challenge = required_tool = None
+        if args.episode:
+            summary_path = Path(args.episode) / "summary.json"
+            if summary_path.is_file():
+                episode_summary = json.loads(summary_path.read_text())
+                challenge = episode_summary.get("challenge")
+                required_tool = episode_summary.get("required_tool")
         result = scoring.run_scoring(
             task_dir=task_dir,
             evaluator_func=task_json.get("evaluator", {}).get("func", "exact_match"),
@@ -131,6 +203,9 @@ def main(argv: list[str] | None = None) -> int:
             snapshot=task_json.get("snapshot", "CalculiX-2.21"),
             cache_dir=(Path(args.episode) / "scoring-cache") if args.episode
             else config.CACHE_DIR / "score-adhoc",
+            challenge=challenge,
+            required_tool=required_tool,
+            image_override=args.image,
         )
         print(json.dumps({
             "verdict": result.verdict_text,

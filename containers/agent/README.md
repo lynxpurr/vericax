@@ -16,12 +16,28 @@ the adapter's launch argv, with:
 ## Build
 
 ```bash
-containers/agent/build.sh                # -> vericax-agent:phase1
+containers/agent/build.sh                # -> vericax-agent:phase1 (dsh, pi)
+containers/agent/build-phase2.sh         # -> vericax-agent:phase2 (all five stacks)
 ```
 
 The build context is assembled from the Dockerfile plus `vericax/sh_client.py`
 (the `vericax-sh` the agent calls). Pinned versions live in the Dockerfile and
 must match `adapters/*.toml`.
+
+### Phase 2 image (P5)
+
+`Dockerfile.phase2` starts from `nousresearch/hermes-agent:v0.21.6` (Python,
+Node 26, Hermes under `/opt/hermes`, `HERMES_HOME=/opt/data`), then installs
+dsh, pi, opencode and openclaw from npm at the adapter-pinned versions.
+npm 12 ignores lifecycle scripts unless allow-listed, so the install passes
+`--allow-scripts` for opencode (native binary download) and the native module
+builders. The base image's `ENTRYPOINT` is cleared so the adapter launch argv
+is the container's main process.
+
+Credentials are never baked in: the new adapters forward
+`DEEPSEEK_API_KEY` via `[container] env_from`. The opencode profile uses
+`{env:DEEPSEEK_API_KEY}`; the openclaw profile uses a `source: "env"`
+SecretRef; Hermes reads the same variable for its `deepseek` provider.
 
 ## Residual risk (Phase 1, documented)
 

@@ -44,8 +44,21 @@ def main() -> int:
     artifacts = json.loads(os.environ.get("VERICAX_ARTIFACTS", "[]"))
     print(f"[fake-agent] mode={mode} artifacts={artifacts}", flush=True)
 
-    if mode == "solve" or mode in ("tamper", "background"):
-        sh("vericax-sh", "put", RECIPE_PATH, "/tmp/recipe.sh")
+    if mode in ("solve", "tamper", "background", "wrong_challenge"):
+        # The task's reference recipe carries the fixed audit token. A real
+        # episode gets a fresh challenge token (L6.3), so the scripted agent
+        # rewrites the recipe the same way a real agent would write its deck.
+        # wrong_challenge deliberately keeps the audit token to prove the
+        # verifier rejects a replayed/foreign label.
+        recipe = open(RECIPE_PATH).read()
+        audit_token = config.get("audit_token")
+        challenge = os.environ.get("VERICAX_CHALLENGE")
+        if mode != "wrong_challenge" and audit_token and challenge:
+            recipe = recipe.replace(audit_token, challenge)
+        local_recipe = "/tmp/recipe.local.sh"
+        with open(local_recipe, "w") as fh:
+            fh.write(recipe)
+        sh("vericax-sh", "put", local_recipe, "/tmp/recipe.sh")
         result = sh_run("bash /tmp/recipe.sh", check=False)
         if result.returncode != 0:
             print(f"[fake-agent] recipe failed rc={result.returncode}: "

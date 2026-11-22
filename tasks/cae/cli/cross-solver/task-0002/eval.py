@@ -32,7 +32,10 @@ AGENT_ROOT = Path(os.environ.get("VERICAX_AGENT_ROOT", "/home/user/Desktop"))
 CCX = os.environ.get("VERICAX_CCX", "/usr/bin/ccx")
 
 REQUIRED_ARTIFACTS = ["solution.inp", "solution.dat", "summary.txt"]
-TOKEN = "VCAX_AUDIT_0002"
+# L6.3: the grading instance injects the per-episode token (and required tool)
+# through the environment; audit/L0 runs carry no env and keep the fixed token.
+TOKEN = os.environ.get("VERICAX_CHALLENGE", "VCAX_AUDIT_0002")
+REQUIRED_TOOL = "calculix"
 
 LENGTH, N_ELEM, ELEM_LEN = 100.0, 10, 10.0
 SIDE = 10.0
@@ -406,6 +409,12 @@ def evaluate() -> bool:
 
 
 def main() -> int:
+    tool = os.environ.get("VERICAX_TOOL")
+    if tool is not None and tool != REQUIRED_TOOL:
+        print(f"debug: VERICAX_TOOL={tool!r} does not match required {REQUIRED_TOOL!r}",
+              file=sys.stderr)
+        print("False")
+        return 0
     try:
         ok = evaluate()
     except Exception as exc:  # noqa: BLE001 - verifier must never crash open

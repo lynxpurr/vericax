@@ -30,9 +30,10 @@ class SandboxUnavailable(Exception):
 class SandboxVM:
     """One VM boot. Create, ``boot()``, operate, ``close()``. Never reuse."""
 
-    def __init__(self, snapshot: str, cache_dir: Path | str):
+    def __init__(self, snapshot: str, cache_dir: Path | str,
+                 image_override: str | Path | None = None):
         self.snapshot = snapshot
-        self.image = config.image_path(snapshot)
+        self.image = config.image_path(snapshot, override=image_override)
         self.cache_dir = Path(cache_dir)
         self._env = None
 

@@ -53,6 +53,8 @@ def build_summary(
     deadline_epoch: float | None = None,
     sandbox_network_isolated: bool | None = None,
     scoring_network_isolated: bool | None = None,
+    challenge: str | None = None,
+    required_tool: str | None = None,
 ) -> dict:
     return {
         "task_id": task_id,
@@ -92,6 +94,9 @@ def build_summary(
             "sandbox": sandbox_network_isolated,
             "scoring": scoring_network_isolated,
         },
+        # ---- L6 per-episode binding (spec/02 L6.3, spec/09 section 7.1)
+        "challenge": challenge,
+        "required_tool": required_tool,
     }
 
 

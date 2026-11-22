@@ -31,7 +31,10 @@ IMPLEMENTS = ("L1", "L2", "L3", "L6")
 AGENT_ROOT = Path(os.environ.get("VERICAX_AGENT_ROOT", "/home/user/Desktop"))
 
 REQUIRED_ARTIFACTS = ["mesh.msh", "solution.xdmf", "solution.h5", "summary.txt"]
-TOKEN = "VCAX_AUDIT_0004"
+# L6.3: the grading instance injects the per-episode token (and required tool)
+# through the environment; audit/L0 runs carry no env and keep the fixed token.
+TOKEN = os.environ.get("VERICAX_CHALLENGE", "VCAX_AUDIT_0004")
+REQUIRED_TOOL = "fenics"
 
 W, H = 100.0, 100.0
 MIN_ELEMENTS = 2500
@@ -307,6 +310,12 @@ def evaluate() -> bool:
 
 
 def main() -> int:
+    tool = os.environ.get("VERICAX_TOOL")
+    if tool is not None and tool != REQUIRED_TOOL:
+        print(f"debug: VERICAX_TOOL={tool!r} does not match required {REQUIRED_TOOL!r}",
+              file=sys.stderr)
+        print("False")
+        return 0
     try:
         ok = evaluate()
     except (Exception, SystemExit) as exc:  # noqa: BLE001 - never crash open
