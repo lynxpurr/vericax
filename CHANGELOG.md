@@ -4,7 +4,11 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0-alpha] - 2026-11-22
+
+Alpha release of the 26-package suite on the three self-built VM images.
+Conformance for the three new stacks is n=1; leaderboard-style comparisons
+require n>=3 runs.
 
 ### Added
 - `vericax batch --parallel 2` (P4): concurrent episodes with per-episode
@@ -73,6 +77,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Planned
 - Public alpha release of the task suite and tooling. Moving to a dedicated
   organisation is deferred until the `vericax` name is held.
+
+### Known limitations
+- Conformance for opencode/hermes/openclaw is n=1; no leaderboard claims yet.
+- FEniCS ground-truth `.h5` bytes differ between regenerations; pins and
+  summaries are stable, and `tree_version` identifies the audited tree.
+- `cross-solver/task-0005`'s verifier is 454 lines, a recorded exception in
+  spec/02 section 5.
 
 ## [0.1.0] - 2026-11-18
 
