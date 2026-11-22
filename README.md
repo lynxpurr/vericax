@@ -49,7 +49,7 @@ See [docs/setup.md](docs/setup.md). In short: bring an external evaluation
 runtime and a VM image, point `vericax.toml` at them, then
 
 ```bash
-python scripts/check_setup.py
+python scripts/check_setup.py --snapshot CalculiX-2.21   # drop the flag for all three images
 <runtime-venv>/bin/python scripts/audit_task.py \
   --task cae--cli--calculix--task-0001
 ```

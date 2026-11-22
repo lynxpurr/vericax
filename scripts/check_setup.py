@@ -6,14 +6,24 @@ VM boot. Exit code 0 when everything is in place.
 """
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _config  # noqa: E402
 
+SNAPSHOTS = ("CalculiX-2.21", "FEniCS", "VeriCAx-merged")
+
 
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--snapshot", action="append", choices=SNAPSHOTS,
+                    help="check only this snapshot; repeat for several "
+                         "(default: all three suite images)")
+    args = ap.parse_args()
+    snapshots = tuple(args.snapshot) if args.snapshot else SNAPSHOTS
+
     ok = True
     try:
         runtime = _config.runtime_path()
@@ -26,7 +36,7 @@ def main() -> int:
         print(f"runtime : ERROR\n{exc}")
         ok = False
 
-    for snapshot in ("CalculiX-2.21", "FEniCS", "VeriCAx-merged"):
+    for snapshot in snapshots:
         try:
             image = _config.image_path(snapshot)
             size = image.stat().st_size / 1e9

@@ -8,6 +8,8 @@ abstract: >-
   alternative, negative and robustness cases before publication.
 type: software
 license: MIT
+version: "0.2.0-alpha"
+date-released: "2026-11-22"
 authors:
   - name: "VeriCAx contributors"
 repository-code: "https://github.com/lynxpurr/vericax"
