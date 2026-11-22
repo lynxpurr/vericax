@@ -34,6 +34,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   episodes by default.
 - Adapter `output.cost_event_types`; pi uses `message_end` at `message.usage`,
   so streamed `message_update` events are no longer counted as LLM calls.
+- `tests/test_audit_tooling.py`: offline tests for verdict expectations, the
+  rejection margin and the per-case workspace restore. `scripts/ci_local.sh`
+  and the GitHub workflow run 29 tests in total.
 
 ### Changed
 - `run_episode` now closes the sandbox before booting the scoring instance
@@ -46,6 +49,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   verifier parsing, CLI artifact-write policy (`04`/`08`/`09`), and the
   benchmark-validity gate (`05`/`10`). Provenance updated.
 - Added `docs/lessons-2026-11-19.md` with the audit-calibration rationale.
+- `scripts/audit_task.py` snapshots the Desktop after VM reset and restores it
+  before every case, and removes regular files created in `/tmp` by the previous
+  case. Declared artifacts, solver side files and undeclared scratch can no
+  longer leak across audit cases.
+- Numeric audit records include the rejection margin
+  (`min(accepted) - max(rejected)`); an audit fails when the positive and
+  negative score bands overlap. Exact-match tasks record `n/a`.
+- `integrity_policy.allow_native_deck_edit` is confirmed in spec/01 section 2
+  and spec/02 section 2 as a channel declaration: native decks may be edited,
+  but the verifier re-runs the submitted deck and the L6.2 comparison plus the
+  N5 fabricated-summary negative cover the anti-forgery path.
 
 ### Fixed
 - pi cost accounting on the recorded task-0001 episode: 7 LLM calls / 4,593
@@ -53,11 +67,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   streamed update event.
 
 ### Planned
-- Fourth pilot task on a second solver (FEniCS) to demonstrate that the verifier
-  layers are solver-agnostic.
-- Tier 1 (trusted loop): out-of-band verifier execution and the anti-cheat layer
-  from `docs/spec/02` section 2 implemented as reusable runtime code.
-- Public release of the task suite under the `vericax` organisation.
+- Public alpha release of the task suite and tooling; the remaining gates are
+  tracked in `docs/release-checklist.md`. Moving to a dedicated organisation is
+  deferred until the `vericax` name is held.
 
 ## [0.1.0] - 2026-11-18
 

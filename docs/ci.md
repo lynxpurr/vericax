@@ -50,3 +50,16 @@ Only an account owner can clear the root cause:
 
 Option 1 is recommended. Until one is chosen, do not treat a red `ci` badge as
 a code regression; run `scripts/ci_local.sh` instead.
+
+## Release status (2026-11-22)
+
+The first public release keeps the repository under `lynxpurr`; moving to the
+`vericax` organisation is a later, separate decision (spec/06 §3). Standard
+GitHub-hosted runners are free for public repositories, so publishing is
+expected to clear the blocker without a workflow change.
+
+That does not make publication an implicit CI fix: visibility is a release
+decision tracked in `docs/release-checklist.md`, and `scripts/ci_local.sh`
+(26 packages, 29 offline tests) stays authoritative until the public `ci` badge
+is confirmed green. The workflow now also runs the offline test modules, so the
+local replica and Actions execute the same checks.

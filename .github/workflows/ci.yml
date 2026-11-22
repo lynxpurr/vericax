@@ -1,11 +1,12 @@
 name: ci
 
-# NOTE (2026-11-22): this workflow currently fails before step 1 with
-# "The job was not started because recent account payments have failed or your
-# spending limit needs to be increased." That is an account-level billing
-# blocker, not a code failure; the same steps pass locally. Until billing is
-# fixed, scripts/ci_local.sh is the authoritative gate (and the pre-push hook
-# runs it). See docs/ci.md.
+# NOTE (2026-11-22): on a private repository this workflow can fail before step
+# 1 with "The job was not started because recent account payments have failed
+# or your spending limit needs to be increased." That is an account-level
+# billing blocker, not a code failure; the same steps pass locally. Until the
+# public `ci` badge is confirmed green, scripts/ci_local.sh is the authoritative
+# gate (and the pre-push hook runs it). See docs/ci.md and
+# docs/release-checklist.md.
 on:
   push:
     branches: [main, develop]
@@ -25,7 +26,10 @@ jobs:
           python-version: "3.12"
 
       - name: Syntax check
-        run: python -m compileall -q scripts tasks
+        run: python -m compileall -q scripts tasks vericax tests
+
+      - name: Offline tests
+        run: python -m unittest tests.test_validity tests.test_audit_tooling
 
       - name: Task package validation
         run: |

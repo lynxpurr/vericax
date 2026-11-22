@@ -17,8 +17,9 @@ The first principle:
 
 ## Status
 
-Alpha, under active development. The repository is private while the pilot slice
-is stabilised; it will be published under MIT. Current contents:
+Alpha, under active development. Code, task definitions, verifiers and audit
+records are released under MIT; the launch checklist is in
+[`docs/release-checklist.md`](docs/release-checklist.md). Current contents:
 
 | Area | State |
 |---|---|
@@ -28,16 +29,19 @@ is stabilised; it will be published under MIT. Current contents:
 | Tooling | audit harness, package validator, VM probe, dependency resolver, parallel `vericax batch`, `scripts/audit_suite.py`, local CI gate |
 | Agent stacks | dsh 0.2.1-rc.5, pi 1.4.0, opencode 1.19.5, hermes 0.21.6, openclaw 2026.9.9; all five have n≥1 conformance episodes |
 | Runtime | Phase 2 complete: tier-1 scoring, per-episode overlays, 2-VM parallel batches, L6 provenance/challenge binding |
-| CI | GitHub Actions is account-blocked before step 1; `scripts/ci_local.sh` is the authoritative gate (see `docs/ci.md`) |
+| CI | `scripts/ci_local.sh` mirrors the workflow and adds the offline tests; see `docs/ci.md` for the Actions billing history |
 
 ## Layout
 
 ```
 docs/spec/         specifications (the current bulk of the project)
 docs/setup.md      how to obtain the external runtime and VM images
+docs/release-checklist.md  public-launch status and remaining gates
 docs/lessons-2026-11-19.md  audit-calibration lessons behind the 2026-11-19 spec changes
 tasks/             task packages: <domain>/<interface>/<software>/task-<NNNN>/
 scripts/           audit_task.py, pack_task.py, vm_exec.py, _config.py, check_setup.py
+containers/        agent and VM image build recipes (CalculiX, FEniCS, merged)
+tests/             offline validity and audit-tooling tests; conformance/acceptance runners
 tasks/_template/   starting point for a new task package
 ```
 
@@ -100,7 +104,7 @@ sibling directory. `vericax.toml` is gitignored.
 - [x] Second solver (FEniCS) and a 26-package suite across two solvers and a merged image
 - [x] Tier 1 trusted loop: out-of-band verifier execution and the anti-cheat layer as runtime code
 - [x] Five agent stacks and 2-VM parallel scheduling with per-episode challenge binding
-- [ ] Public task suite and image release under the `vericax` organisation
+- [ ] Public alpha release of the task suite and tooling (organisation move deferred)
 
 ## Contributing
 
