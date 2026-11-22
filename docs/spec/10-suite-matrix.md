@@ -160,7 +160,7 @@ D5 已定（2026-11-18），执行顺序：
 - **P1 试点制**：先写 5 题（FEniCS `design-optimization` ×2、CalculiX `single-execution` ×3），过同一打包门后再续下一批。
 - **cross-solver 纳入 Phase 2**，但先做 P2 provenance spike；判据不能可复现地判"工件来自指定工具"时，`software-selection` 回落到 v0.5。
 - **D5 自建镜像（P3）与 P1 并行**：越晚换镜像，越多题要重烘 pins、重跑审计。
-- **verifier 软约束放宽到 ≤450 行**（spec/02 §5）。
+- **verifier 软约束放宽到 ≤450 行**（spec/02 §5）；`cross-solver/task-0005` 454 行是已记录的例外。
 
 **P2 状态（2026-11-20，P3c 后更新）**：L6 判据已写入 spec/02 §1/§2/§6，task schema 增加 `provenance` 块（spec/01，P3c 四题已填写）。原型 `cae--cli--cross-solver--task-0001` 审计 15/15、robust 10/10、L0 pass、fake smoke 1.0；`capability` 如实写 `single-execution`。**真正的 `software-selection` 已于 P3c 验证**：cross-solver task-0002…0005 在 merged image 上完成 L1–L3+L6 全管线（各 audit 15/15、robust 10/10、L0、fake smoke 1.0）。
 
