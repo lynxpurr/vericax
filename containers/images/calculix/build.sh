@@ -15,12 +15,13 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 WORK="${VERICAX_IMAGE_BUILD_DIR:-$HOME/vericax-image-build/calculix}"
 BASE_URL="${VERICAX_BASE_URL:-https://cloud-images.ubuntu.com/noble/20261017}"
 BASE_IMG="noble-server-cloudimg-amd64.img"
-SERVER_DIR="${VERICAX_OSWORLD_SERVER:-$HOME/projects/engiworld-playground/engiworld-repo/runtime/engine/desktop_env/server}"
+SERVER_DIR="${VERICAX_OSWORLD_SERVER:-}"
 BUILDER_TAG="vericax-image-builder:24.04"
 
-if [ ! -d "$SERVER_DIR" ]; then
-    echo "OSWorld server bundle not found: $SERVER_DIR" >&2
-    echo "set VERICAX_OSWORLD_SERVER to the desktop_env/server directory" >&2
+if [ -z "$SERVER_DIR" ] || [ ! -d "$SERVER_DIR" ]; then
+    echo "OSWorld server bundle not found: ${SERVER_DIR:-<unset>}" >&2
+    echo "set VERICAX_OSWORLD_SERVER to the desktop_env/server directory of an" >&2
+    echo "EngiWorld runtime clone (docs/setup.md section 2)." >&2
     exit 2
 fi
 

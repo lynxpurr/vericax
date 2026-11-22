@@ -48,9 +48,10 @@ re-baking pins and re-running audit/L0 on every task (spec/04 §6). FEniCS
 
 - Docker with `/dev/kvm` access; the builder image installs QEMU,
   `cloud-image-utils`, `genisoimage`, `openssh-client`, `python3`, `curl`.
-- The OSWorld server bundle. Default:
-  `$HOME/projects/engiworld-playground/engiworld-repo/runtime/engine/desktop_env/server`;
-  override with `VERICAX_OSWORLD_SERVER`.
+- The OSWorld server bundle from an EngiWorld runtime clone (see
+  `docs/setup.md` section 2). Set `VERICAX_OSWORLD_SERVER` to its
+  `runtime/engine/desktop_env/server` directory; the build refuses to guess a
+  path when the variable is unset.
 
 ## Build
 

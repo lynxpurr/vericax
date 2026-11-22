@@ -8,8 +8,8 @@ Every workflow run fails before the first step. The run annotation is:
 > spending limit needs to be increased. Please check the 'Billing & plans'
 > section in your settings.
 
-Evidence (private repo `lynxpurr/vericax`, run `44918331036`, `develop` push
-on 2026-11-21):
+Evidence (the repository was private at the time; run `44918331036`, `develop`
+push on 2026-11-21):
 
 ```text
 X validate in 2s (ID 136888661329)

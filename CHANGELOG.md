@@ -60,6 +60,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and spec/02 section 2 as a channel declaration: native decks may be edited,
   but the verifier re-runs the submitted deck and the L6.2 comparison plus the
   N5 fabricated-summary negative cover the anti-forgery path.
+- Release preparation: image build recipes now require
+  `VERICAX_OSWORLD_SERVER` instead of falling back to an author-specific path;
+  the code-of-conduct reporting channel, provenance wording and the task
+  proposal capability list were aligned with the public-release policy.
 
 ### Fixed
 - pi cost accounting on the recorded task-0001 episode: 7 LLM calls / 4,593

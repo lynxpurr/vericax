@@ -75,7 +75,8 @@ small Poisson solve (PETSc assembly) before finishing.
 ```
 
 Prerequisites are the same as the calculix recipe (Docker with /dev/kvm, the
-OSWorld server bundle). The host downloads/verifies the pinned tarballs
+OSWorld server bundle via `VERICAX_OSWORLD_SERVER`, see `docs/setup.md`
+section 2). The host downloads/verifies the pinned tarballs
 (sha256 above), the PPA key, and the base image, then provisions in QEMU.
 Output (not committed):
 

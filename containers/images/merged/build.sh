@@ -17,7 +17,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 WORK="${VERICAX_IMAGE_BUILD_DIR:-$HOME/vericax-image-build/merged}"
 BASE_URL="${VERICAX_BASE_URL:-https://cloud-images.ubuntu.com/noble/20261017}"
 BASE_IMG="noble-server-cloudimg-amd64.img"
-SERVER_DIR="${VERICAX_OSWORLD_SERVER:-$HOME/projects/engiworld-playground/engiworld-repo/runtime/engine/desktop_env/server}"
+SERVER_DIR="${VERICAX_OSWORLD_SERVER:-}"
 BUILDER_TAG="vericax-image-builder:24.04"
 RECIPE="$REPO_ROOT/containers/images/merged"
 OUT_IMG="VeriCAx-merged.qcow2"
@@ -32,9 +32,10 @@ dolfinx|https://codeload.github.com/FEniCS/dolfinx/tar.gz/fbc8e77958ac49b55d9f99
 "
 PPA_KEY_SHA256="62f256fa21f9dbb4290e203a4da3a45f8d11b26c2ca2fee2ba70f2c841782c0f"
 
-if [ ! -d "$SERVER_DIR" ]; then
-    echo "OSWorld server bundle not found: $SERVER_DIR" >&2
-    echo "set VERICAX_OSWORLD_SERVER to the desktop_env/server directory" >&2
+if [ -z "$SERVER_DIR" ] || [ ! -d "$SERVER_DIR" ]; then
+    echo "OSWorld server bundle not found: ${SERVER_DIR:-<unset>}" >&2
+    echo "set VERICAX_OSWORLD_SERVER to the desktop_env/server directory of an" >&2
+    echo "EngiWorld runtime clone (docs/setup.md section 2)." >&2
     exit 2
 fi
 
