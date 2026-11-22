@@ -35,8 +35,22 @@ source tree, and a non-editable install points them into `site-packages`.
 
 ## 3. VM images (external)
 
-Images are published as `qcow2.zst` archives with a manifest and checksums. For
-the CalculiX pilot tasks:
+The suite default since 2026-11-22 is the three **self-built** images produced
+by `containers/images/*/build.sh`:
+
+| snapshot name | build output |
+|---|---|
+| `CalculiX-2.21.qcow2` | `~/vericax-image-build/calculix/out/` |
+| `FEniCS.qcow2` | `~/vericax-image-build/fenics/out/` |
+| `VeriCAx-merged.qcow2` | `~/vericax-image-build/merged/out/` |
+
+The build recipes pin every package; see the per-image `README.md`. Pinned
+verifier references are bound to the image they were measured on, so switching
+images requires a full re-audit (`scripts/audit_suite.py`).
+
+The older EngiWorld images are still supported for reference. They are
+published as `qcow2.zst` archives with a manifest and checksums. For the
+CalculiX pilot tasks:
 
 ```bash
 # from the runtime/ directory, with its venv
@@ -59,7 +73,19 @@ cp vericax.toml.example vericax.toml   # gitignored
 path = "/path/to/EngiWorld/runtime"
 
 [images]
-dir = "/path/to/environment-images/images"
+# One directory holding all three self-built qcow2 files by snapshot name.
+dir = "/path/to/vericax-image-build/suite"
+```
+
+The build outputs live in separate directories; link them under one suite
+directory (or copy them):
+
+```bash
+mkdir -p /path/to/vericax-image-build/suite
+cd /path/to/vericax-image-build/suite
+ln -s ../calculix/out/CalculiX-2.21.qcow2 CalculiX-2.21.qcow2
+ln -s ../fenics/out/FEniCS.qcow2           FEniCS.qcow2
+ln -s ../merged/out/VeriCAx-merged.qcow2   VeriCAx-merged.qcow2
 ```
 
 Environment variables win over the file: `VERICAX_RUNTIME`,

@@ -3,7 +3,7 @@
   "schema_version": "0.1",
   "snapshot": "FEniCS",
   "interface": "cli",
-  "instruction": "The image has no internet. A local wheelhouse is at `/home/user/Desktop/wheels`; it contains `trimesh` 5.2.1.\n\n1. Install trimesh from the wheelhouse, for example with `python3 -m pip install --user --no-index --find-links wheels trimesh==5.2.1`.\n2. Load `/home/user/Desktop/part.stl` with trimesh and compute the volume and the total surface area of the solid.\n3. Deliver in /home/user/Desktop:\n   - `solve.py` - the script that loads the STL with trimesh and writes the summary; it must import `trimesh`.\n   - `summary.txt` - one line, two comma-separated numbers: `volume, area`.\n\nThe evaluator checks both values and that solve.py uses trimesh. Do not hard-code the answer.",
+  "instruction": "The image has no internet. A local wheelhouse is at `/home/user/Desktop/wheels`; it contains `trimesh` 5.2.1 and its `scipy` 1.13.1 dependency.\n\n1. Install trimesh and its scipy dependency from the wheelhouse, for example with `python3 -m pip install --user --no-index --find-links wheels trimesh==5.2.1 scipy==1.13.1`.\n2. Load `/home/user/Desktop/part.stl` with trimesh and compute the volume and the total surface area of the solid.\n3. Deliver in /home/user/Desktop:\n   - `solve.py` - the script that loads the STL with trimesh and writes the summary; it must import `trimesh`.\n   - `summary.txt` - one line, two comma-separated numbers: `volume, area`.\n\nThe evaluator checks both values and that solve.py uses trimesh. Do not hard-code the answer.",
   "source": "original",
   "config": [
     {
@@ -21,6 +21,10 @@
           {
             "local_path": "task-0016/init_file/wheels/trimesh-5.2.1-py3-none-any.whl",
             "path": "/home/user/Desktop/wheels/trimesh-5.2.1-py3-none-any.whl"
+          },
+          {
+            "local_path": "task-0016/init_file/wheels/scipy-1.13.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+            "path": "/home/user/Desktop/wheels/scipy-1.13.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
           }
         ]
       }

@@ -26,7 +26,7 @@ def main() -> int:
         print(f"runtime : ERROR\n{exc}")
         ok = False
 
-    for snapshot in ("CalculiX-2.21",):
+    for snapshot in ("CalculiX-2.21", "FEniCS", "VeriCAx-merged"):
         try:
             image = _config.image_path(snapshot)
             size = image.stat().st_size / 1e9

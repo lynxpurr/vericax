@@ -19,6 +19,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `openclaw 2026.9.9` (P5); n=1 conformance on task-0001 is 1.0 for all three.
 - `scripts/ci_local.sh` (CI replica + offline tests), wired into the pre-push
   hook; `docs/ci.md` records the GitHub Actions billing blocker (E).
+- `scripts/audit_suite.py`: audit → pack → L0 → pack-check for every package,
+  two tasks in flight; used for the default-image switch.
+- Self-built default images: all 26 packages re-audited on CalculiX
+  `91b1d6c8…`, FEniCS `b0e2f239…` and merged `e6514410…` (2026-11-22).
+- task-0014/0016 wheelhouses include `scipy 1.13.1`, the runtime dependency of
+  scikit-fem/trimesh that the self-built FEniCS image does not ship.
 - `vericax audit --task <id> --group reference`: the L0 benchmark-validity gate.
   It replays the reference case, compares the produced summary with the shipped
   GT summary, runs the verifier, and writes

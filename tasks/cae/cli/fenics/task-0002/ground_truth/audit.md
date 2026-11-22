@@ -1,6 +1,6 @@
 # Verifier audit record
 
-- date: 2026-11-20
+- date: 2026-11-22
 - task: cae--cli--fenics--task-0002 (evaluator func: quantified_score)
 - image: FEniCS
 - reference submission summary: `20.000000, 5.000000, 153.133352, 0.048995`
