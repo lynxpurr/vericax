@@ -71,9 +71,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   streamed update event.
 
 ### Planned
-- Public alpha release of the task suite and tooling; the remaining gates are
-  tracked in `docs/release-checklist.md`. Moving to a dedicated organisation is
-  deferred until the `vericax` name is held.
+- Public alpha release of the task suite and tooling. Moving to a dedicated
+  organisation is deferred until the `vericax` name is held.
 
 ## [0.1.0] - 2026-11-18
 

@@ -5,8 +5,7 @@ name: ci
 # or your spending limit needs to be increased." That is an account-level
 # billing blocker, not a code failure; the same steps pass locally. Until the
 # public `ci` badge is confirmed green, scripts/ci_local.sh is the authoritative
-# gate (and the pre-push hook runs it). See docs/ci.md and
-# docs/release-checklist.md.
+# gate (and the pre-push hook runs it). See docs/ci.md.
 on:
   push:
     branches: [main, develop]

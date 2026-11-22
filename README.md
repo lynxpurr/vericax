@@ -18,8 +18,7 @@ The first principle:
 ## Status
 
 Alpha, under active development. Code, task definitions, verifiers and audit
-records are released under MIT; the launch checklist is in
-[`docs/release-checklist.md`](docs/release-checklist.md). Current contents:
+records are released under MIT. Current contents:
 
 | Area | State |
 |---|---|
@@ -36,7 +35,6 @@ records are released under MIT; the launch checklist is in
 ```
 docs/spec/         specifications (the current bulk of the project)
 docs/setup.md      how to obtain the external runtime and VM images
-docs/release-checklist.md  public-launch status and remaining gates
 docs/lessons-2026-11-19.md  audit-calibration lessons behind the 2026-11-19 spec changes
 tasks/             task packages: <domain>/<interface>/<software>/task-<NNNN>/
 scripts/           audit_task.py, pack_task.py, vm_exec.py, _config.py, check_setup.py
