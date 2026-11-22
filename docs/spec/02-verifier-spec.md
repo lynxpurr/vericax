@@ -65,6 +65,13 @@ verifier 是本基准的第一公民。社区（CAD Bench v2、BIM-Edit、FEABen
 | 伪造非空的 `.dat`/场文件 | L6.2 逐节点比较提交结果与重跑结果 | P2 spike |
 | 调试死循环刷轮次 | 不属于 verifier 职责，由 runtime 侧早停策略处理（连续 N 步同类错误 → 换策略提示或止损；记录为 `agent_stalled` 类目，不污染分数） | t03 教训（100 轮 357K reasoning） |
 
+**`allow_native_deck_edit` × summary 防伪造（2026-11-22 正式确认）**：允许文本编辑原生
+deck 与"summary 防伪造"是设计组合，不矛盾——agent 可以编辑 `.inp`/`.FOAM` 等 driver
+文件，但评分工件仍由 verifier 用**提交的 deck 独立重跑**并逐项比对 summary/场结果
+（L2/L6.2），N5（fabricated summary）负例覆盖伪造路径；字段为 `false` 只表示该题没有
+可编辑的原生 deck（交付 XDMF/HDF5 等格式）。该字段是任务作者与审计者的**通道声明**，
+harness 不据此改变运行时行为（spec/01 §2）。
+
 ## 3. 评分面与执行面分离（测 agent 栈的关键改造）
 
 EngiWorld 测裸 LLM 时模型看不到 task-root；VeriCAx 的被测 agent 拥有文件系统，因此：
@@ -107,6 +114,12 @@ EngiWorld 测裸 LLM 时模型看不到 task-root；VeriCAx 的被测 agent 拥�
    且 N≥10；任一不满足，打包失败（`--check` 同样失败）。
 4. **替代路径的判据**：必须与参考解在工作流上不同（不同编码/网格策略/中间格式），
    不能只是同一文件换空白或改名；审计记录里写清"不同在哪里"。
+5. **负例拒绝边距（2026-11-22）**：`scripts/audit_task.py` 用数值型用例的分数计算
+   `min(ge 期望的实际收分) - max(le 期望的实际拒分)`，写入 `audit.md` 的
+   `- rejection margin: X (min positive … - max negative …)` 行；数值题要求该边距
+   `> 0`，正负分数带重叠即审计失败。exact_match 题没有数值带，记录为
+   `n/a (no numeric expectations)`。该行不改变打包门校验的表格结构（行数/列数不变），
+   因此旧记录的打包校验不受影响；下次重审计自动带边距。
 
 ## 5. Verifier 工程约束
 

@@ -19,9 +19,12 @@ Task package contract (`audit_cases.py` next to the task json):
         ("N5 baseline copied",        BASELINE,              ("le", 0.001)),
     ]
 
-Each script runs inside the VM with the task's init resources already uploaded;
-the harness cleans the declared artifacts before every case, so a case only sees
-what its script produces.
+Each script runs inside the VM with the task's init resources already uploaded.
+Before every case the harness restores the Desktop from its post-reset snapshot
+and removes temporary files created by the previous case, so a case only sees
+the init resources and what its own script produces. The audit record also
+carries the numeric rejection margin (lowest accepted score minus highest
+rejected score), so "rejected" is a reviewable quantity, not a boolean.
 
 Pinned references: if the verifier declares `EXPECTED_<NAME> = ...` lines and the
 gold summary is numeric with the same arity, the harness bakes the measured
@@ -49,6 +52,10 @@ import _config  # noqa: E402  (external dependency resolution)
 
 DESK = "/home/user/Desktop"
 EVAL_VM_PATH = "/home/user/vericax/eval.py"
+BASE_TAR = "/home/user/vericax/desktop-baseline.tar"
+TMP_BASELINE = "/home/user/vericax/tmp-baseline.txt"
+TMP_NOW = "/home/user/vericax/tmp-now.txt"
+SCRATCH = "/tmp/vericax-audit-scratch"
 
 
 def task_dir_for(task_id: str) -> Path:
@@ -65,21 +72,65 @@ def load_cases(task_dir: Path):
     return module
 
 
-def check_expectation(expect: tuple, verdict: str) -> tuple[bool, str]:
+def workspace_setup_script() -> str:
+    """Snapshot the pristine Desktop and the /tmp file listing after VM reset."""
+    return (
+        f"mkdir -p /home/user/vericax && "
+        f"tar -C {DESK} -cf {BASE_TAR} . && "
+        f"mkdir -p {SCRATCH} && "
+        f"find /tmp -mindepth 1 -maxdepth 1 -type f -printf '%f\\n' | sort > {TMP_BASELINE}"
+    )
+
+
+def workspace_clean_script() -> str:
+    """Restore the case workspace between audit cases.
+
+    The whole Desktop is restored from the post-reset tarball, so declared
+    artifacts, solver side files (``.frd``/``.sta``/...) and undeclared scratch
+    all disappear. The harness scratch directory is recreated empty, and regular
+    files created in /tmp by the previous case are removed. Directories and
+    sockets in /tmp are left alone: the live desktop session owns them.
+    """
+    return (
+        f"find {DESK} -mindepth 1 -maxdepth 1 -exec rm -rf {{}} +; "
+        f"tar -C {DESK} -xf {BASE_TAR}; "
+        f"rm -rf {SCRATCH}; mkdir -p {SCRATCH}; "
+        f"find /tmp -mindepth 1 -maxdepth 1 -type f -printf '%f\\n' | sort > {TMP_NOW}; "
+        f"comm -13 {TMP_BASELINE} {TMP_NOW} | while IFS= read -r f; do rm -f \"/tmp/$f\"; done"
+    )
+
+
+def check_expectation(expect: tuple, verdict: str) -> tuple[bool, str, float | None]:
+    """Check one verdict. The third element is the numeric score, if any."""
     kind = expect[0]
     if kind in ("true", "false"):
         want = "True" if kind == "true" else "False"
         first = verdict.splitlines()[0].strip() if verdict else "<no output>"
-        return first == want, f"want={want} got={first}"
+        return first == want, f"want={want} got={first}", None
     try:
         value = float(verdict.splitlines()[0])
     except (ValueError, IndexError):
-        return False, f"want={expect} got=<unparseable {verdict[:40]!r}>"
+        return False, f"want={expect} got=<unparseable {verdict[:40]!r}>", None
     if kind == "ge":
-        return value >= expect[1], f"want>={expect[1]} got={value:.6f}"
+        return value >= expect[1], f"want>={expect[1]} got={value:.6f}", value
     if kind == "le":
-        return value <= expect[1], f"want<={expect[1]} got={value:.6f}"
+        return value <= expect[1], f"want<={expect[1]} got={value:.6f}", value
     raise SystemExit(f"unknown expectation kind: {kind}")
+
+
+def rejection_margin(observed: list[tuple[tuple, float | None]]) -> dict | None:
+    """Separation between the lowest accepted and the highest rejected score.
+
+    Only numeric expectations participate. ``None`` means the task has no
+    numeric positive/negative pair (an exact-match task), so there is no margin
+    to record.
+    """
+    positive = [v for expect, v in observed if expect[0] == "ge" and v is not None]
+    negative = [v for expect, v in observed if expect[0] == "le" and v is not None]
+    if not positive or not negative:
+        return None
+    low, high = min(positive), max(negative)
+    return {"margin": low - high, "min_positive": low, "max_negative": high}
 
 
 def main() -> int:
@@ -134,8 +185,7 @@ def main() -> int:
             return None
 
     def clean() -> None:
-        names = " ".join(f"{DESK}/{a}" for a in artifacts)
-        sh(f"rm -f {names} {DESK}/_verdict.txt {DESK}/_verdict.err")
+        sh(workspace_clean_script())
 
     def verdict() -> tuple[str, str]:
         sh(f"cd {DESK} && python3 {EVAL_VM_PATH} > _verdict.txt 2> _verdict.err; "
@@ -149,7 +199,8 @@ def main() -> int:
     try:
         print("[boot] starting VM ...")
         env.reset(task_config=task_json)
-        print("[boot] VM ready")
+        sh(workspace_setup_script())
+        print("[boot] VM ready (desktop baseline captured)")
 
         # ---------------- ground truth from the gold case
         gold_script = cases[0][1]
@@ -190,14 +241,19 @@ def main() -> int:
         put(EVAL_VM_PATH, baked.encode())
 
         # ---------------- cases
+        observed = []
         for label, script, expect in cases:
             clean()
             if script.strip():
                 sh(script)
             out, err = verdict()
-            ok, detail = check_expectation(expect, out)
+            ok, detail, value = check_expectation(expect, out)
+            observed.append((expect, value))
             results.append((label, detail, ok, err[-300:]))
             print(f"[{'PASS' if ok else 'MISS'}] {label}: {detail}")
+
+        # ---------------- rejection margin (spec/02 section 4.1)
+        margin = rejection_margin(observed)
 
         # ---------------- robustness group (spec/02 section 4.1)
         robust = None
@@ -210,7 +266,7 @@ def main() -> int:
                     sh(gold_script)
                 out, _err = verdict()
                 first = out.splitlines()[0].strip() if out else "<no output>"
-                ok, _detail = check_expectation(cases[0][2], out)
+                ok, _detail, _value = check_expectation(cases[0][2], out)
                 verdicts.append((first, ok))
             first_verdict = verdicts[0][0]
             agreeing = sum(1 for v, ok in verdicts if ok and v == first_verdict)
@@ -238,17 +294,25 @@ def main() -> int:
             line += f"  err={err.strip().splitlines()[0][:140]}"
         print(line)
     print(f"{passed}/{len(results)} expectations matched")
+    if margin is None:
+        print("rejection margin: n/a (no numeric expectations)")
+    else:
+        print(f"rejection margin: {margin['margin']:.6f} "
+              f"(min positive {margin['min_positive']:.6f}, "
+              f"max negative {margin['max_negative']:.6f})")
 
     (gt_dir / "audit.md").write_text(
         render_audit_md(task_json, results, gold_summary, robust=robust,
-                        snapshot=task_json.get("snapshot")))
+                        snapshot=task_json.get("snapshot"), margin=margin))
     print(f"audit record -> {gt_dir / 'audit.md'}")
-    ok = passed == len(results) and (robust is None or robust["consistent"])
+    margin_ok = margin is None or margin["margin"] > 0
+    ok = passed == len(results) and (robust is None or robust["consistent"]) and margin_ok
     return 0 if ok else 1
 
 
 def render_audit_md(task_json: dict, results, gold_summary: str,
-                    robust: dict | None = None, snapshot: str | None = None) -> str:
+                    robust: dict | None = None, snapshot: str | None = None,
+                    margin: dict | None = None) -> str:
     import datetime
     lines = [
         "# Verifier audit record",
@@ -265,6 +329,12 @@ def render_audit_md(task_json: dict, results, gold_summary: str,
             sample += ", ..."
         lines.append(f"- robust: {robust['agreeing']}/{robust['runs']} consistent "
                      f"(verdicts: {sample})")
+    if margin is not None:
+        lines.append(f"- rejection margin: {margin['margin']:.6f} "
+                     f"(min positive {margin['min_positive']:.6f} - "
+                     f"max negative {margin['max_negative']:.6f})")
+    else:
+        lines.append("- rejection margin: n/a (no numeric expectations)")
     lines += [
         "",
         "| case | expectation | actual | verdict |",
