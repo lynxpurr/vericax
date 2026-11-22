@@ -23,7 +23,6 @@ body:
         - software-selection
         - observation-reconstruct
         - design-optimization
-        - cross-software
         - cross-stage-consistency
         - open-environment
     validations:

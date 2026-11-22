@@ -38,10 +38,12 @@ individual is officially representing the community in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behaviour may be
-reported to the project maintainers through the private channel described in
-[SECURITY.md](SECURITY.md). All complaints will be reviewed and investigated
-promptly and fairly. Maintainers are obligated to respect the privacy and
-security of the reporter.
+reported privately to the maintainer [@lynxpurr](https://github.com/lynxpurr)
+through the contact method on that GitHub profile, or by opening an issue that
+asks for a private channel without including details. Please do not put
+personal or sensitive information in a public issue. All complaints will be
+reviewed and investigated promptly and fairly. Maintainers are obligated to
+respect the privacy and security of the reporter.
 
 ## Enforcement guidelines
 

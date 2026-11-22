@@ -35,8 +35,9 @@ script:
 ./containers/images/merged/build.sh
 ```
 
-Prerequisites are the same as the other recipes (Docker with `/dev/kvm`, the
-OSWorld server bundle). Output (not committed):
+Prerequisites are the same as the other recipes (Docker with `/dev/kvm`, and
+the OSWorld server bundle via `VERICAX_OSWORLD_SERVER`, see `docs/setup.md`
+section 2). Output (not committed):
 
 ```
 $HOME/vericax-image-build/merged/out/VeriCAx-merged.qcow2
