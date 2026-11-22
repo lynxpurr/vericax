@@ -4,6 +4,15 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `docs/spec/11-capability-runs.md`: the n>=3 capability-run protocol, batch
+  plan (B0–B3), go/no-go gates and the reporting contract.
+- `scripts/capability_report.py`: capability x solver x stack matrix with n,
+  mean/range, infra count, cost per task, median active time and error
+  categories; 9 offline tests, wired into `scripts/ci_local.sh`.
+
 ## [0.2.0-alpha] - 2026-11-22
 
 Alpha release of the 26-package suite on the three self-built VM images.

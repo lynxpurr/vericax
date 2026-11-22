@@ -22,7 +22,7 @@ records are released under MIT. Current contents:
 
 | Area | State |
 |---|---|
-| Specifications | `docs/spec/00`–`10`; latest calibration 2026-11-22 (P4 parallel scheduling, per-episode L6 challenge tokens, P5 stack expansion) |
+| Specifications | `docs/spec/00`–`11`; latest calibration 2026-11-22 (capability-run protocol, P4 parallel scheduling, per-episode L6 challenge tokens, P5 stack expansion) |
 | Task packages | 26 packages (25 Phase-2 targets + 1 L6 prototype) across CalculiX, FEniCS and a merged cross-solver image; every package has an audit record and L0 self-check |
 | Default images | three self-built qcow2 (CalculiX 2.21, FEniCS 0.10.0.post2, merged); all 26 packages re-audited on them on 2026-11-22 |
 | Tooling | audit harness, package validator, VM probe, dependency resolver, parallel `vericax batch`, `scripts/audit_suite.py`, local CI gate |
