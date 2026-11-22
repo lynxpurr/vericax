@@ -65,6 +65,11 @@ tasks/<domain>/<interface>/<software>/task-<NNNN>/
 }
 ```
 
+`integrity_policy.allow_native_deck_edit` 是**通道声明**而非信任假设（2026-11-22 正式确认）：
+`true` 允许 agent 文本编辑原生 driver 文件，但评分工件仍须由 verifier 用提交的 deck
+独立重跑产生/复核（spec/02 §2）；`false` 用于没有可编辑原生 deck 的交付形态
+（cross-solver task-0003/0004 的 XDMF/HDF5）。harness 不据此改变运行时行为。
+
 ## 3. Split 纪律（EngiWorld main-300/main-306 并存教训）
 
 - 每个 split 是一个版本化文件：`splits/v0.1-cae-cli-100.txt`，一行一个任务 id，**永不原地修改**——修订生成新版本号
