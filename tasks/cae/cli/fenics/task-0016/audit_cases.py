@@ -7,7 +7,7 @@ square-tube STL (volume 840, surface area 728).
 INSTALL = r"""
 set -e
 cd /home/user/Desktop
-python3 -m pip install --user --no-index --find-links wheels trimesh==5.2.1 >/dev/null 2>&1
+python3 -m pip install --user --no-index --find-links wheels trimesh==5.2.1 scipy==1.13.1 >/dev/null 2>&1
 """
 
 SOLVE = r'''import trimesh

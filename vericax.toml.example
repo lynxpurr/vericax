@@ -7,5 +7,9 @@
 path = "/path/to/engiworld-runtime"
 
 [images]
-# Directory holding decompressed <snapshot>.qcow2 files (CalculiX-2.21.qcow2, ...).
-dir = "/path/to/environment-images"
+# Directory holding the decompressed <snapshot>.qcow2 files. The suite default
+# since 2026-11-22 is the three self-built images, named by their snapshot:
+#   CalculiX-2.21.qcow2  FEniCS.qcow2  VeriCAx-merged.qcow2
+# They may live in different build-output directories; link them under one
+# directory and point `dir` there (see docs/setup.md section 4).
+dir = "/path/to/vericax-image-build/suite"

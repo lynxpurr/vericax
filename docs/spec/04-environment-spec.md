@@ -70,4 +70,4 @@ VeriCAx 不 vendor 运行时与镜像。`scripts/_config.py` 是唯一的解析�
 | runtime（含 `engine/desktop_env`） | `VERICAX_RUNTIME` | `vericax.toml` → `[runtime] path` |
 | 镜像目录（含 `<snapshot>.qcow2`） | `VERICAX_IMAGE_DIR`（或单文件 `VERICAX_IMAGE`） | `vericax.toml` → `[images] dir` |
 
-v0 复用 EngiWorld runtime 与其公开镜像；v0.5 起发布自有镜像集（VeriCAx-Images）时，只换配置指向，任务包与 verifier 不受影响。
+v0 复用 EngiWorld runtime 与其公开镜像；v0.5 起发布自有镜像集（VeriCAx-Images）时，只换配置指向，任务包与 verifier 不受影响。**2026-11-22**：Phase 2 套件已切换到三张自建镜像（CalculiX/FEniCS/merged），26 个包在同一批镜像上重审计并刷新 pins；EngiWorld 镜像保留作对照。换镜像仍必须重跑审计（§6）。

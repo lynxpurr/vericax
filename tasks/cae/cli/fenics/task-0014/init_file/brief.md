@@ -1,7 +1,8 @@
 # Install scikit-fem and solve a Poisson problem
 
 The image has **no internet**. A local wheelhouse is at
-`/home/user/Desktop/wheels`; it contains `scikit-fem` 12.0.2.
+`/home/user/Desktop/wheels`; it contains `scikit-fem` 12.0.2 and its
+`scipy` 1.13.1 dependency.
 
 1. Install it into your Python environment, for example:
 

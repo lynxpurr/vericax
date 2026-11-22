@@ -221,3 +221,28 @@ fake 冒烟必须带 `--payload-dir`（按 `tests/run_acceptance.py:build_payloa
   三件套归因与分数。opencode 的 `step_finish.part.tokens` 可以正常提取。
 - **conformance 记录用 `kind=test`**：三栈 n=1 全 1.0，但不进能力聚合；`runs/` 里的
   episode 不进 git。
+
+## 16. 默认镜像切换(2026-11-22)
+
+- **切换不是改 `snapshot` 名**,而是让同名 snapshot 解析到自建 qcow2。做法:把三张镜像
+  `ln -s` 到一个 suite 目录,`vericax.toml [images] dir` 指过去;任务 JSON 的 `snapshot`
+  不变。`VERICAX_IMAGE` 只是单文件逃生口,跨 snapshot 的 batch 必须用
+  `--image SNAPSHOT=PATH`。
+- **镜像变小后审计快很多**:自建镜像 1.5–2.3 GB,单题 `audit_task --repeat 10` +
+  L0 + pack 约 170–300 s;26 题 parallel=2 约 75 分钟完成。旧的 11.7 GB EngiWorld
+  镜像单题要 5–10 分钟。
+- **wheelhouse 要覆盖依赖闭包,不是只放目标包**:scikit-fem 的 METADATA 依赖 scipy,
+  trimesh 的 scipy 是**可选**依赖(pip 不会装),而两者的运行时路径都可能走到 scipy。
+  自建 FEniCS 镜像不含 scipy,所以给 task-0014/0016 的 wheelhouse 补
+  `scipy-1.13.1-cp312` 并在 INSTALL 里显式安装(0016 必须显式,因为 pip 不知道可选依赖)。
+  排查方式:在 VM 里直接跑 gold 脚本并打印 stderr,不要只看 `FAILED to fetch`。
+- **Ubuntu 24.04 的 PEP 668 不是这里的坑**:`pip install --user` 在自建镜像里可用;
+  先别急着加 `--break-system-packages`,先确认缺的是哪个模块。
+- **并发审计要按题分 cache**:`audit_task.py` 原来所有题共用一个
+  `cache/audit`,parallel=2 时可能互踩;改成 `cache/audit/<task-id>`。
+- **VM 偶发控制通道 reset 不是题的问题**:fenics-0002 在一次并行审计里
+  `get_screenshot` 连续 90 s 失败,重跑单题即过(16/16)。批量审计要把这种失败
+  与真正的包/依赖失败分开,单独重跑后再判定。
+- **审计产物有非确定性字节**:FEniCS 的 `ground_truth/solution.h5` 每次重生成
+  sha 会变(大小相同),所以 `resources.sha256`/`tree_version` 会变;pins 与
+  summary 不变。发布结果必须带 `tree_version`,不能用旧树的结果比新树。

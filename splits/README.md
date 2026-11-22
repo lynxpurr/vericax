@@ -17,10 +17,16 @@ manifest is written and only warned about under `--check`.
 
 ## v0.2-cae-cli-25.txt
 
-Current contents: 6 tasks — `fenics/task-0001`, `calculix/task-0004..0006`,
-`fenics/task-0002..0003`. This is the P0-gated subset described in
-`docs/spec/10-suite-matrix.md` §7.1; the file name keeps the `-25` target
-(when the split reaches 25 tasks, rename it).
+Current contents: 18 tasks — `fenics/task-0001`, `calculix/task-0004..0012`,
+`fenics/task-0002..0005`, `fenics/task-0013..0016`. This is the P0-gated
+subset described in `docs/spec/10-suite-matrix.md` §7.1. The `-25` in the
+file name is the frozen Phase 2 target label; the suite now has 26 packages
+across four splits: `v0.1-cae-cli-pilot` (3), this one (18),
+`v0.2-cae-cli-l6-pilot` (1) and `v0.2-cae-cli-merged` (4). Do not rename the
+file as the suite grows.
+
+All 26 packages were re-audited on the three self-built images on 2026-11-22
+and their L0 records now carry the matching `image_sha256` (spec/10 §3).
 
 ### Why `calculix/task-0001..0003` are not listed
 
@@ -28,9 +34,9 @@ They are the Phase 1 validation tasks — the first three packages, built before
 the P0 audit gate existed. They remain in the repository and are still
 validated by CI (structure + manifest), but the v0.2 split is scoped to the
 post-P0 suite: `fenics/task-0001` plus the P1 additions. Re-listing them is a
-release decision for the suite owner; before that they need an L0 reference
-record regenerated on the current image and a fresh `pack_task` run under the
-hard L0 gate.
+release decision for the suite owner; all three now have L0 records on the
+current self-built CalculiX image (2026-11-22), so no technical L0 work
+remains.
 
 ### Adding a task
 

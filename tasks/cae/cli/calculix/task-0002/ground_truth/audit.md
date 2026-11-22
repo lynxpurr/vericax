@@ -1,6 +1,6 @@
 # Verifier audit record
 
-- date: 2026-11-20
+- date: 2026-11-22
 - task: cae--cli--calculix--task-0002 (evaluator func: quantified_score)
 - image: CalculiX-2.21
 - reference submission summary: `9.24, 6.68, -0.3455536`

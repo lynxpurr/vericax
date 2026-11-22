@@ -1,6 +1,6 @@
 # Verifier audit record
 
-- date: 2026-11-20
+- date: 2026-11-22
 - task: cae--cli--fenics--task-0013 (evaluator func: exact_match)
 - image: FEniCS
 - reference submission summary: `249.891169, 0.040970`

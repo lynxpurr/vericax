@@ -3,7 +3,7 @@
   "schema_version": "0.1",
   "snapshot": "FEniCS",
   "interface": "cli",
-  "instruction": "The image has no internet. A local wheelhouse is at `/home/user/Desktop/wheels`; it contains `scikit-fem` 12.0.2.\n\n1. Install scikit-fem from the wheelhouse into your Python environment, for example with `python3 -m pip install --user --no-index --find-links wheels scikit-fem==12.0.2`.\n2. Solve the Poisson problem on the unit square [0,1] x [0,1]: `-Delta u = 2*pi^2*sin(pi*x)*sin(pi*y)`, with u = 0 on all edges. The exact solution is u = sin(pi*x)*sin(pi*y); its maximum is 1.\n3. Deliver in /home/user/Desktop:\n   - `solve.py` - the script that computes the solution with scikit-fem and writes the summary; it must import `skfem`.\n   - `summary.txt` - one number: `max_u`, the maximum nodal value of the computed solution.\n\nThe evaluator checks that solve.py uses scikit-fem and that max_u is within 2% of 1. Do not hard-code the answer.",
+  "instruction": "The image has no internet. A local wheelhouse is at `/home/user/Desktop/wheels`; it contains `scikit-fem` 12.0.2 and its `scipy` 1.13.1 dependency.\n\n1. Install scikit-fem from the wheelhouse into your Python environment, for example with `python3 -m pip install --user --no-index --find-links wheels scikit-fem==12.0.2`.\n2. Solve the Poisson problem on the unit square [0,1] x [0,1]: `-Delta u = 2*pi^2*sin(pi*x)*sin(pi*y)`, with u = 0 on all edges. The exact solution is u = sin(pi*x)*sin(pi*y); its maximum is 1.\n3. Deliver in /home/user/Desktop:\n   - `solve.py` - the script that computes the solution with scikit-fem and writes the summary; it must import `skfem`.\n   - `summary.txt` - one number: `max_u`, the maximum nodal value of the computed solution.\n\nThe evaluator checks that solve.py uses scikit-fem and that max_u is within 2% of 1. Do not hard-code the answer.",
   "source": "original",
   "config": [
     {
@@ -17,6 +17,10 @@
           {
             "local_path": "task-0014/init_file/wheels/scikit_fem-12.0.2-py3-none-any.whl",
             "path": "/home/user/Desktop/wheels/scikit_fem-12.0.2-py3-none-any.whl"
+          },
+          {
+            "local_path": "task-0014/init_file/wheels/scipy-1.13.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+            "path": "/home/user/Desktop/wheels/scipy-1.13.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
           }
         ]
       }
