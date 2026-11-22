@@ -58,8 +58,8 @@ The first public release keeps the repository under `lynxpurr`; moving to the
 GitHub-hosted runners are free for public repositories, so publishing is
 expected to clear the blocker without a workflow change.
 
-That does not make publication an implicit CI fix: visibility is a release
-decision tracked in `docs/release-checklist.md`, and `scripts/ci_local.sh`
-(26 packages, 29 offline tests) stays authoritative until the public `ci` badge
-is confirmed green. The workflow now also runs the offline test modules, so the
-local replica and Actions execute the same checks.
+That does not make publication an implicit CI fix: visibility is a separate
+release decision, and `scripts/ci_local.sh` (26 packages, 29 offline tests)
+stays authoritative until the public `ci` badge is confirmed green. The
+workflow now also runs the offline test modules, so the local replica and
+Actions execute the same checks.

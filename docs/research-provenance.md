@@ -21,6 +21,6 @@
 | re-score ≠ rerun | 审计重评分 9/20 vs patched deepseek rerun **8/20**；qwen4 **10/20**；pass-set 差 06/09/07（研究仓 §12、`results/PHASE-B.md`） |
 | CLI 工件写入策略 | qwen3.8-flash 21 calls / glm-5.3 18 calls 在 task-01 卡 CGX/CLI policy；qwen4 7 steps 通过（研究仓 Phase B pilot） |
 | benchmark repair vs model effect | deepseek 2/20→8/20（+6）；qwen4 10/20（+2：06/09）；同一 patched tree |
-| 命名决议 | 联网查重：caX-bench 商标/EngiBench/FleetBench/CADTestBench 等，见 spec/06 |
+| 命名决议 | 联网查重：EngiBench/FleetBench/CADTestBench 等，见 spec/06 |
 
 外部研究仓（独立工作区，不在本仓；仅作引用）：调研报告 `engiworld-调研报告.md`（§4 verifier 解剖、§7 三题实测、§8 EngiOps 提案、§9 社区盘点、§10 20 题基线、§11 GT/verifier 审计、§12 Phase B）；实测轨迹 `results/cae-batch/`、`results/PHASE-B.md`、`results/gt-selfcheck/`；研究仓 `develop` commit `e4d512a`。引用这些材料时请注明它们属于研究仓而非本仓。公开可获取的依赖是 EngiWorld runtime（MIT）：<https://github.com/Hongcheng-Gao/EngiWorld>。
