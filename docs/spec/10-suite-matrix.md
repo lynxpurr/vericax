@@ -8,7 +8,7 @@
 2. **题量服务于结论**：没有审计的题不加；不能支撑 capability 结论的题不加。
 3. **Phase 1 不加新题**：先把 agent 契约/运行时闭环打通；现有 3 题只做回归。
 4. **split 版本化**：任何对外结果必须能追溯到 split 版本 + n + 栈 + 模型 + 成本。
-5. **与 spec/05 的关系**：spec/05 的 v0.5 100 题（5 求解器 × 20）是长期目标；本 spec 的 25 题是 Phase 2 的可验收子集。Phase 2 先证明 2 求解器 × 25 题，v0.5 再扩到 5 × 20。
+5. **与 spec/05 的关系**：spec/05 的 v0.5 100 题（5 求解器 × 20）是长期目标；本 spec 的 25 道目标题（+1 道 L6 原型）是 Phase 2 的可验收子集。Phase 2 先证明 2 求解器 × 25 题，v0.5 再扩到 5 × 20。
 
 ## 1. Capability 定义
 
@@ -86,7 +86,7 @@ D5 已定（2026-11-18），执行顺序：
 
 - FEniCS 镜像已通过 ModelScope 通道获取（`engiworld.prepare_images --source modelscope --image FEniCS`，65 s；`FEniCS.qcow2` 17.0 GB，sha256 与 manifest 一致），dolfinx 0.10.0.post2。
 - 第二求解器 smoke **已完成**：`cae--cli--fenics--task-0001`（带孔板，L1–L3）P0 重审计 15/15、L0 参考自检 pass、假 agent tier-1 = 1.0——L1–L3 的验证逻辑与求解器无关得到实证。
-- **P1 已完成（2026-11-20/21）**：21 题；P2 L6 spike 完成（+1 道 prototype）；P3a/P3b/P3c 三张自建镜像验收；**Phase 2 套件目标 25 题已达成**（2026-11-21，4 道 `software-selection` 落地；任务包共 26 个）。剩余：P4 2-VM 调度、P5 栈扩展、E CI 账单。
+- **P1 已完成（2026-11-20/21）**：21 题；P2 L6 spike 完成（+1 道 prototype）；P3a/P3b/P3c 三张自建镜像验收；**Phase 2 套件目标 25 题已达成**（2026-11-21，4 道 `software-selection` 落地；任务包共 26 个）。P4/P5 已于 2026-11-22 完成；剩余：E（CI 账户级账单，见 `docs/ci.md`）。
 
 ## 4. 题量分解
 
