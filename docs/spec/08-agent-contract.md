@@ -50,7 +50,7 @@ spec/03 目前使用 `agent` / `model` / `harness` 三个字段。本 spec 冻�
 | **D4** | ✅ 已定（2026-11-18） | 发布时点：Phase 1 验收后开源代码/spec/任务包；公开榜单等 v0.5（≥2 栈 × n≥3）；开源前完成商标四连查与 org 占位 | 商标/组织动作进 spec/06 清单；不阻塞 Phase 1 |
 | **D5** | ✅ 已定（2026-11-18） | 镜像策略：v0/v0.5 沿用 EngiWorld 镜像；Phase 1 写构建 recipe 并产出一张自建镜像验证可复现；Phase 2 切换自建镜像并重跑审计（pins 与镜像绑定） | `spec/10` §3 执行；Phase 2 前不动现有 pins |
 
-> **执行状态（2026-11-22）**：P3a/P3b/P3c 三张自建镜像均已验收（CalculiX 2.21、FEniCS 0.10.0.post2、merged cross-solver）；套件既有 22 个任务包（21 道目标 + L6 原型）仍跑 EngiWorld 镜像，切换 = 重烘 pins + 重跑审计（spec/04 §6）。P4 已完成：`vericax batch --parallel 2`（spec/09 §11），E5 清理顺序落实，L6 每 episode challenge token 管道上线。P5 的 opencode/hermes/openclaw adapter 与 phase2 agent 镜像在 2026-11-22 落地，n=1 conformance 见 spec/10 §7。
+> **执行状态（2026-11-22）**：P3a/P3b/P3c 三张自建镜像均已验收（CalculiX 2.21、FEniCS 0.10.0.post2、merged cross-solver），并已切换为套件默认镜像——26 个任务包全部重审计、L0 与 snapshot 一一对应（spec/10 §3）。P4 已完成：`vericax batch --parallel 2`（spec/09 §11），E5 清理顺序落实，L6 每 episode challenge token 管道上线。P5 的 opencode/hermes/openclaw adapter 与 phase2 agent 镜像在 2026-11-22 落地，n=1 conformance 见 spec/10 §7。
 
 ## 3. Episode 生命周期
 
