@@ -17,6 +17,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   gateway; credentials stay in `BAILIAN_API_KEY` via `env_from`.
 
 ### Fixed
+- `capability_report.py` now reads `active_duration_seconds` (the previous
+  field name left the active-time coverage at 0), reports token/task alongside
+  $/task (subscription gateways have no USD estimate), and includes the split
+  version per task; unknown token counts render as `-` rather than 0.
 - The per-episode proxy socket now lives in a short private `/tmp` directory
   instead of the episode directory. Long adapter names (e.g.
   `opencode-bailian`) pushed the AF_UNIX path over the 108-byte limit and

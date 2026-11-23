@@ -196,7 +196,7 @@ D5 已定（2026-11-18），执行顺序：
 - ≥2 求解器、20–30 题、每 capability ≥3。
 - **benchmark-validity gate**：每个任务包通过 GT 自校验；模型比较必须在同一 `tree_version` 上；n≥3；re-score 不得当 rerun 发布（spec/02 L0、spec/03 §1）。
 - 成绩矩阵：capability × solver，每格给出 n、均值、极差。
-- 报告字段：split 版本、n、agent/harness/model、`image_sha256`、$/题、活跃时长中位、错误分类占比。
+- 报告字段：split 版本、n、agent/harness/model、`image_sha256`、`$/题`（订阅制网关用 token/题）、活跃时长中位、错误分类占比。
 - 通道分数不合并：CLI 与 GUI 分开；跨软件与单软件分开报。
 
 可执行协议、分批计划（B0–B3）、go/no-go 门与报告字段见

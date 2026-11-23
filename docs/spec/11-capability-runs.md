@@ -30,8 +30,9 @@ n、均值、极差、成本、活跃时长和错误分类。本文补全 spec/1
    不得进入发布表。
 4. **infra 失败**：不计分；同一（task, run_index）最多重试 2 次，使用新 episode；
    报告记录重试次数与 infra 率。batch 内 infra 率 >10% 时暂停并诊断。
-5. **成本**：只有 `cost.usd_estimate` 全部可用时才聚合 $/题；否则写 `n/a`，
-   不得静默按价目表估算。token 计数始终记录。
+5. **成本**：只有 `cost.usd_estimate` 全部可用时才聚合 $/题；订阅制网关（如 Bailian
+   Token Plan）没有 USD 单价时，报告 **token/题** 并写 `$/题 n/a`，不得静默按价目表
+   估算。token 计数始终记录。
 6. **时长**：报告 `active_time_seconds` 中位数，并注明覆盖率。
 7. **错误分类**：按栈汇总 `error_category` 占比。
 8. **发布**：原始 `runs/` 不入库；聚合表写入 `docs/results/<date>-<batch>.md`。
@@ -148,8 +149,9 @@ python3 scripts/capability_report.py \
 ```
 
 输出 **capability × solver × 栈** 矩阵，每行包含：n、均值、min、max、infra 数、
-$/题、活跃时长中位（覆盖率）、错误分类、model；per-task 表另有 tree_version。
-同一 task 内混树或 n<3 时脚本以非零状态退出。原始 `runs/` 保留本地，不入库。
+token/题、$/题、活跃时长中位（覆盖率）、错误分类、model；per-task 表另有 split 与
+tree_version。同一 task 内混树或 n<3 时脚本以非零状态退出。原始 `runs/` 保留本地，
+不入库。
 
 ## 9. 风险
 

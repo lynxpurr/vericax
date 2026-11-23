@@ -85,6 +85,19 @@ def _usd(row: dict) -> float | None:
     return cost.get("usd_estimate") if isinstance(cost, dict) else None
 
 
+def _tokens(row: dict, key: str) -> int:
+    cost = row.get("cost")
+    return int(cost.get(key) or 0) if isinstance(cost, dict) else 0
+
+
+def _active(row: dict) -> float | None:
+    """Active time lives in ``active_duration_seconds`` (older rows differ)."""
+    value = row.get("active_duration_seconds")
+    if value is None:
+        value = row.get("active_time_seconds")
+    return value
+
+
 def _median(values) -> float | None:
     present = [v for v in values if v is not None]
     return statistics.median(present) if present else None
@@ -145,6 +158,7 @@ def aggregate(rows: list[dict], registry: dict[str, dict], *,
             "mean": sum(scored) / n if n else None,
             "min": min(scored) if scored else None,
             "max": max(scored) if scored else None,
+            "split_version": items[0].get("split_version") or "-",
         })
 
     cells = []
@@ -157,7 +171,10 @@ def aggregate(rows: list[dict], registry: dict[str, dict], *,
                          if it.get("error_category"))
         usd_values = [_usd(it) for it in items]
         usd_ok = bool(scored) and all(value is not None for value in usd_values)
-        active = [it.get("active_time_seconds") for it in items]
+        active = [_active(it) for it in items]
+        prompt_tokens = sum(_tokens(it, "prompt_tokens") for it in items)
+        completion_tokens = sum(_tokens(it, "completion_tokens") for it in items)
+        tokens_total = prompt_tokens + completion_tokens
         versions = sorted({(it.get("agent") or {}).get("version")
                            for it in items if (it.get("agent") or {}).get("version")})
         cells.append({
@@ -167,6 +184,7 @@ def aggregate(rows: list[dict], registry: dict[str, dict], *,
             "agent_versions": versions,
             "model": model,
             "tree_versions": sorted({it.get("tree_version") or "-" for it in items}),
+            "split_versions": sorted({it.get("split_version") or "-" for it in items}),
             "episodes": len(items),
             "n": n,
             "mean": sum(scored) / n if n else None,
@@ -174,6 +192,10 @@ def aggregate(rows: list[dict], registry: dict[str, dict], *,
             "max": max(scored) if scored else None,
             "infra": infra,
             "errors": dict(errors),
+            "tokens_prompt": prompt_tokens,
+            "tokens_completion": completion_tokens,
+            "tokens_total": tokens_total,
+            "tokens_per_task": (tokens_total / n) if n else None,
             "usd_total": sum(usd_values) if usd_ok else None,
             "usd_per_task": (sum(usd_values) / n) if usd_ok and n else None,
             "active_median": _median(active),
@@ -233,6 +255,8 @@ def render_markdown(report: dict, meta: dict) -> str:
         f"- capability episodes: {report['selected']} "
         f"(excluded test/debug: {report['excluded']})",
         f"- task trees: {len(report['trees'])} distinct (one per task package)",
+        "- cost basis: $/task only when every episode has usd_estimate; "
+        "token/task is always reported",
     ]
     for batch in meta.get("batches", []):
         lines.append(
@@ -243,30 +267,33 @@ def render_markdown(report: dict, meta: dict) -> str:
         "",
         "## Capability × solver × stack",
         "",
-        "| capability | solver | stack | model | n | mean | min | max | infra | $/task | active med (s) | errors |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| capability | solver | stack | model | n | mean | min | max | infra | tokens/task | $/task | active med (s) | errors |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for cell in report["cells"]:
         active = ("-" if cell["active_median"] is None
                   else f"{cell['active_median']:.0f}")
+        tokens = ("-" if not cell["tokens_total"] or cell["tokens_per_task"] is None
+                  else f"{cell['tokens_per_task']:.0f}")
         lines.append(
             f"| {cell['capability']} | {cell['solver']} | {cell['adapter']} | "
             f"{cell['model']} | {cell['n']} | {_fmt(cell['mean'])} | "
             f"{_fmt(cell['min'])} | {_fmt(cell['max'])} | {cell['infra']} | "
-            f"{_fmt(cell['usd_per_task'], 4)} | "
+            f"{tokens} | {_fmt(cell['usd_per_task'], 4)} | "
             f"{active} ({cell['active_coverage']}) | "
             f"{_errors_text(cell['errors'])} |")
     lines += [
         "",
         "## Per task",
         "",
-        "| task | capability | solver | stack | tree | n | mean | min | max |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| task | capability | solver | stack | split | tree | n | mean | min | max |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for task in report["tasks"]:
         lines.append(
             f"| {task['task_id']} | {task['capability']} | {task['solver']} | "
-            f"{task['adapter']} | {short_tree(task['tree_version'])} | "
+            f"{task['adapter']} | {task['split_version']} | "
+            f"{short_tree(task['tree_version'])} | "
             f"{task['n']} | {_fmt(task['mean'])} | "
             f"{_fmt(task['min'])} | {_fmt(task['max'])} |")
     if report["checks"]:
