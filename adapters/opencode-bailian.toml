@@ -1,0 +1,37 @@
+# opencode adapter variant on the Aliyun Bailian Token Plan gateway (spec/08
+# section 5, P5). Same headless contract as opencode.toml; only the provider,
+# model and credential env change. The key is injected at run time from the
+# host via [container] env_from and never baked into the image or the profile.
+name = "opencode-bailian"
+version = "1.19.5"
+
+[launch]
+command = ["opencode", "run", "--format", "json", "--auto",
+           "--model", "bailian/deepseek-v4.1-flash-1017", "{instruction}"]
+instruction = "argv"
+approval = []
+grace_seconds = 10
+
+[sandbox]
+shell = "path"
+shell_target = "vericax-sh"
+file_tools = "disable"
+working_dir = "/home/user/Desktop"
+
+[output]
+format = "json"
+cost_path = "part.tokens"
+cost_event_types = ["step_finish"]
+
+[state]
+dir = ".local/share/opencode"
+template_dir = "opencode-bailian-profile"
+
+[model]
+name = "deepseek-v4.1-flash-1017"
+endpoint = "bailian-token-plan"
+
+[container]
+image = "vericax-agent:phase2"
+env_from = ["BAILIAN_API_KEY"]
+env = { XDG_CONFIG_HOME = "/root/.local/share", XDG_DATA_HOME = "/root/.local/share", XDG_CACHE_HOME = "/root/.cache" }

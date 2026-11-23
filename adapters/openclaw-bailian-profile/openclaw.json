@@ -1,0 +1,30 @@
+{
+  "tools": {
+    "deny": ["group:fs", "browser", "web"]
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "bailian": {
+        "baseUrl": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+        "api": "openai-completions",
+        "apiKey": {
+          "source": "env",
+          "provider": "default",
+          "id": "BAILIAN_API_KEY"
+        },
+        "models": [
+          {
+            "id": "deepseek-v4.1-flash-1017",
+            "name": "DeepSeek V4.1 Flash (Bailian Token Plan)"
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": "bailian/deepseek-v4.1-flash-1017"
+    }
+  }
+}

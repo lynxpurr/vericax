@@ -41,9 +41,10 @@ n、均值、极差、成本、活跃时长和错误分类。本文补全 spec/1
 
 ## 4. 分批计划
 
-栈的选择：B0–B2 使用 `dsh`、`pi`、`opencode`（成本字段可读）。`hermes` 与
-`openclaw` 的 cost 目前为 `null`（spec/08 §5），只在 B3 或补齐 usage 解析后进入
-对比；否则结果表标 `n/a`。
+栈的选择：B0–B2 使用 `dsh`、`opencode-bailian`、`openclaw-bailian`（同一个
+Bailian Token Plan 网关；dsh/opencode 的 cost 可读，openclaw 为 `null`，结果表标
+`n/a`）。`pi` 与 `hermes` 需要各自的 Bailian provider 配置，暂不进入 B0–B2；
+B3 可在补齐配置与 usage 解析后加入。
 
 | batch | 范围 | 栈 | n | episode 数 | 目的 | 估算 |
 |---|---|---|---|---|---|---|
