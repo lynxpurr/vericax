@@ -12,6 +12,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `scripts/capability_report.py`: capability x solver x stack matrix with n,
   mean/range, infra count, cost per task, median active time and error
   categories; 9 offline tests, wired into `scripts/ci_local.sh`.
+- `adapters/opencode-bailian.toml` and `adapters/openclaw-bailian.toml` with
+  their profiles: the same headless contracts on the Aliyun Bailian Token Plan
+  gateway; credentials stay in `BAILIAN_API_KEY` via `env_from`.
+
+### Fixed
+- The per-episode proxy socket now lives in a short private `/tmp` directory
+  instead of the episode directory. Long adapter names (e.g.
+  `opencode-bailian`) pushed the AF_UNIX path over the 108-byte limit and
+  failed the episode as `infra_incomplete`; the temp directory is removed when
+  the proxy stops.
 
 ## [0.2.0-alpha] - 2026-11-22
 

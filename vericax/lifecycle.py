@@ -10,6 +10,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import secrets
+import shutil
 import sys
 import time
 from datetime import datetime, timezone
@@ -25,7 +26,7 @@ from .errors import (
     CAT_TIME_BUDGET,
     CAT_AGENT_ERROR,
 )
-from .proxy import ProxyServer
+from .proxy import ProxyServer, temp_socket_path
 from .sandbox_vm import SandboxVM, SandboxBootError
 
 REPO = config.REPO
@@ -533,6 +534,7 @@ def run_episode(
     wall_started = time.monotonic()
     vm: SandboxVM | None = None
     proxy: ProxyServer | None = None
+    proxy_dir: Path | None = None
     error_category: str | None = None
     error_detail: str | None = None
     score: float | None = None
@@ -543,6 +545,15 @@ def run_episode(
     manifest: dict | None = None
     sandbox_isolated: bool | None = None
     boot_attempts = 0
+
+    def stop_proxy() -> None:
+        nonlocal proxy, proxy_dir
+        if proxy is not None:
+            proxy.stop()
+            proxy = None
+        if proxy_dir is not None:
+            shutil.rmtree(proxy_dir, ignore_errors=True)
+            proxy_dir = None
 
     try:
         # ---- prepare: sandbox boot (one retry, spec/09 section 8)
@@ -569,8 +580,10 @@ def run_episode(
 
         # ---- proxy up (auth: Unix socket + per-episode token, T3)
         token = secrets.token_hex(24)
+        proxy_socket = temp_socket_path()
+        proxy_dir = proxy_socket.parent
         proxy = ProxyServer(
-            vm, episode_dir / "proxy" / "proxy.sock", token, episode_dir.name,
+            vm, proxy_socket, token, episode_dir.name,
             workdir=adapter.working_dir, log_dir=logs_dir,
             default_timeout=120)
         try:
@@ -585,7 +598,7 @@ def run_episode(
         mounts[str(inst_path)] = {"bind": adapters_mod.CONTAINER_INSTRUCTION_PATH, "mode": "ro"}
         if payload_dir:
             mounts[str(payload_dir)] = {"bind": adapters_mod.CONTAINER_PAYLOAD_DIR, "mode": "ro"}
-        mounts[str(episode_dir / "proxy" / "proxy.sock")] = {
+        mounts[str(proxy_socket)] = {
             "bind": "/run/vericax/proxy.sock", "mode": "rw"}
         env = adapters_mod.container_env(adapter, {
             "VERICAX_TASK_ID": task_id,
@@ -627,9 +640,7 @@ def run_episode(
         }, indent=2) + "\n")
 
         # ---- freeze (agent already dead; proxy entry closes first, E5)
-        if proxy is not None:
-            proxy.stop()
-            proxy = None
+        stop_proxy()
         manifest = freeze.freeze(
             vm, artifact_paths, episode_dir, image_sha, task_id, episode_dir.name)
 
@@ -685,8 +696,7 @@ def run_episode(
         error_detail = f"unexpected: {type(exc).__name__}: {exc}"
         score, basis, native_executed = 0.0, summary_mod.SCORING_BASIS_INFRA, False
     finally:
-        if proxy is not None:
-            proxy.stop()
+        stop_proxy()
         if vm is not None:
             try:
                 (logs_dir / "vm_processes_after.txt").write_text(vm.process_snapshot())
