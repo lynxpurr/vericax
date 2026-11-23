@@ -64,8 +64,8 @@ def write_episode(runs: Path, name: str, **overrides) -> Path:
         "kind": "capability",
         "score": 1.0,
         "scoring_basis": "native_evaluator",
-        "cost": {"usd_estimate": 0.1},
-        "active_time_seconds": 10,
+        "cost": {"usd_estimate": 0.1, "prompt_tokens": 100, "completion_tokens": 20},
+        "active_duration_seconds": 10,
         "error_category": None,
     }
     row.update(overrides)
@@ -103,7 +103,10 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(cell["min"], 0.0)
         self.assertEqual(cell["max"], 1.0)
         self.assertAlmostEqual(cell["usd_per_task"], 0.1)
+        self.assertEqual(cell["tokens_total"], 360)
+        self.assertEqual(cell["tokens_per_task"], 120)
         self.assertEqual(cell["active_median"], 10)
+        self.assertEqual(cell["active_coverage"], "3/3")
 
     def test_test_and_debug_are_excluded_by_default(self):
         write_episode(self.runs, "a")
