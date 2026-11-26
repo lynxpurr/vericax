@@ -139,6 +139,7 @@ class SandboxVM:
             state["state"] = {key: running.get(key) for key in (
                 "Status", "Running", "Restarting", "OOMKilled", "ExitCode",
                 "StartedAt", "FinishedAt", "Error")}
+            state["pid"] = running.get("Pid")
         except Exception as exc:  # noqa: BLE001 - forensics only
             state["error"] = f"{type(exc).__name__}: {exc}"[:200]
         if log_tail:
@@ -148,6 +149,25 @@ class SandboxVM:
             except Exception as exc:  # noqa: BLE001 - forensics only
                 state["logs_error"] = f"{type(exc).__name__}: {exc}"[:200]
         return state
+
+    def console_log(self, max_bytes: int = 2_000_000) -> str:
+        """The VM container's output, which is the guest's kernel and boot console.
+
+        A guest can die on its own (a PID 1 crash ends in ``Kernel panic - not
+        syncing: Attempted to kill init``), and the only place that shows is
+        this stream. The container is removed when the episode ends, so the
+        lifecycle saves it first. Forensics only.
+        """
+        if self._env is None:
+            return ""
+        container = getattr(self._env.provider, "container", None)
+        if container is None:
+            return ""
+        try:
+            text = container.logs(tail=6000).decode(errors="ignore")
+        except Exception as exc:  # noqa: BLE001 - forensics only
+            return f"<console log unavailable: {type(exc).__name__}: {exc}>"[:200]
+        return text[-max_bytes:]
 
     # ------------------------------------------------------------ control plane
     def bash(self, script: str, timeout: int = 120, cwd: str | None = None) -> dict:

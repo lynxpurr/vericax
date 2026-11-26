@@ -207,12 +207,41 @@ def _record_sandbox_loss(logs_dir: Path, *, task_id: str, adapter: str, episode_
                    "killed_by_deadline": agent.killed_by_deadline,
                    "aborted": agent.aborted,
                    "duration_seconds": agent.duration_seconds},
-            vm_state=vm.container_state(log_tail=40))
+            vm_state=vm.container_state(log_tail=60))
         path = host.write_loss_record(logs_dir, record)
         print(f"run: sandbox lost at {stage}; evidence -> {path}")
     except Exception as exc:  # noqa: BLE001 - forensics only, never fatal
         print(f"run: WARNING - could not capture sandbox-loss evidence: {exc!r}")
-    return None
+
+
+GUEST_PROFILE_SCRIPT = (
+    "echo '== os =='; head -4 /etc/os-release; uname -r; "
+    "echo '== init =='; ps -p 1 -o args=; systemctl --version 2>/dev/null | head -1; "
+    "echo '== resources =='; free -m | sed -n '1,3p'; nproc; cat /proc/uptime; "
+    "echo '== timers =='; systemctl list-timers --all --no-pager --no-legend 2>&1 | head -40"
+)
+
+
+def _save_guest_profile(logs_dir: Path, vm: SandboxVM) -> None:
+    """Record the guest baseline before the agent starts.
+
+    The timer list is there on purpose: two B2-era guests crashed in PID 1
+    about 35 minutes after boot while idle, and nothing else said what the
+    guest had scheduled. Forensics only, never fatal.
+    """
+    try:
+        text = vm.bash(GUEST_PROFILE_SCRIPT, timeout=60).get("output", "")
+    except Exception as exc:  # noqa: BLE001
+        text = f"<profile unavailable: {type(exc).__name__}>"
+    (logs_dir / "guest-profile.txt").write_text(text)
+
+
+def _save_console(logs_dir: Path, vm: SandboxVM) -> None:
+    """Keep the guest console before the VM container is removed."""
+    try:
+        (logs_dir / "vm-console.log").write_text(vm.console_log())
+    except Exception as exc:  # noqa: BLE001 - forensics only, never fatal
+        print(f"run: WARNING - could not save the VM console log: {exc!r}")
 
 
 def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
@@ -605,6 +634,7 @@ def run_episode(
             raise EpisodeError(CAT_ENVIRONMENT_ERROR,
                                "sandbox control plane not healthy after network isolation",
                                scored=False)
+        _save_guest_profile(logs_dir, vm)
         (logs_dir / "network_isolation.json").write_text(json.dumps({
             "sandbox": {"isolated": sandbox_isolated, "detail": sandbox_isolation_detail},
         }, indent=2) + "\n")
@@ -710,7 +740,11 @@ def run_episode(
         # Keeping the sandbox alive during scoring would hold two VMs per
         # episode and make 2-episode parallelism a 4-VM load.
         (logs_dir / "vm_processes_after.txt").write_text(vm.process_snapshot())
-        vm.close()
+        _save_console(logs_dir, vm)
+        if not vm.close():
+            # Same warning as in the cleanup path below.
+            print(f"run: WARNING - sandbox VM container may still be running: "
+                  f"{vm.surviving_container}")
         vm = None
 
         # ---- termination semantics (spec/08 section 7)
@@ -763,6 +797,7 @@ def run_episode(
                 (logs_dir / "vm_processes_after.txt").write_text(vm.process_snapshot())
             except Exception:  # noqa: BLE001 - forensics only
                 pass
+            _save_console(logs_dir, vm)
             if not vm.close():
                 # Never silent: a surviving VM holds its RAM and cores until
                 # someone removes it by hand, and shifts the next episodes

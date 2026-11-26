@@ -196,6 +196,12 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 一次失败后恢复的 VM 不算失联。freeze 阶段的 `SandboxUnavailable` 同样记 `infra_incomplete`
 并写取证记录；工件缺失或为空仍是 L1 能力失败。
 
+**取证（2026-11-27）**：每个 episode 在 agent 启动前写 `logs/guest-profile.txt`（系统、内核、
+init、内存、定时器列表），在 sandbox 关闭前保存 guest 控制台日志 `logs/vm-console.log`
+（qemu 的串口输出，含 guest 内核消息）；失联记录另含 VM 进程树的内存峰值、容器 cgroup 的
+内存计数和主机的 pressure stall 信息。原因：guest 会自己崩溃——B2 时期遗留的两台 VM 都在
+开机约 35 分钟后因 PID 1（systemd）段错误而 kernel panic——而容器一旦删除这些证据就没了。
+
 **批量侧（2026-11-26，spec/11 §3 第 4 条的可执行形式）**：
 
 - `vericax batch` 在首轮跑完后用新 episode 重试 infra 的 job，每个 (task, run_index) 上限

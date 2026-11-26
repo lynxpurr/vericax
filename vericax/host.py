@@ -17,6 +17,7 @@ its instruction, and a launch line can hold credentials.
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 
@@ -132,10 +133,109 @@ def vericax_vm_containers(images_dir: Path | None, extra_images: set[str] | None
     return {"ok": True, "containers": found, "error": None}
 
 
+def pressure() -> dict | None:
+    """/proc/pressure/{cpu,memory,io} as written by the kernel, when PSI is on.
+
+    A guest that stalls long enough sees its clock jump and its timers elapse
+    at once; host memory pressure is the usual reason, so it belongs next to
+    the load average in a loss record.
+    """
+    result: dict[str, str] = {}
+    try:
+        for name in ("cpu", "memory", "io"):
+            lines = Path(f"/proc/pressure/{name}").read_text().strip().splitlines()
+            result[name] = " ".join(lines)
+    except OSError:
+        return None
+    return result or None
+
+
+def _children(pid: int) -> list[int]:
+    try:
+        kids: list[int] = []
+        for task in Path(f"/proc/{pid}/task").iterdir():
+            kids.extend(int(value) for value in (task / "children").read_text().split())
+        return kids
+    except (OSError, ValueError):
+        return []
+
+
+def _process_stats(pid: int) -> dict | None:
+    try:
+        name = state = rss = peak = threads = None
+        for line in Path(f"/proc/{pid}/status").read_text().splitlines():
+            key, _, rest = line.partition(":")
+            if key == "Name":
+                name = rest.strip()
+            elif key == "State":
+                state = rest.strip().split("(")[-1].rstrip(")") if rest.strip() else None
+            elif key in ("VmRSS", "VmHWM"):
+                megabytes = int(rest.split()[0]) // 1024
+                if key == "VmRSS":
+                    rss = megabytes
+                else:
+                    peak = megabytes
+            elif key == "Threads":
+                threads = int(rest.split()[0])
+        fields = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()
+        ticks = os.sysconf("SC_CLK_TCK") or 100
+        cpu_seconds = (int(fields[11]) + int(fields[12])) / ticks
+    except (OSError, ValueError, IndexError):
+        return None
+    return {"pid": pid, "name": name, "state": state, "rss_mb": rss,
+            "peak_mb": peak, "threads": threads, "cpu_seconds": round(cpu_seconds, 1)}
+
+
+def process_tree(pid: int, limit: int = 64) -> list[dict]:
+    """A process and everything below it: name, state, resident and peak memory.
+
+    The peak matters most: with ``-m 4G`` a qemu process that never grew past
+    about 2 GB was not under guest memory pressure when its sandbox was lost.
+    """
+    rows: list[dict] = []
+    queue = [pid]
+    seen: set[int] = set()
+    while queue and len(rows) < limit:
+        current = queue.pop(0)
+        if current in seen:
+            continue
+        seen.add(current)
+        stats = _process_stats(current)
+        if stats:
+            rows.append(stats)
+            queue.extend(_children(current))
+    return rows
+
+
+def cgroup_memory(pid: int) -> dict | None:
+    """memory.current / max / peak / events of a process's cgroup (cgroup v2)."""
+    try:
+        line = next(item for item in Path(f"/proc/{pid}/cgroup").read_text().splitlines()
+                    if item.startswith("0::"))
+        base = Path("/sys/fs/cgroup") / line.split("::", 1)[1].strip().lstrip("/")
+    except (OSError, StopIteration, IndexError):
+        return None
+    result: dict = {}
+    for key in ("memory.current", "memory.max", "memory.peak"):
+        try:
+            result[key] = int((base / key).read_text().strip())
+        except (OSError, ValueError):
+            continue
+    try:
+        result["memory.events"] = dict(
+            item.split() for item in (base / "memory.events").read_text().splitlines())
+    except (OSError, ValueError):
+        pass
+    return result or None
+
+
 def sandbox_loss_record(*, episode_id: str, task_id: str, adapter: str, stage: str,
                         detail: str, proxy: dict | None, agent: dict | None,
                         vm_state: dict | None) -> dict:
     """Everything known about a lost sandbox, at the moment it is declared lost."""
+    processes = process_tree(vm_state["pid"]) if vm_state and vm_state.get("pid") else []
+    cgroup = next((found for found in (cgroup_memory(row["pid"]) for row in processes)
+                   if found), None)
     return {
         "episode_id": episode_id,
         "task_id": task_id,
@@ -146,9 +246,12 @@ def sandbox_loss_record(*, episode_id: str, task_id: str, adapter: str, stage: s
         "proxy": proxy,
         "agent": agent,
         "vm_container": vm_state,
+        "vm_processes": processes,
+        "vm_cgroup_memory": cgroup,
         "host": {
             "memory_mb": meminfo_mb(),
             "loadavg": loadavg(),
+            "pressure": pressure(),
             "top_processes": top_processes(),
         },
     }

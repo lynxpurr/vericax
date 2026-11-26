@@ -11,8 +11,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   on the sandbox, the proxy waits out the runtime's fast-fail window and probes
   once. On confirmation the agent container is stopped (about a minute after
   the first error, instead of at the deadline) and the episode is recorded as
-  infra; the host and VM container state at that moment go to
-  `logs/sandbox-loss.json`.
+  infra. `logs/sandbox-loss.json` then holds the host memory, load and
+  pressure-stall figures, the VM process tree with its peak memory, and the
+  VM container's state and log tail.
+- Every episode keeps the sandbox guest's console log
+  (`logs/vm-console.log`) and a guest baseline (`logs/guest-profile.txt`: OS,
+  kernel, init, memory and active timers). The guest console is the only place
+  a guest-side crash shows: two VMs left over from a B2-era batch had died in
+  a kernel panic (PID 1, systemd, segfaulted) about 35 minutes after boot.
 - `vericax batch` retries infra jobs with a new episode once the pass has
   drained (`--infra-retries`, default 2; spec/11 section 3.4) and stops after
   three infra results in a row (`--infra-breaker`). Every attempt is recorded
@@ -23,7 +29,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   memory before each launch (`--min-free-mb`, `--memory-wait`).
 - A sandbox that never answers after network isolation now fails the episode
   before the agent starts.
-- `tests/test_runtime_reliability.py`: 28 offline tests for the loss check,
+- `tests/test_runtime_reliability.py`: 30 offline tests for the loss check,
   the agent abort, the episode wiring, batch retries and breaker, container
   release and the VM inventory.
 
@@ -38,8 +44,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The proxy closes every accepted connection.
 - GitHub Actions runs `tests.test_capability_report`; it was only in the local
   gate.
-
-- openclaw token usage is read. `openclaw --json` prints one indented JSON
+- Openclaw token usage is read. `openclaw --json` prints one indented JSON
   envelope after a few plain log lines on stderr; the cost extractor only
   parsed whole-line JSON events or an entire-output envelope, so every openclaw
   episode recorded `cost: null`. Re-running the extractor on the 68

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import shutil
 import socket
 import sys
@@ -201,8 +202,14 @@ class _FakeSandboxVM:
     def process_snapshot(self):
         return "fake"
 
+    def bash(self, script, timeout=120, cwd=None):
+        return {"returncode": 0, "output": "fake guest profile"}
+
     def container_state(self, log_tail=0):
         return {"name": "vm-ctr", "status": "running"}
+
+    def console_log(self, max_bytes=2_000_000):
+        return "fake guest console"
 
     def close(self):
         return True
@@ -277,6 +284,13 @@ class EpisodeLossTests(unittest.TestCase):
         self.assertTrue(record["agent"]["aborted"])
         self.assertEqual(record["vm_container"]["name"], "vm-ctr")
         self.assertIn("memory_mb", record["host"])
+        self.assertIn("vm_processes", record)
+        # The guest console is the only place a guest-side crash shows up,
+        # and the container is gone once the episode ends.
+        self.assertEqual((episode_dir / "logs" / "vm-console.log").read_text(),
+                         "fake guest console")
+        self.assertEqual((episode_dir / "logs" / "guest-profile.txt").read_text(),
+                         "fake guest profile")
 
     def test_unavailable_at_freeze_is_infra_not_a_capability_zero(self):
         summary, episode_dir = self._run()
@@ -284,6 +298,7 @@ class EpisodeLossTests(unittest.TestCase):
         self.assertIn("freeze failed, sandbox unavailable", summary["error"])
         record = json.loads((episode_dir / "logs" / "sandbox-loss.json").read_text())
         self.assertEqual(record["stage"], "freeze")
+        self.assertTrue((episode_dir / "logs" / "vm-console.log").is_file())
 
 
 class _NotFound(Exception):
@@ -379,6 +394,20 @@ class HostInventoryTests(unittest.TestCase):
         self.assertNotIn("argv", json.dumps(record))
         for row in record["host"]["top_processes"]:
             self.assertLessEqual(set(row), {"pid", "name", "rss_mb"})
+        self.assertEqual(record["vm_processes"], [])
+
+    def test_process_tree_starts_at_the_root_and_carries_the_peak(self):
+        rows = host.process_tree(os.getpid())
+        self.assertEqual(rows[0]["pid"], os.getpid())
+        for row in rows:
+            self.assertLessEqual(set(row), {
+                "pid", "name", "state", "rss_mb", "peak_mb", "threads", "cpu_seconds"})
+        # A process that cannot be read yields nothing, never an exception.
+        self.assertEqual(host.process_tree(2 ** 22 + 12345), [])
+
+    def test_cgroup_memory_is_read_or_absent(self):
+        value = host.cgroup_memory(os.getpid())
+        self.assertTrue(value is None or "memory.events" in value or "memory.current" in value)
 
 
 class MemoryGateTests(unittest.TestCase):
