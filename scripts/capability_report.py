@@ -83,6 +83,50 @@ def load_rows(runs_dir: Path, batch_dirs: list[Path] | None = None):
     return rows, {"batches": batches}
 
 
+def reextract_cost(rows: list[dict]) -> int:
+    """Fill ``cost`` on episodes whose summary has none; returns how many.
+
+    The agent streams under ``logs/`` are the primary record and the summary's
+    ``cost`` is derived from them, so a cost extractor that learns a new output
+    shape (openclaw's envelope behind log lines) can be applied to episodes
+    recorded before the fix. This is a cost re-score: scores are not touched,
+    a cost that is already present is never overwritten, and no file is
+    written. The caller states it in the report.
+    """
+    sys.path.insert(0, str(REPO))
+    from vericax import adapters, lifecycle  # offline: no VM, docker or model
+
+    filled = 0
+    adapters_by_name: dict[str, object] = {}
+    for row in rows:
+        if row.get("cost") is not None:
+            continue
+        name = row.get("adapter_name") or (row.get("agent") or {}).get("name")
+        result_dir = row.get("result_dir")
+        if not name or not result_dir or not Path(result_dir).is_dir():
+            continue
+        if name not in adapters_by_name:
+            try:
+                adapters_by_name[name] = adapters.load_adapter(
+                    adapters.resolve_adapter(name))
+            except SystemExit:
+                adapters_by_name[name] = None
+        adapter = adapters_by_name[name]
+        if adapter is None:
+            continue
+        # Same order as the episode lifecycle: stdout first, then stderr.
+        for stream in ("agent.stdout", "agent.stderr"):
+            path = Path(result_dir) / "logs" / stream
+            if not path.is_file():
+                continue
+            cost = lifecycle._extract_cost(adapter, path.read_text(errors="ignore"))
+            if cost:
+                row["cost"] = cost
+                filled += 1
+                break
+    return filled
+
+
 def _usd(row: dict) -> float | None:
     cost = row.get("cost")
     return cost.get("usd_estimate") if isinstance(cost, dict) else None
@@ -261,6 +305,10 @@ def render_markdown(report: dict, meta: dict) -> str:
         "- cost basis: $/task only when every episode has usd_estimate; "
         "token/task is always reported",
     ]
+    reextracted = meta.get("cost_reextracted") or 0
+    if reextracted:
+        lines.append(f"- cost re-extracted from the stored agent streams of "
+                     f"{reextracted} episode(s) with `--reextract-cost`; scores unchanged")
     for batch in meta.get("batches", []):
         # retries=/infra= come from batches that retry infra jobs themselves;
         # older records only have jobs= and verdict=.
@@ -324,11 +372,16 @@ def main() -> int:
     parser.add_argument("--require-n", type=int, default=0,
                         help="fail when a (task, stack) cell has fewer scored episodes")
     parser.add_argument("--json", action="store_true", help="emit JSON instead of markdown")
+    parser.add_argument("--reextract-cost", action="store_true",
+                        help="fill a missing cost from each episode's stored agent "
+                             "streams (a cost re-score; scores and files are untouched)")
     parser.add_argument("--out", type=Path, default=None,
                         help="write the report to this path")
     args = parser.parse_args()
 
     rows, meta = load_rows(args.runs_dir, args.batch_dir)
+    if args.reextract_cost:
+        meta["cost_reextracted"] = reextract_cost(rows)
     registry = task_registry(args.tasks_dir)
     report = aggregate(rows, registry,
                        include_tests=args.include_tests,

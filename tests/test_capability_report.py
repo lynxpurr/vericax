@@ -166,6 +166,25 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(report["selected"], 1)
         self.assertEqual(meta["batches"][0]["adapter"], "dsh")
 
+    def test_reextract_cost_fills_only_missing_values(self):
+        episode = write_episode(self.runs, "a", cost=None, adapter_name="openclaw-bailian",
+                                result_dir=str(self.runs / "ep-a"))
+        # openclaw --json leaves one indented envelope after plain log lines.
+        (episode / "logs").mkdir()
+        (episode / "logs" / "agent.stderr").write_text(
+            "[agent] settled turn\n" + json.dumps(
+                {"usage": {"input": 3884, "output": 9196, "cacheRead": 18176,
+                           "cost": {"total": 0}}}, indent=2) + "\n")
+        write_episode(self.runs, "b", cost={"prompt_tokens": 7, "completion_tokens": 3})
+        rows, _meta = capability_report.load_rows(self.runs)
+        self.assertEqual(capability_report.reextract_cost(rows), 1)
+        by_id = {row["episode_id"]: row for row in rows}
+        self.assertEqual(by_id["a"]["cost"]["prompt_tokens"], 3884)
+        self.assertEqual(by_id["a"]["cost"]["completion_tokens"], 9196)
+        self.assertEqual(by_id["b"]["cost"]["prompt_tokens"], 7)  # never overwritten
+        # A re-score of cost only: the summary on disk still has no cost.
+        self.assertIsNone(json.loads((episode / "summary.json").read_text())["cost"])
+
     def test_different_tasks_may_have_different_trees(self):
         write_episode(self.runs, "a", tree_version="sha256:aaaa")
         write_episode(self.runs, "b",
