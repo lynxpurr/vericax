@@ -45,6 +45,21 @@
 - **v1**：CAD 域 + GUI 通道 + 跨域留存率面板
 - **v1.5**：VeriCAx-Ops 子集独立发布（运维域，先发空间见调研报告 §9）
 
+## 2026-11-26 下一阶段计划（待 owner 放行）
+
+B2 已完成并发布；以下顺序是建议，每一步执行前需 owner 明确授权。
+
+| 步骤 | 内容 | 验收 | 估算 |
+|---|---|---|---|
+| **1. v0.2.1 补丁发布** | `develop → main`（含 socket 修复、Bailian 变体、能力报告工具、B2 结果、状态/隐私清扫），tag `v0.2.1` | main 含这 6 个 commit；CI 绿；release notes 不含账户信息 | 1–2h |
+| **2. 可靠性与成本** | batch 自动 infra 重试（上限 2 次）；freeze/scoring 失败同策略；内存感知并行；openclaw/hermes usage 解析（失败则 `n/a`） | 离线测试 + 小批量真实验证；infra 率低于 B2 的 7.5% | 1 周 |
+| **3. 难度校准** | 新增 3–5 道更难 FEniCS 题 + 1–2 道更难 cross-solver L6 题；只对新题跑 3 栈 × n=3 | audit 15/15、robust 10/10、L0；至少一个 cell 分离栈；无三栈全零 | 1–2 周 |
+| **4. 再决策** | 根据步骤 3 决定 v0.5（CAE 100 + CAM 20）或 B3（五栈） | owner 评审 | — |
+
+- **B3 暂缓**：pi/hermes 需先有 Bailian provider 配置与 usage 口径；B2 已有三栈结果，边际收益低。
+- **不做**（除非 owner 另行决定）：org 迁移、公告、n>3 的统计扩展。
+- 发布规则见 spec/11 与 `docs/results/2026-11-24-b2.md`：只发布聚合表，不发布 raw runs、账户信息或 verifier 规则文本。
+
 ## 明确的不做
 
 - 全域 15 镜像一次拉齐（BIM/DCC/EDA 对当前工作线无产出）
