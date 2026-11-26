@@ -47,7 +47,7 @@ spec/03 目前使用 `agent` / `model` / `harness` 三个字段。本 spec 冻�
 | **D2a** | 沙箱传输用代理 CLI `vericax-sh`，不用 SSH | controller bash 通道已被 `audit_task.py` 实际使用；代理可做超时、日志、路径封禁，后端可换 | `VERICAX_SANDBOX` 是 `vericax-sh` 入口，不是 `ssh://` URL |
 | **D2b** | agent 跑隔离容器：不挂仓库、不直连 VM 端口、只暴露代理 | "agent 留宿主"会让它读到 `eval.py`/`ground_truth` 并直连 QEMU 转发端口，评分面分离失效 | Phase 1 需要容器 recipe + 代理 socket/端口 + 凭据注入 |
 | **D3** | Phase 1 串行 1 VM；验收 n=3；Phase 2 先 2 VM soak；每 run 独立 qcow2 overlay | spec/04 明确 2 VM 未验证；n≥3 是 spec/03 的发布纪律；overlay 是防串扰/反作弊要求 | `spec/09` 按串行实现；并发留到 Phase 2 |
-| **D4** | ✅ 已定（2026-11-18） | 发布时点：Phase 1 验收后开源代码/spec/任务包；公开榜单等 v0.5（≥2 栈 × n≥3）；开源前完成商标四连查与 org 占位 | 商标/组织动作进 spec/06 清单；不阻塞 Phase 1 |
+| **D4** | ✅ 已定（2026-11-18；2026-11-22 更新） | 发布时点：Phase 2 收口后公开代码/spec/任务包（2026-11-22 已公开）；公开榜单按 spec/11 的 n≥3 跑批；商标采用轻量查重、不注册（spec/06 §3），org 占位延后 | 商标/组织动作见 spec/06；不阻塞评测 |
 | **D5** | ✅ 已定（2026-11-18） | 镜像策略：v0/v0.5 沿用 EngiWorld 镜像；Phase 1 写构建 recipe 并产出一张自建镜像验证可复现；Phase 2 切换自建镜像并重跑审计（pins 与镜像绑定） | `spec/10` §3 执行；Phase 2 前不动现有 pins |
 
 > **执行状态（2026-11-22）**：P3a/P3b/P3c 三张自建镜像均已验收（CalculiX 2.21、FEniCS 0.10.0.post2、merged cross-solver），并已切换为套件默认镜像——26 个任务包全部重审计、L0 与 snapshot 一一对应（spec/10 §3）。P4 已完成：`vericax batch --parallel 2`（spec/09 §11），E5 清理顺序落实，L6 每 episode challenge token 管道上线。P5 的 opencode/hermes/openclaw adapter 与 phase2 agent 镜像在 2026-11-22 落地，n=1 conformance 见 spec/10 §7。

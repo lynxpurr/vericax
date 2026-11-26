@@ -48,7 +48,8 @@ require n>=3 runs.
 - Adapters and phase-2 agent image for `opencode 1.19.5`, `hermes 0.21.6`,
   `openclaw 2026.9.9` (P5); n=1 conformance on task-0001 is 1.0 for all three.
 - `scripts/ci_local.sh` (CI replica + offline tests), wired into the pre-push
-  hook; `docs/ci.md` records the GitHub Actions billing blocker (E).
+  hook; `docs/ci.md` records the account-level CI blocker (E), resolved by the
+  public repository.
 - `scripts/audit_suite.py`: audit → pack → L0 → pack-check for every package,
   two tasks in flight; used for the default-image switch.
 - Self-built default images: all 26 packages re-audited on CalculiX
