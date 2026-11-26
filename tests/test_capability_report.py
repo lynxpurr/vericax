@@ -108,6 +108,22 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(cell["active_median"], 10)
         self.assertEqual(cell["active_coverage"], "3/3")
 
+    def test_cache_reads_are_reported_next_to_tokens_per_task(self):
+        write_episode(self.runs, "a", cost={"prompt_tokens": 100, "completion_tokens": 20,
+                                            "cache_read_tokens": 800})
+        write_episode(self.runs, "b", cost={"prompt_tokens": 100, "completion_tokens": 20,
+                                            "cache_read_tokens": 400})
+        write_episode(self.runs, "c")  # a stack that reports no cache reads
+        cell = self._report()["cells"][0]
+        self.assertEqual(cell["tokens_per_task"], 120)      # prompt + completion only
+        self.assertEqual(cell["cache_read"], 1200)
+        self.assertEqual(cell["cache_read_per_task"], 400)  # divided by n like tokens/task
+        rows, meta = capability_report.load_rows(self.runs)
+        text = capability_report.render_markdown(
+            capability_report.aggregate(rows, self.registry), meta)
+        self.assertIn("cache-read/task", text)
+        self.assertIn("| 120 | 400 |", text)
+
     def test_test_and_debug_are_excluded_by_default(self):
         write_episode(self.runs, "a")
         write_episode(self.runs, "b", kind="test", score=0.0)

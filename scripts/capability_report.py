@@ -222,6 +222,11 @@ def aggregate(rows: list[dict], registry: dict[str, dict], *,
         prompt_tokens = sum(_tokens(it, "prompt_tokens") for it in items)
         completion_tokens = sum(_tokens(it, "completion_tokens") for it in items)
         tokens_total = prompt_tokens + completion_tokens
+        # Cache reads sit outside token/task (prompt + completion); dsh and
+        # openclaw report them separately, and they were the large majority of
+        # what the gateway served in B2.
+        cache_read = sum(_tokens(it, "cache_read_tokens") for it in items)
+        cache_write = sum(_tokens(it, "cache_write_tokens") for it in items)
         versions = sorted({(it.get("agent") or {}).get("version")
                            for it in items if (it.get("agent") or {}).get("version")})
         cells.append({
@@ -243,6 +248,9 @@ def aggregate(rows: list[dict], registry: dict[str, dict], *,
             "tokens_completion": completion_tokens,
             "tokens_total": tokens_total,
             "tokens_per_task": (tokens_total / n) if n else None,
+            "cache_read": cache_read,
+            "cache_write": cache_write,
+            "cache_read_per_task": (cache_read / n) if n else None,
             "usd_total": sum(usd_values) if usd_ok else None,
             "usd_per_task": (sum(usd_values) / n) if usd_ok and n else None,
             "active_median": _median(active),
@@ -303,7 +311,8 @@ def render_markdown(report: dict, meta: dict) -> str:
         f"(excluded test/debug: {report['excluded']})",
         f"- task trees: {len(report['trees'])} distinct (one per task package)",
         "- cost basis: $/task only when every episode has usd_estimate; "
-        "token/task is always reported",
+        "token/task is always reported (prompt + completion); cache-read/task "
+        "is shown where the stack reports cache reads",
     ]
     reextracted = meta.get("cost_reextracted") or 0
     if reextracted:
@@ -322,19 +331,21 @@ def render_markdown(report: dict, meta: dict) -> str:
         "",
         "## Capability × solver × stack",
         "",
-        "| capability | solver | stack | model | n | mean | min | max | infra | tokens/task | $/task | active med (s) | errors |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| capability | solver | stack | model | n | mean | min | max | infra | tokens/task | cache-read/task | $/task | active med (s) | errors |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for cell in report["cells"]:
         active = ("-" if cell["active_median"] is None
                   else f"{cell['active_median']:.0f}")
         tokens = ("-" if not cell["tokens_total"] or cell["tokens_per_task"] is None
                   else f"{cell['tokens_per_task']:.0f}")
+        cached = ("-" if not cell["cache_read"] or cell["cache_read_per_task"] is None
+                  else f"{cell['cache_read_per_task']:.0f}")
         lines.append(
             f"| {cell['capability']} | {cell['solver']} | {cell['adapter']} | "
             f"{cell['model']} | {cell['n']} | {_fmt(cell['mean'])} | "
             f"{_fmt(cell['min'])} | {_fmt(cell['max'])} | {cell['infra']} | "
-            f"{tokens} | {_fmt(cell['usd_per_task'], 4)} | "
+            f"{tokens} | {cached} | {_fmt(cell['usd_per_task'], 4)} | "
             f"{active} ({cell['active_coverage']}) | "
             f"{_errors_text(cell['errors'])} |")
     lines += [

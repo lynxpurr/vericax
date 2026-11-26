@@ -43,7 +43,9 @@ usage 解析；可靠性/成本改进与难度校准见 spec/05 的下一阶段�
    `retried_jobs`），报告 infra 率时失败的重试也要计入。
 5. **成本**：只有 `cost.usd_estimate` 全部可用时才聚合 $/题；订阅制网关（如 Bailian
    Token Plan）没有 USD 单价时，报告 **token/题** 并写 `$/题 n/a`，不得静默按价目表
-   估算。token 计数始终记录。
+   估算。token 计数始终记录。token/题 = prompt + completion，不含缓存读取；栈单独上报的
+   缓存读取记在 `cost.cache_read_tokens`，报告里单列 cache-read/task（B2 里缓存读取占 dsh
+   网关总用量的 77%、openclaw 的 88%，不单列会严重低估网关侧用量）。
 6. **时长**：报告 `active_time_seconds` 中位数，并注明覆盖率。
 7. **错误分类**：按栈汇总 `error_category` 占比。
 8. **发布**：原始 `runs/` 不入库；聚合表写入 `docs/results/<date>-<batch>.md`。

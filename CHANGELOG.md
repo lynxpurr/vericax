@@ -7,6 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Cache-read and cache-write tokens are recorded in the cost record
+  (`cache_read_tokens`, `cache_write_tokens`; spec/03) and shown per task in
+  the capability report. token/task stays prompt + completion. In B2, cache
+  reads were 77 % of what the gateway served to dsh and 88 % for openclaw
+  (opencode reports none), so token/task showed about a fifth of the usage.
 - Sandbox-loss fail-fast (spec/09 section 9): when a controller call gives up
   on the sandbox, the proxy waits out the runtime's fast-fail window and probes
   once. On confirmation the agent container is stopped (about a minute after
