@@ -1,61 +1,22 @@
-# CI status — GitHub Actions billing blocker (E, 2026-11-22)
+# CI notes
 
-## Symptom
-
-Every workflow run fails before the first step. The run annotation is:
-
-> The job was not started because recent account payments have failed or your
-> spending limit needs to be increased. Please check the 'Billing & plans'
-> section in your settings.
-
-Evidence (the repository was private at the time; run `44918331036`, `develop`
-push on 2026-11-21):
-
-```text
-X validate in 2s (ID 136888661329)
-X The job was not started because recent account payments have failed ...
-```
-
-The job duration is 2–4 s because no runner is ever allocated. This is an
-account-level condition, not a workflow bug: `gh api
-/repos/lynxpurr/vericax/actions/permissions` reports Actions enabled
-(`allowed_actions: all`).
-
-## What is authoritative until this is fixed
-
-`scripts/ci_local.sh` replicates `.github/workflows/ci.yml` and adds the
-offline validity tests:
+GitHub Actions is the primary CI. While the repository was private, a run could
+be blocked before the first step by an **account-level condition** (not a code
+failure, and not a workflow bug). The authoritative local replica is:
 
 ```bash
 scripts/ci_local.sh
 ```
 
-The `pre-push` hook runs it automatically (install once with
-`scripts/install_git_hooks.sh`); `SKIP_LOCAL_CI=1 git push` is the documented
+It runs the same three steps as `.github/workflows/ci.yml` plus the offline
+tests; the `pre-push` hook runs it automatically (install once with
+`scripts/install_git_hooks.sh`). `SKIP_LOCAL_CI=1 git push` is the documented
 escape hatch. The local gate is also part of the Phase 2 acceptance evidence.
 
-## Human options
+The repository became public on 2026-11-22. Standard GitHub-hosted runners run
+the workflow again, and `main` and `develop` are green. If a run still fails
+before step 1, treat it as an account-level condition rather than a code
+regression and run `scripts/ci_local.sh`.
 
-Only an account owner can clear the root cause:
-
-1. **Fix billing** — settle the failed payment / raise the spending limit in
-   GitHub *Settings → Billing & plans*. No code change is needed; the existing
-   workflow then starts. This is the least disruptive option.
-2. **Make the repository public** — standard GitHub-hosted runners are free
-   for public repositories. This publishes code and history and is a separate
-   release decision (spec/06, D4); it is *not* implied by fixing CI.
-3. **Self-hosted runner** — add a runner and switch `runs-on`; requires a host
-   with the toolchain and a registration token, and is out of scope for the
-   current single-workstation setup.
-
-Option 1 is recommended. Until one is chosen, do not treat a red `ci` badge as
-a code regression; run `scripts/ci_local.sh` instead.
-
-## Release status (2026-11-22)
-
-The repository is public under `lynxpurr`; moving to the `vericax` organisation
-is a later, separate decision (spec/06 §3). Standard GitHub-hosted runners are
-free for public repositories: the `ci` workflow runs on `main` and `develop`
-again (first green runs 2026-11-22), and `scripts/ci_local.sh` remains the
-offline replica and pre-push gate. Visibility was flipped only after the
-v0.2.0-alpha release was cut; publication was not used as a CI fix.
+Account-level details are not published; they are kept in the maintainer's
+private release records.

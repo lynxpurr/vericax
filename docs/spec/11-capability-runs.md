@@ -9,6 +9,10 @@
 （任务 × agent 栈）至少 n=3 次成功评分，按 **capability × solver × 栈**报告
 n、均值、极差、成本、活跃时长和错误分类。本文补全 spec/10 §8 的可执行部分。
 
+**状态（2026-11-24）**：B0（27 episodes）、B1（54）、B2（198）均已完成并通过
+G1–G3；B2 结果已发布（`docs/results/2026-11-24-b2.md`）。B3（五栈）未启动；
+`pi`/`hermes` 需要各自的 Bailian provider 配置。
+
 ## 2. 术语
 
 - **episode**：一次完整 run（prepare → run → freeze → score → record），落在

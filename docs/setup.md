@@ -136,6 +136,7 @@ offline tests) is:
 scripts/ci_local.sh
 ```
 
-GitHub Actions is currently blocked at the account level — every run fails
-before step 1 with a billing notice. See [ci.md](ci.md) for the exact status
-and the two human options.
+GitHub Actions is the primary CI; while the repository was private, runs could
+be blocked at the account level before step 1. The repository is public since
+2026-11-22 and `main`/`develop` are green. See [ci.md](ci.md) for the local
+gate and the historical note.

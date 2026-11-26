@@ -17,13 +17,14 @@
 | FleetBench | google/fleetbench 已占 |
 | VeriCAx | GitHub org / PyPI / HF org 三项 2026-11-18 实测 404=可用；**无公开同名项目** |
 
-## 3. 启用前四连查 checklist
+## 3. 公开前检查清单
 
-- [x] GitHub org `vericax` —— 2026-11-18 web 查询 404=可用（待注册占位）
+- [x] GitHub org `vericax` —— 2026-11-18 web 查询 404=可用；2026-11-22 首次公开仍在
+      `lynxpurr`，org 迁移延后
 - [x] PyPI `vericax` —— 2026-11-18 404=可用
-- [x] HuggingFace org `vericax` —— 2026-11-18 404=可用（待注册占位）
+- [x] HuggingFace org `vericax` —— 2026-11-18 404=可用（迁移延后）
 - [x] Name availability was reviewed before the first public release.
-- [ ] GitHub org 与 HF org 注册占位（先占名再开发）
+- [ ] GitHub org 与 HF org 注册占位（org 迁移延后，2026-11-22 决定）
 
 ## 4. 许可边界
 

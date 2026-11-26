@@ -2,7 +2,7 @@
 
 状态：草案 v0.1（2026-11-18）· 与调研报告 §8.6 档 0/1/2 对齐，换 VeriCAx 口径
 
-> **2026-11-22 状态校准（取代 2026-11-21 块）**：Phase 0 冻结；Phase 1 验收（dsh × task-0001 × n=3 = 1.0/1.0/1.0；pi × n=1 = 1.0）；Phase 1.5 benchmark-validity gate 完成；**Phase 2 完成**——25 道目标题 + 1 道 L6 原型（共 26 包），L6 provenance 判据在 merged 镜像上实证，三张自建镜像 clean-build 验收并已切换为默认镜像（2026-11-22，26 包全部重审计 + L0）。P4 已完成（`batch --parallel 2`、E5 清理顺序、每 episode challenge token）；P5 已完成（opencode/hermes/openclaw adapter + phase2 agent 镜像，三栈 n=1 conformance = 1.0）。唯一未完成的是 E：GitHub Actions 账户级账单阻塞，本地 `scripts/ci_local.sh` 为权威门禁。Phase 2 出口仍按 spec/10 §8。
+> **2026-11-22 状态校准（取代 2026-11-21 块）**：Phase 0 冻结；Phase 1 验收（dsh × task-0001 × n=3 = 1.0/1.0/1.0；pi × n=1 = 1.0）；Phase 1.5 benchmark-validity gate 完成；**Phase 2 完成**——25 道目标题 + 1 道 L6 原型（共 26 包），L6 provenance 判据在 merged 镜像上实证，三张自建镜像 clean-build 验收并已切换为默认镜像（2026-11-22，26 包全部重审计 + L0）。P4 已完成（`batch --parallel 2`、E5 清理顺序、每 episode challenge token）；P5 已完成（opencode/hermes/openclaw adapter + phase2 agent 镜像，三栈 n=1 conformance = 1.0）。E 已随 public 仓库解除；三栈 n≥3 B2 结果于 2026-11-24 发布（`docs/results/2026-11-24-b2.md`）。Phase 2 出口仍按 spec/10 §8。
 
 ## 档 0 · 闭环 pilot（~1 天）
 
