@@ -67,6 +67,9 @@ def load_rows(runs_dir: Path, batch_dirs: list[Path] | None = None):
                 "kind": data.get("kind"),
                 "jobs": data.get("jobs"),
                 "verdict": data.get("verdict"),
+                "attempts": data.get("attempts"),
+                "infra_attempts": data.get("infra_attempts"),
+                "retried_jobs": data.get("retried_jobs"),
             })
             for episode in data.get("episodes", []):
                 if episode.get("episode_id"):
@@ -259,10 +262,14 @@ def render_markdown(report: dict, meta: dict) -> str:
         "token/task is always reported",
     ]
     for batch in meta.get("batches", []):
+        # retries=/infra= come from batches that retry infra jobs themselves;
+        # older records only have jobs= and verdict=.
+        retries = "" if batch.get("retried_jobs") is None else (
+            f" retries={batch['retried_jobs']} infra_attempts={batch['infra_attempts']}")
         lines.append(
             f"- batch: `{batch['dir']}` adapter={batch['adapter']} "
             f"runs={batch['runs']} kind={batch['kind']} "
-            f"jobs={batch['jobs']} verdict={batch['verdict']}")
+            f"jobs={batch['jobs']} verdict={batch['verdict']}{retries}")
     lines += [
         "",
         "## Capability × solver × stack",

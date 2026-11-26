@@ -36,6 +36,8 @@ class SandboxVM:
         self.image = config.image_path(snapshot, override=image_override)
         self.cache_dir = Path(cache_dir)
         self._env = None
+        # Name of the docker container when close() could not confirm removal.
+        self.surviving_container: str | None = None
 
     # ------------------------------------------------------------ lifecycle
     def boot(self, task_config: dict | None = None) -> None:
@@ -68,24 +70,84 @@ class SandboxVM:
             self.close()
             raise SandboxBootError(f"VM boot failed: {exc}") from exc
 
-    def close(self) -> None:
-        """Stop the VM. ``env.close()`` is trusted but verified: the docker
-        provider's container is removed by force if it survived the shutdown,
-        so a failed boot can never leak a VM (spec/09 section 4, E1)."""
-        if self._env is not None:
-            container = getattr(self._env.provider, "container", None)
+    def close(self) -> bool:
+        """Stop the VM and confirm that its container is gone.
+
+        ``env.close()`` is trusted but verified: the docker provider's container
+        is removed by force if it survived the shutdown, so a failed boot can
+        never leak a VM (spec/09 section 4, E1). The removal is retried and
+        verified because a transient docker API error used to skip it silently
+        and leave a VM running for days. Returns False when the container could
+        not be confirmed gone (its name is in ``surviving_container``); ``close``
+        itself never raises upward.
+        """
+        self.surviving_container = None
+        if self._env is None:
+            return True
+        container = getattr(self._env.provider, "container", None)
+        try:
+            self._env.close()
+        except Exception:  # noqa: BLE001 - close must never raise upward
+            pass
+        released = True
+        if container is not None:
+            released = self._ensure_removed(container)
+            if not released:
+                self.surviving_container = getattr(container, "name", None)
+        self._env = None
+        return released
+
+    @staticmethod
+    def _ensure_removed(container, attempts: int = 3, delay: float = 2.0) -> bool:
+        """Remove a VM container, retrying API errors; True once it is gone."""
+        for _ in range(attempts):
             try:
-                self._env.close()
-            except Exception:  # noqa: BLE001 - close must never raise upward
-                pass
-            if container is not None:
-                try:
-                    container.reload()
-                    if container.status != "removed":
-                        container.remove(force=True)
-                except Exception:  # noqa: BLE001 - already gone
-                    pass
-            self._env = None
+                container.reload()
+            except Exception as exc:  # noqa: BLE001
+                if "NotFound" in type(exc).__name__:
+                    return True
+                time.sleep(delay)
+                continue
+            if container.status == "removed":
+                return True
+            try:
+                container.remove(force=True)
+            except Exception as exc:  # noqa: BLE001
+                if "NotFound" in type(exc).__name__:
+                    return True
+            time.sleep(delay)
+        try:
+            container.reload()
+        except Exception as exc:  # noqa: BLE001
+            return "NotFound" in type(exc).__name__
+        return container.status == "removed"
+
+    def container_state(self, log_tail: int = 0) -> dict | None:
+        """State of the docker container behind this VM; forensics only."""
+        if self._env is None:
+            return None
+        container = getattr(self._env.provider, "container", None)
+        if container is None:
+            return None
+        state: dict = {"name": getattr(container, "name", None)}
+        try:
+            container.reload()
+            attrs = container.attrs
+            state["status"] = container.status
+            state["image"] = (attrs.get("Config") or {}).get("Image")
+            running = attrs.get("State") or {}
+            state["state"] = {key: running.get(key) for key in (
+                "Status", "Running", "Restarting", "OOMKilled", "ExitCode",
+                "StartedAt", "FinishedAt", "Error")}
+        except Exception as exc:  # noqa: BLE001 - forensics only
+            state["error"] = f"{type(exc).__name__}: {exc}"[:200]
+        if log_tail:
+            try:
+                lines = container.logs(tail=log_tail).decode(errors="ignore").splitlines()
+                state["logs_tail"] = [line[:240] for line in lines[-log_tail:]]
+            except Exception as exc:  # noqa: BLE001 - forensics only
+                state["logs_error"] = f"{type(exc).__name__}: {exc}"[:200]
+        return state
 
     # ------------------------------------------------------------ control plane
     def bash(self, script: str, timeout: int = 120, cwd: str | None = None) -> dict:

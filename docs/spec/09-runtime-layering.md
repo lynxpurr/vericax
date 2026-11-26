@@ -177,6 +177,7 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 | run | agent 崩溃（非零退出） | `agent_error`（提案） | freeze → score | 是（verifier 结论） |
 | run | 到截止 | `active_time_budget_exhausted` | 杀进程组 → freeze → 0 | 是（0） |
 | run | 模型 API 中断 | `api_interruption` | 停止；按策略重试 | 否 |
+| run | sandbox 控制通道失联 | `infra_incomplete` | 确认失联后立即停 agent（首错后 1 分钟内），写 `logs/sandbox-loss.json`，不 freeze | 否 |
 | run | CLI policy 拒绝工件写入 | `artifact_write_rejected`（提案） | 记录；不按能力 0 计；可提示换合法生成路径 | 否（verifier 仍可判 False） |
 | run | 长循环探测 CGX/格式 | `agent_stalled` | 早停/换策略提示 | verifier 通过则有效；失败则排除 |
 | freeze | 工件拉取失败 | `infra_incomplete` | 中止 | 否 |
@@ -186,6 +187,26 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 | record | 落盘失败 | `infra_incomplete` | 中止 | 否 |
 
 原则：**能归因到 agent 的，才计分；能归因到基础设施的，一律不计分。**
+
+**控制通道失联的判定（2026-11-26）**：B2 的 16 次 infra 失败全部是 sandbox 控制通道失联，
+首次错误多出现在 agent 开始后几分钟内，而 agent 会继续跑到 deadline（单个 episode 空转
+10–27 分钟）。现在 proxy 在一次控制器调用放弃之后启动一次失联确认：先等过 runtime 的
+30 秒 fast-fail 窗口（窗口内的探测必然失败，说明不了 VM 状态），再探测一次，探测超时
+25 秒；确认后 proxy 对后续请求立即返回 `sandbox_unavailable`，`run_agent` 停掉 agent 容器。
+一次失败后恢复的 VM 不算失联。freeze 阶段的 `SandboxUnavailable` 同样记 `infra_incomplete`
+并写取证记录；工件缺失或为空仍是 L1 能力失败。
+
+**批量侧（2026-11-26，spec/11 §3 第 4 条的可执行形式）**：
+
+- `vericax batch` 在首轮跑完后用新 episode 重试 infra 的 job，每个 (task, run_index) 上限
+  2 次（`--infra-retries`）；原生分数（含 0.0）永不重试。
+- 连续 3 次 infra 结果触发熔断（`--infra-breaker`），未开始的 job 记为 skipped。
+- 开跑前做离线预检（manifest、镜像、adapter）：配置错误直接终止，不记 infra、不重试。
+- 开跑前后列出已在运行的 VeriCAx VM 容器（只报告，不删除）；`close()` 会重试并确认 VM
+  容器已删除，确认不了时写 `logs/leak.json`。被硬杀的 episode 进程不会执行清理，只能靠
+  这份清单发现残留。
+- 每次发车前等待可用内存（每个在飞 episode 6 GB，`--min-free-mb`；最长等 600 秒，
+  `--memory-wait`），等不到就停止 batch。
 
 ## 10. Phase 1 实现清单
 
