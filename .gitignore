@@ -1,5 +1,8 @@
 # evaluation outputs are per-run, never committed
 results/
+# ...but public benchmark result documents live under docs/results/
+!docs/results/
+!docs/results/**
 cache/
 download/
 
