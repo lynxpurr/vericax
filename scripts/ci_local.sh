@@ -27,8 +27,9 @@ for dir in tasks/*/*/*/task-*; do
 done
 echo "[ci-local] $checked task package(s) match their manifests"
 
-echo "[ci-local] offline validity + audit-tooling + capability-report tests"
-"$PY" -m unittest tests.test_validity tests.test_audit_tooling tests.test_capability_report
+echo "[ci-local] offline validity, audit-tooling, capability-report and reliability tests"
+"$PY" -m unittest tests.test_validity tests.test_audit_tooling \
+    tests.test_capability_report tests.test_runtime_reliability
 
 echo "[ci-local] repository hygiene"
 "$PY" scripts/check_repo_hygiene.py

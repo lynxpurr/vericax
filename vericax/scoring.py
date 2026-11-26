@@ -171,7 +171,9 @@ def run_scoring(
             result.detail = f"unsupported evaluator func: {evaluator_func}"
         return result
     finally:
-        vm.close()
+        if not vm.close():
+            print("score: WARNING - scoring VM container may still be running: "
+                  f"{vm.surviving_container}")
 
 
 DEFAULT_SOLVER_PROBE = "ccx -v 2>&1 | head -2"

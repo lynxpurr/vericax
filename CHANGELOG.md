@@ -6,14 +6,55 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Sandbox-loss fail-fast (spec/09 section 9): when a controller call gives up
+  on the sandbox, the proxy waits out the runtime's fast-fail window and probes
+  once. On confirmation the agent container is stopped (about a minute after
+  the first error, instead of at the deadline) and the episode is recorded as
+  infra. `logs/sandbox-loss.json` then holds the host memory, load and
+  pressure-stall figures, the VM process tree with its peak memory, and the
+  VM container's state and log tail.
+- Every episode keeps the sandbox guest's console log
+  (`logs/vm-console.log`) and a guest baseline (`logs/guest-profile.txt`: OS,
+  kernel, init, memory and active timers). The guest console is the only place
+  a guest-side crash shows: two VMs left over from a B2-era batch had died in
+  a kernel panic (PID 1, systemd, segfaulted) about 35 minutes after boot.
+- `vericax batch` retries infra jobs with a new episode once the pass has
+  drained (`--infra-retries`, default 2; spec/11 section 3.4) and stops after
+  three infra results in a row (`--infra-breaker`). Every attempt is recorded
+  in `batch.json` with its attempt number; the verdict is `pass_after_retry`
+  when a retry succeeded.
+- `vericax batch` checks every task offline before the first VM boots, reports
+  VeriCAx VM containers left over from earlier episodes, and waits for free
+  memory before each launch (`--min-free-mb`, `--memory-wait`).
+- A sandbox that never answers after network isolation now fails the episode
+  before the agent starts.
+- `tests/test_runtime_reliability.py`: 30 offline tests for the loss check,
+  the agent abort, the episode wiring, batch retries and breaker, container
+  release and the VM inventory.
+
 ### Fixed
-- openclaw token usage is read. `openclaw --json` prints one indented JSON
+- `SandboxVM.close()` retries and verifies the removal of the VM container. A
+  transient docker API error used to skip the removal silently and leave a VM
+  running; an unverifiable removal now writes `logs/leak.json`.
+- A control-channel loss at freeze is classified as `infra_incomplete` with its
+  cause; it used to surface as `unexpected: SandboxUnavailable`.
+- A harness or configuration error inside a batch job (a stale manifest, for
+  example) stops the batch instead of being recorded as infra and retried.
+- The proxy closes every accepted connection.
+- GitHub Actions runs `tests.test_capability_report`; it was only in the local
+  gate.
+- Openclaw token usage is read. `openclaw --json` prints one indented JSON
   envelope after a few plain log lines on stderr; the cost extractor only
   parsed whole-line JSON events or an entire-output envelope, so every openclaw
   episode recorded `cost: null`. Re-running the extractor on the 68
   native-scored openclaw episodes of B2 reads usage for all of them. The
   published B2 table still shows `n/a` for openclaw; filling it in is a
   results-publication change.
+
+### Known limitations
+- The cause of the sandbox control-channel losses seen in B2 is not yet known.
+  `logs/sandbox-loss.json` is the evidence for the root-cause investigation.
 
 ## [0.2.1-alpha] - 2026-11-26
 

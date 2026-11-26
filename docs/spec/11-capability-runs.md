@@ -38,6 +38,9 @@ usage 解析；可靠性/成本改进与难度校准见 spec/05 的下一阶段�
    不得进入发布表。
 4. **infra 失败**：不计分；同一（task, run_index）最多重试 2 次，使用新 episode；
    报告记录重试次数与 infra 率。batch 内 infra 率 >10% 时暂停并诊断。
+   `vericax batch` 自 2026-11-26 起自动执行该重试：首轮跑完后统一重试，连续 3 次 infra
+   熔断；每个 attempt 都进 `batch.json`（`attempt`、`infra_attempts`、`infra_rate`、
+   `retried_jobs`），报告 infra 率时失败的重试也要计入。
 5. **成本**：只有 `cost.usd_estimate` 全部可用时才聚合 $/题；订阅制网关（如 Bailian
    Token Plan）没有 USD 单价时，报告 **token/题** 并写 `$/题 n/a`，不得静默按价目表
    估算。token 计数始终记录。

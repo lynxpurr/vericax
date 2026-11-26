@@ -48,6 +48,12 @@ def runtime_path() -> Path:
     return path
 
 
+def images_dir() -> Path | None:
+    """Configured ``[images] dir``; None when a single ``VERICAX_IMAGE`` is in use."""
+    raw_dir = os.environ.get("VERICAX_IMAGE_DIR") or _from_config("images", "dir")
+    return Path(raw_dir).expanduser().resolve() if raw_dir else None
+
+
 def image_path(snapshot: str, override: str | Path | None = None) -> Path:
     """Decompressed qcow2 for a snapshot, e.g. CalculiX-2.21 -> <dir>/CalculiX-2.21.qcow2.
 
@@ -62,13 +68,13 @@ def image_path(snapshot: str, override: str | Path | None = None) -> Path:
         if explicit:
             path = Path(explicit).expanduser().resolve()
         else:
-            raw_dir = os.environ.get("VERICAX_IMAGE_DIR") or _from_config("images", "dir")
-            if not raw_dir:
+            directory = images_dir()
+            if directory is None:
                 raise SystemExit(
                     "VeriCAx cannot locate VM images.\n"
                     "  set VERICAX_IMAGE_DIR, or fill [images] dir in vericax.toml."
                 )
-            path = Path(raw_dir).expanduser().resolve() / f"{snapshot}.qcow2"
+            path = directory / f"{snapshot}.qcow2"
     if not path.is_file():
         raise SystemExit(f"VM image not found: {path}")
     return path

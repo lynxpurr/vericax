@@ -3,13 +3,15 @@
 The agent's launch argv is the container's main process, so:
   - its exit code is the container's exit code,
   - the hard deadline maps to ``docker stop`` (SIGTERM, grace, SIGKILL),
-  - killing the container kills the whole cgroup (spec/08 section 7).
+  - killing the container kills the whole cgroup (spec/08 section 7),
+  - a lost sandbox maps to the same stop, long before the deadline.
 
 The container never mounts the repository: only harness-owned episode files
 (instruction, state seed, optional payload) and the proxy socket.
 """
 from __future__ import annotations
 
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,6 +21,7 @@ from pathlib import Path
 class AgentResult:
     exit_code: int | None = None
     killed_by_deadline: bool = False
+    aborted: bool = False
     duration_seconds: float = 0.0
     stdout: str = ""
     stderr: str = ""
@@ -49,6 +52,7 @@ def run_agent(
     deadline_epoch: float,
     grace_seconds: int,
     stdin_bytes: bytes | None = None,
+    abort_event: threading.Event | None = None,
 ) -> AgentResult:
     import docker  # provided by the runtime venv
 
@@ -89,12 +93,16 @@ def run_agent(
         container.reload()
         if container.status not in ("running", "created"):
             break
+        if abort_event is not None and abort_event.is_set():
+            # The sandbox is gone: every remaining call would fail, so stop the
+            # agent now. The lifecycle records the episode; nothing is scored.
+            result.aborted = True
+            _stop(container, grace_seconds)
+            container.reload()
+            break
         if time.time() >= deadline_epoch:
             result.killed_by_deadline = True
-            try:
-                container.stop(timeout=grace_seconds)
-            except Exception:  # noqa: BLE001
-                container.kill()
+            _stop(container, grace_seconds)
             container.reload()
             break
         time.sleep(2.0)
@@ -119,6 +127,14 @@ def run_agent(
     except Exception:  # noqa: BLE001 - cleanup is best effort; name stays in logs
         pass
     return result
+
+
+def _stop(container, grace_seconds: int) -> None:
+    """SIGTERM, grace, SIGKILL: the same path for the deadline and an abort."""
+    try:
+        container.stop(timeout=grace_seconds)
+    except Exception:  # noqa: BLE001
+        container.kill()
 
 
 def _feed_stdin(container, payload: bytes) -> None:
