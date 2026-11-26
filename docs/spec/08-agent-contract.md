@@ -136,7 +136,7 @@ dir = ".dsh"                                     # 每 run 用独立 HOME 隔离
 | `launch.grace_seconds` | SIGTERM 到 SIGKILL 的宽限 |
 | `sandbox.shell` | 把栈的 shell 工具指向 `vericax-sh` 的方式（PATH / 配置键 / wrapper） |
 | `sandbox.file_tools` | 原生 read/write/edit 的处理：禁用、代理到 sandbox、或允许本地写（不推荐） |
-| `output.format` / `cost_path` | 输出解析与 token/cost 提取；拿不到就记 `null` |
+| `output.format` / `cost_path` | 输出解析与 token/cost 提取；拿不到就记 `null`。接受的形态：每行一个 JSON 事件（NDJSON），或一个不在独立行上的 JSON 信封（缩进打印，可排在同流的日志行之后，如 openclaw `--json`） |
 | `output.cost_event_types` | 只在这些事件类型上提取 usage（如 pi 的 `message_end`、dsh 的 `status`）。流式 `message_update` 会重复携带 usage，不过滤会把一次调用计成上百次 `llm_calls` |
 | `state.dir` | 每 run 独立状态目录，避免 n 次 run 互相污染 |
 

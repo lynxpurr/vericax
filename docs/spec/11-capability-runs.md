@@ -53,7 +53,9 @@ usage 解析；可靠性/成本改进与难度校准见 spec/05 的下一阶段�
 栈的选择：B0–B2 使用 `dsh`、`opencode-bailian`、`openclaw-bailian`（同一个
 Bailian Token Plan 网关；dsh/opencode 的 cost 可读，openclaw 为 `null`，结果表标
 `n/a`）。`pi` 与 `hermes` 需要各自的 Bailian provider 配置，暂不进入 B0–B2；
-B3 可在补齐配置与 usage 解析后加入。
+B3 可在补齐配置与 usage 解析后加入。openclaw 的 usage 信封解析已于 2026-11-26 修复
+（`_extract_cost` 能定位 stderr 日志行之后的缩进 JSON 信封），此后的批次可读；
+B2 结果表里的 `n/a` 是修复前的记录，可用本地 episode 离线重算后补上。
 
 | batch | 范围 | 栈 | n | episode 数 | 目的 | 估算 |
 |---|---|---|---|---|---|---|
