@@ -252,15 +252,17 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
     shapes are accepted: NDJSON events (dsh/pi/opencode), and one JSON envelope
     that is not a line of its own, pretty-printed and possibly behind plain log
     lines on the same stream (openclaw --json). The envelope is only searched
-    for when no line parsed as an event carrying usage. Token fields are the
-    uncached ones (prompt + completion), the same basis for every stack: a
-    stack's own ``total`` usually adds cache reads on top.
+    for when no line parsed as an event carrying usage. ``prompt_tokens`` and
+    ``completion_tokens`` are the uncached ones, the same basis for every
+    stack: a stack's own ``total`` usually adds cache reads on top. Cache reads
+    and writes that a stack reports separately go into their own fields, so
+    the cached part stays visible without changing token/task.
     """
     if not adapter.cost_path:
         return None
     keys = adapter.cost_path.split(".")
     totals = {"llm_calls": 0, "prompt_tokens": 0, "completion_tokens": 0,
-              "reasoning_tokens": 0}
+              "reasoning_tokens": 0, "cache_read_tokens": 0, "cache_write_tokens": 0}
     usd = 0.0
     seen = False
 
@@ -285,6 +287,11 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
             "prompt_tokens": ("input", "input_tokens", "inputTokens", "prompt_tokens"),
             "completion_tokens": ("output", "output_tokens", "outputTokens", "completion_tokens"),
             "reasoning_tokens": ("reasoning", "reasoning_tokens", "reasoningTokens"),
+            # dsh: cacheReadTokens; openclaw: cacheRead / cacheWrite
+            "cache_read_tokens": ("cacheRead", "cacheReadTokens", "cache_read",
+                                  "cache_read_tokens", "cached_tokens"),
+            "cache_write_tokens": ("cacheWrite", "cacheWriteTokens", "cache_write",
+                                   "cache_write_tokens", "cache_creation_tokens"),
         }
         for field_name, candidates in aliases.items():
             for candidate in candidates:
