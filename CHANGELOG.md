@@ -4,6 +4,45 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1-alpha] - 2026-11-26
+
+Patch release of the tooling: the per-episode proxy socket fix, the Bailian
+adapter variants, the n>=3 capability report tool and the published B2
+results. The 26-package task suite is unchanged from v0.2.0-alpha (same
+task `tree_version`s).
+
+### Added
+- `docs/spec/11-capability-runs.md`: the n>=3 capability-run protocol, batch
+  plan (B0–B3), go/no-go gates and the reporting contract.
+- `scripts/capability_report.py`: capability x solver x stack matrix with n,
+  mean/range, infra count, cost per task, median active time and error
+  categories; 9 offline tests, wired into `scripts/ci_local.sh`.
+- `adapters/opencode-bailian.toml` and `adapters/openclaw-bailian.toml` with
+  their profiles: the same headless contracts on the Aliyun Bailian Token Plan
+  gateway; credentials stay in `BAILIAN_API_KEY` via `env_from`.
+- v0.2 B2 capability results: 22 tasks × 3 stacks × n=3 on the v0.2.0-alpha
+  suite (198 native-scored episodes), published in
+  `docs/results/2026-11-24-b2.md`.
+
+### Fixed
+- `capability_report.py` now reads `active_duration_seconds` (the previous
+  field name left the active-time coverage at 0), reports token/task alongside
+  $/task (subscription gateways have no USD estimate), and includes the split
+  version per task; unknown token counts render as `-` rather than 0.
+- The per-episode proxy socket now lives in a short private `/tmp` directory
+  instead of the episode directory. Long adapter names (e.g.
+  `opencode-bailian`) pushed the AF_UNIX path over the 108-byte limit and
+  failed the episode as `infra_incomplete`; the temp directory is removed when
+  the proxy stops.
+- `vericax --version` reported `0.1.0` on both release branches; `__version__`
+  now tracks the release tag.
+
+### Known limitations
+- B2 infra failures were all sandbox control-channel losses; `vericax batch`
+  records them but does not retry them automatically yet.
+- The openclaw and hermes adapters do not read token usage; their cost is
+  reported as `n/a`.
+
 ## [0.2.0-alpha] - 2026-11-22
 
 Alpha release of the 26-package suite on the three self-built VM images.
@@ -22,7 +61,8 @@ require n>=3 runs.
 - Adapters and phase-2 agent image for `opencode 1.19.5`, `hermes 0.21.6`,
   `openclaw 2026.9.9` (P5); n=1 conformance on task-0001 is 1.0 for all three.
 - `scripts/ci_local.sh` (CI replica + offline tests), wired into the pre-push
-  hook; `docs/ci.md` records the GitHub Actions billing blocker (E).
+  hook; `docs/ci.md` records the account-level CI blocker (E), resolved by the
+  public repository.
 - `scripts/audit_suite.py`: audit → pack → L0 → pack-check for every package,
   two tasks in flight; used for the default-image switch.
 - Self-built default images: all 26 packages re-audited on CalculiX

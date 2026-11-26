@@ -1,0 +1,40 @@
+# openclaw adapter variant on the Aliyun Bailian Token Plan gateway (spec/08
+# section 5, P5). Same headless contract as openclaw.toml; the profile uses a
+# SecretRef to BAILIAN_API_KEY, forwarded from the host at run time.
+name = "openclaw-bailian"
+version = "2026.9.9"
+
+[launch]
+command = ["openclaw", "agent", "exec",
+           "--config", "/root/.openclaw/openclaw.json",
+           "--state-dir", "/root/.openclaw",
+           "--model", "bailian/deepseek-v4.1-flash-1017",
+           "--code-mode", "direct", "--json", "--timeout", "18000",
+           "--message-file", "-"]
+instruction = "stdin"
+approval = []
+grace_seconds = 10
+
+[sandbox]
+shell = "path"
+shell_target = "vericax-sh"
+file_tools = "disable"
+working_dir = "/home/user/Desktop"
+
+[output]
+format = "json"
+cost_path = "usage"
+cost_event_types = []
+
+[state]
+dir = ".openclaw"
+template_dir = "openclaw-bailian-profile"
+
+[model]
+name = "deepseek-v4.1-flash-1017"
+endpoint = "bailian-token-plan"
+
+[container]
+image = "vericax-agent:phase2"
+env_from = ["BAILIAN_API_KEY"]
+env = { OPENCLAW_STATE_DIR = "/root/.openclaw", OPENCLAW_CONFIG_PATH = "/root/.openclaw/openclaw.json" }

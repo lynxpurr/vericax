@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import io
 import json
+import shutil
 import sys
 import tempfile
 import unittest
@@ -20,7 +21,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from vericax import adapters, lifecycle, summary, validity  # noqa: E402
+from vericax import adapters, lifecycle, proxy, summary, validity  # noqa: E402
 
 
 class TreeVersionTests(unittest.TestCase):
@@ -206,6 +207,22 @@ class SummarySchemaTests(unittest.TestCase):
         self.assertEqual(data["kind"], "capability")
         self.assertIsNone(data["tree_version"])
         self.assertEqual(data["reference_selfcheck"], "not_run")
+
+
+class ProxySocketPathTests(unittest.TestCase):
+    def test_temp_socket_path_is_short_and_unique(self):
+        first = proxy.temp_socket_path()
+        second = proxy.temp_socket_path()
+        try:
+            # AF_UNIX paths are capped at 108 bytes; the episode directory is
+            # much longer than this once the adapter name is included.
+            self.assertLess(len(str(first)), 100)
+            self.assertLess(len(str(second)), 100)
+            self.assertNotEqual(first, second)
+            self.assertTrue(first.parent.is_dir())
+        finally:
+            shutil.rmtree(first.parent, ignore_errors=True)
+            shutil.rmtree(second.parent, ignore_errors=True)
 
 
 if __name__ == "__main__":

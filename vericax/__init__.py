@@ -6,4 +6,4 @@ behavior lives exclusively in ``adapters/<stack>.toml``; the lifecycle modules
 must stay stack-agnostic (A1, spec/08).
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.1-alpha"

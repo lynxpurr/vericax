@@ -75,7 +75,7 @@
 
 D5 已定（2026-11-18），执行顺序：
 
-- **v0/v0.5：复用 EngiWorld 镜像**（CalculiX-2.21 已在本机验证；FEniCS 候选镜像需确认版本、工件格式、pins 与审计可复现）。
+- **v0/v0.5：复用 EngiWorld 镜像**（CalculiX-2.21 已验证；FEniCS 候选镜像需确认版本、工件格式、pins 与审计可复现）。
 - **Phase 1：写自建镜像构建 recipe**，并产出一张自建镜像验证可复现（不切换）。
 - **Phase 2：切换自建 VeriCAx 镜像**并重跑审计；所有 pins 必须在同镜像内重新烘焙（换镜像 = 重跑审计，spec/04 §6）。三张自建镜像已全部验收（P3a CalculiX 2026-11-20、P3b FEniCS 2026-11-21、P3c merged 2026-11-21）；merged 镜像承载 4 道 `software-selection`（`v0.2-cae-cli-merged`）。
 - **默认镜像切换已完成（2026-11-22）**：26 个任务包全部在自建镜像上重跑 `audit_task.py --repeat 10` + L0 + `pack_task`；L0 的 `image_sha256` 与 snapshot 一一对应——CalculiX `91b1d6c8…`（13 包）、FEniCS `b0e2f239…`（9 包）、merged `e6514410…`（4 包）。task-0014/0016 的本地 wheelhouse 补了 `scipy 1.13.1`（scikit-fem/trimesh 的运行时依赖，自建镜像不含 scipy）。`vericax.toml` 的 `[images] dir` 现在指向三张镜像的 suite 链接目录；EngiWorld 镜像保留作对照。
@@ -86,7 +86,7 @@ D5 已定（2026-11-18），执行顺序：
 
 - FEniCS 镜像已通过 ModelScope 通道获取（`engiworld.prepare_images --source modelscope --image FEniCS`，65 s；`FEniCS.qcow2` 17.0 GB，sha256 与 manifest 一致），dolfinx 0.10.0.post2。
 - 第二求解器 smoke **已完成**：`cae--cli--fenics--task-0001`（带孔板，L1–L3）P0 重审计 15/15、L0 参考自检 pass、假 agent tier-1 = 1.0——L1–L3 的验证逻辑与求解器无关得到实证。
-- **P1 已完成（2026-11-20/21）**：21 题；P2 L6 spike 完成（+1 道 prototype）；P3a/P3b/P3c 三张自建镜像验收；**Phase 2 套件目标 25 题已达成**（2026-11-21，4 道 `software-selection` 落地；任务包共 26 个）。P4/P5 已于 2026-11-22 完成；剩余：E（CI 账户级账单，见 `docs/ci.md`）。
+- **P1 已完成（2026-11-20/21）**：21 题；P2 L6 spike 完成（+1 道 prototype）；P3a/P3b/P3c 三张自建镜像验收；**Phase 2 套件目标 25 题已达成**（2026-11-21，4 道 `software-selection` 落地；任务包共 26 个）。P4/P5 已于 2026-11-22 完成；E 已随公开仓库解除（见 `docs/ci.md`）。三栈 n≥3 能力跑 B2 于 2026-11-24 完成并发布（`docs/results/2026-11-24-b2.md`）。
 
 ## 4. 题量分解
 
@@ -177,9 +177,9 @@ D5 已定（2026-11-18），执行顺序：
 
 **P5 完成（2026-11-22）**：`opencode 1.19.5` / `hermes 0.21.6` / `openclaw 2026.9.9` 三栈 adapter + `vericax-agent:phase2` 镜像；task-0001 × n=1 全部 1.0（native evaluator，sandbox/scoring 网络隔离均 true，三件套归因完整）。Hermes/OpenClaw 的 cost 为 `null`（usage 在容器内文件/混合 stderr，harness 不读；spec/08 §5 允许）。详见 `tests/conformance_adapters.py` 与 spec/08 §10。
 
-**E（CI 账单）**：GitHub 账户级阻塞，作业在 0 步前不启动；已加 `scripts/ci_local.sh`（CI 三步 + offline tests）与 pre-push 门，`docs/ci.md` 记录两个人类选项。修账单需账户所有者操作，代码侧已无可做项。
+**E（CI）**：GitHub Actions 曾在账户级阻塞；已加 `scripts/ci_local.sh`（CI 三步 + offline tests）与 pre-push 门。仓库 2026-11-22 公开后标准 runner 正常，`main`/`develop` 均为绿；详见 `docs/ci.md`。
 
-**待决**：E 的账户级修复方式（付款/提高额度，或另行决定是否公开仓库）。
+**待决**：无（E 已解除；B3 五栈矩阵为可选，见 spec/11）。
 
 **P0 已完成（2026-11-20）**：4 题全部 A≥2、六类反作弊负例齐全、`robust: 10/10 consistent`；`audit_task.py --repeat N` 与 `pack_task.py` 打包门已生效（spec/02 §4.1）。
 
@@ -196,15 +196,18 @@ D5 已定（2026-11-18），执行顺序：
 - ≥2 求解器、20–30 题、每 capability ≥3。
 - **benchmark-validity gate**：每个任务包通过 GT 自校验；模型比较必须在同一 `tree_version` 上；n≥3；re-score 不得当 rerun 发布（spec/02 L0、spec/03 §1）。
 - 成绩矩阵：capability × solver，每格给出 n、均值、极差。
-- 报告字段：split 版本、n、agent/harness/model、`image_sha256`、$/题、活跃时长中位、错误分类占比。
+- 报告字段：split 版本、n、agent/harness/model、`image_sha256`、`$/题`（订阅制网关用 token/题）、活跃时长中位、错误分类占比。
 - 通道分数不合并：CLI 与 GUI 分开；跨软件与单软件分开报。
+
+可执行协议、分批计划（B0–B3）、go/no-go 门与报告字段见
+[`spec/11-capability-runs.md`](11-capability-runs.md)。
 
 ## 9. 依赖与未决
 
 | 项 | 依赖 | 影响 |
 |---|---|---|
 | 第二求解器镜像 | D5 | P3a/P3b/P3c 自建镜像已验证；默认镜像切换 2026-11-22 完成（26 包重审计 + L0） |
-| 发布时点 | D4 | 商标检索、org 占位、split 冻结时间 |
+| 发布时点 | D4 | 已公开（2026-11-22）；商标轻量查重完成、不注册；org 迁移延后 |
 | 任务作者产能 | 人力 | Phase 2 完成 25 道目标题 + 1 道 L6 原型（每 capability ≥3）；v0.5 扩到 5 求解器 × 20 待 P5 |
 | provenance 判据 | 新 verifier 能力 | L6 已写入 spec/02；原型 + P3c 四题在 merged image 上验证（native 对、token 绑定、全场重解比对） |
 | 图纸/报告输入格式 | task schema | `observation-reconstruct` 的 init_file 类型 |

@@ -17,18 +17,21 @@ The first principle:
 
 ## Status
 
-Alpha, under active development. Code, task definitions, verifiers and audit
-records are released under MIT. Current contents:
+Alpha, under active development. The v0.2.1-alpha release ships the
+v0.2.0-alpha task suite (unchanged) with the current tooling under MIT; B2
+capability results are in
+[`docs/results/2026-11-24-b2.md`](docs/results/2026-11-24-b2.md). Current contents:
 
 | Area | State |
 |---|---|
-| Specifications | `docs/spec/00`–`10`; latest calibration 2026-11-22 (P4 parallel scheduling, per-episode L6 challenge tokens, P5 stack expansion) |
+| Specifications | `docs/spec/00`–`11`; latest calibration 2026-11-22 (capability-run protocol, P4 parallel scheduling, per-episode L6 challenge tokens, P5 stack expansion) |
 | Task packages | 26 packages (25 Phase-2 targets + 1 L6 prototype) across CalculiX, FEniCS and a merged cross-solver image; every package has an audit record and L0 self-check |
 | Default images | three self-built qcow2 (CalculiX 2.21, FEniCS 0.10.0.post2, merged); all 26 packages re-audited on them on 2026-11-22 |
 | Tooling | audit harness, package validator, VM probe, dependency resolver, parallel `vericax batch`, `scripts/audit_suite.py`, local CI gate |
-| Agent stacks | dsh 0.2.1-rc.5, pi 1.4.0, opencode 1.19.5, hermes 0.21.6, openclaw 2026.9.9; all five have n≥1 conformance episodes |
+| Agent stacks | dsh 0.2.1-rc.5, pi 1.4.0, opencode 1.19.5, hermes 0.21.6, openclaw 2026.9.9; B2 results cover dsh/opencode/openclaw × 22 tasks × n=3 |
 | Runtime | Phase 2 complete: tier-1 scoring, per-episode overlays, 2-VM parallel batches, L6 provenance/challenge binding |
-| CI | `scripts/ci_local.sh` mirrors the workflow and adds the offline tests; see `docs/ci.md` for the Actions billing history |
+| Results | [v0.2 B2 capability results](docs/results/2026-11-24-b2.md): 22 tasks × 3 stacks × n=3 on the v0.2.0-alpha suite |
+| CI | GitHub Actions (green on `main` and `develop` since 2026-11-22); `scripts/ci_local.sh` mirrors the workflow offline |
 
 ## Layout
 
@@ -102,7 +105,9 @@ sibling directory. `vericax.toml` is gitignored.
 - [x] Second solver (FEniCS) and a 26-package suite across two solvers and a merged image
 - [x] Tier 1 trusted loop: out-of-band verifier execution and the anti-cheat layer as runtime code
 - [x] Five agent stacks and 2-VM parallel scheduling with per-episode challenge binding
-- [ ] Public alpha release of the task suite and tooling (organisation move deferred)
+- [x] Public alpha release of the task suite and tooling (2026-11-22; organisation move deferred)
+- [x] Three-stack n≥3 capability results (2026-11-24; `docs/results/2026-11-24-b2.md`)
+- [ ] Harder FEniCS tasks and an optional five-stack matrix
 
 ## Contributing
 

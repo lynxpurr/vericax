@@ -2,7 +2,7 @@
 
 状态：草案 v0.1（2026-11-18）· 与调研报告 §8.6 档 0/1/2 对齐，换 VeriCAx 口径
 
-> **2026-11-22 状态校准（取代 2026-11-21 块）**：Phase 0 冻结；Phase 1 验收（dsh × task-0001 × n=3 = 1.0/1.0/1.0；pi × n=1 = 1.0）；Phase 1.5 benchmark-validity gate 完成；**Phase 2 完成**——25 道目标题 + 1 道 L6 原型（共 26 包），L6 provenance 判据在 merged 镜像上实证，三张自建镜像 clean-build 验收并已切换为默认镜像（2026-11-22，26 包全部重审计 + L0）。P4 已完成（`batch --parallel 2`、E5 清理顺序、每 episode challenge token）；P5 已完成（opencode/hermes/openclaw adapter + phase2 agent 镜像，三栈 n=1 conformance = 1.0）。唯一未完成的是 E：GitHub Actions 账户级账单阻塞，本地 `scripts/ci_local.sh` 为权威门禁。Phase 2 出口仍按 spec/10 §8。
+> **2026-11-22 状态校准（取代 2026-11-21 块）**：Phase 0 冻结；Phase 1 验收（dsh × task-0001 × n=3 = 1.0/1.0/1.0；pi × n=1 = 1.0）；Phase 1.5 benchmark-validity gate 完成；**Phase 2 完成**——25 道目标题 + 1 道 L6 原型（共 26 包），L6 provenance 判据在 merged 镜像上实证，三张自建镜像 clean-build 验收并已切换为默认镜像（2026-11-22，26 包全部重审计 + L0）。P4 已完成（`batch --parallel 2`、E5 清理顺序、每 episode challenge token）；P5 已完成（opencode/hermes/openclaw adapter + phase2 agent 镜像，三栈 n=1 conformance = 1.0）。E 已随 public 仓库解除；三栈 n≥3 B2 结果于 2026-11-24 发布（`docs/results/2026-11-24-b2.md`）。Phase 2 出口仍按 spec/10 §8。
 
 ## 档 0 · 闭环 pilot（~1 天）
 
@@ -35,7 +35,7 @@
 
 - [ ] 5 求解器 × 20 题 = 100 题（复用 EngiWorld 15 镜像中 CAE 五个，31.6GB）
 - [ ] CAM 先发 20 题（freecad-path 镜像，社区空白域）
-- [ ] 排行榜 v1：Hermes / ZCode bot / OpenClaw 至少 3 个 agent 栈 × n≥3
+- [x] 排行榜 v1：至少 3 个 agent 栈 × n≥3（2026-11-24 完成：dsh / opencode / openclaw × 22 题 × n=3；见 `docs/results/2026-11-24-b2.md`；协议 spec/11）
 - [ ] Fleet CP 加 VeriCAx tab（ECharts 骨架现成）：通过率/留存率/$每题/错误分类
 
 ## 里程碑语义
@@ -44,6 +44,28 @@
 - **v0.5**：CAE 100 题 + CAM 20 题发布（HF org 上线）
 - **v1**：CAD 域 + GUI 通道 + 跨域留存率面板
 - **v1.5**：VeriCAx-Ops 子集独立发布（运维域，先发空间见调研报告 §9）
+
+## 2026-11-26 下一阶段计划
+
+B2 已完成并发布。2026-11-26 owner 决定按 v0.2.1-alpha → 可靠性/成本 → 难度校准的顺序执行；
+每个 batch 的真实跑量仍需逐批授权。
+
+| 步骤 | 内容 | 验收 | 估算 |
+|---|---|---|---|
+| **1. v0.2.1-alpha 补丁发布（已完成 2026-11-26）** | `develop → main`：socket 修复、Bailian 变体、能力报告工具、B2 结果、状态/隐私清扫（#29–#35，共 7 个 commit），另含 release 元数据；tag `v0.2.1-alpha`，pre-release | main 含这 7 个 commit + release commit；CI 绿；release notes 不含账户信息；任务包与 split 不变 | ~1h |
+| **2. 可靠性与成本** | 顺序：(1) sandbox 失联即中止并取证；(2) 在 dsh × FEniCS 最坏组合上定位根因，每次只改一个变量；(3) 按根因修；(4) batch 自动 infra 重试：首轮跑完后统一重试，每格上限 2 次，新 episode，次数入 `batch.json`，连续 3 次 infra 熔断；(5) 防泄漏与 batch 前置检查；(6) openclaw usage 解析 | 机制层面：失联后 1 分钟内中止、重试有记录、原生 0.0 不重试、无容器残留；真实 infra 率放到步骤 3 的校准批实测 | 1 周 |
+| **3. 难度校准** | 新增 4 道 FEniCS：cross-stage-consistency（补 capability × solver 空格，先做试点）、open-environment、observation-reconstruct、design-optimization；cross-solver 暂缓；只对新题跑 3 栈 × n=3 | 每题 audit 15/15、robust 10/10、L0；每题至少一个 cell 两栈极差不重叠；三栈全零先查评分侧原因再判定 | 1–2 周 |
+| **4. 再决策** | 根据步骤 3 决定 v0.5（CAE 100 + CAM 20）或 B3（五栈） | owner 评审 | — |
+
+**2026-11-26 调整依据（B2 batch 记录复核）**：已记录的 16 次 infra 失败全部是 sandbox
+控制通道失联，首次错误多出现在 agent 开始后几分钟内，且 dsh 在 parallel 2 与 parallel 1 下
+的失败数相同（各 4/27）；因此内存感知并行降为前置检查，先做失联即中止与根因定位。
+验收不再写"infra 率低于某个值"：小批量下该比率没有统计意义。cross-solver 4 题中 0004
+三栈全 1.0、0002/0003 各栈不超过 0.333，加难只会产生地板效应，暂缓。
+
+- **B3 暂缓**：pi/hermes 需先有 Bailian provider 配置与 usage 口径；B2 已有三栈结果，边际收益低。
+- **不做**（除非 owner 另行决定）：org 迁移、公告、n>3 的统计扩展。
+- 发布规则见 spec/11 与 `docs/results/2026-11-24-b2.md`：只发布聚合表，不发布 raw runs、账户信息或 verifier 规则文本。
 
 ## 明确的不做
 

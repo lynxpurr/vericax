@@ -19,6 +19,7 @@ import base64
 import json
 import secrets
 import socket
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -30,6 +31,17 @@ GET_FILE_LIMIT = 64 * 1024 * 1024
 ALLOWED_ROOTS = ("/home/user", "/tmp")
 
 _VERBS = ("run", "put", "get", "done", "whoami")
+
+
+def temp_socket_path() -> Path:
+    """Create a short, private directory for one proxy socket.
+
+    AF_UNIX paths are limited to 108 bytes. Keeping the socket under /tmp
+    decouples it from the episode directory name, which grows with the adapter
+    name (e.g. ``opencode-bailian``) and can push the path over the limit. The
+    caller removes ``path.parent`` when the proxy stops.
+    """
+    return Path(tempfile.mkdtemp(prefix="vx-proxy-")) / "p.sock"
 
 
 def _safe_remote(path: str) -> str | None:
