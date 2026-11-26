@@ -45,16 +45,23 @@
 - **v1**：CAD 域 + GUI 通道 + 跨域留存率面板
 - **v1.5**：VeriCAx-Ops 子集独立发布（运维域，先发空间见调研报告 §9）
 
-## 2026-11-26 下一阶段计划（待 owner 放行）
+## 2026-11-26 下一阶段计划
 
-B2 已完成并发布；以下顺序是建议，每一步执行前需 owner 明确授权。
+B2 已完成并发布。2026-11-26 owner 决定按 v0.2.1-alpha → 可靠性/成本 → 难度校准的顺序执行；
+每个 batch 的真实跑量仍需逐批授权。
 
 | 步骤 | 内容 | 验收 | 估算 |
 |---|---|---|---|
-| **1. v0.2.1 补丁发布** | `develop → main`（含 socket 修复、Bailian 变体、能力报告工具、B2 结果、状态/隐私清扫），tag `v0.2.1` | main 含这 6 个 commit；CI 绿；release notes 不含账户信息 | 1–2h |
-| **2. 可靠性与成本** | batch 自动 infra 重试（上限 2 次）；freeze/scoring 失败同策略；内存感知并行；openclaw/hermes usage 解析（失败则 `n/a`） | 离线测试 + 小批量真实验证；infra 率低于 B2 的 7.5% | 1 周 |
-| **3. 难度校准** | 新增 3–5 道更难 FEniCS 题 + 1–2 道更难 cross-solver L6 题；只对新题跑 3 栈 × n=3 | audit 15/15、robust 10/10、L0；至少一个 cell 分离栈；无三栈全零 | 1–2 周 |
+| **1. v0.2.1-alpha 补丁发布（已完成 2026-11-26）** | `develop → main`：socket 修复、Bailian 变体、能力报告工具、B2 结果、状态/隐私清扫（#29–#35，共 7 个 commit），另含 release 元数据；tag `v0.2.1-alpha`，pre-release | main 含这 7 个 commit + release commit；CI 绿；release notes 不含账户信息；任务包与 split 不变 | ~1h |
+| **2. 可靠性与成本** | 顺序：(1) sandbox 失联即中止并取证；(2) 在 dsh × FEniCS 最坏组合上定位根因，每次只改一个变量；(3) 按根因修；(4) batch 自动 infra 重试：首轮跑完后统一重试，每格上限 2 次，新 episode，次数入 `batch.json`，连续 3 次 infra 熔断；(5) 防泄漏与 batch 前置检查；(6) openclaw usage 解析 | 机制层面：失联后 1 分钟内中止、重试有记录、原生 0.0 不重试、无容器残留；真实 infra 率放到步骤 3 的校准批实测 | 1 周 |
+| **3. 难度校准** | 新增 4 道 FEniCS：cross-stage-consistency（补 capability × solver 空格，先做试点）、open-environment、observation-reconstruct、design-optimization；cross-solver 暂缓；只对新题跑 3 栈 × n=3 | 每题 audit 15/15、robust 10/10、L0；每题至少一个 cell 两栈极差不重叠；三栈全零先查评分侧原因再判定 | 1–2 周 |
 | **4. 再决策** | 根据步骤 3 决定 v0.5（CAE 100 + CAM 20）或 B3（五栈） | owner 评审 | — |
+
+**2026-11-26 调整依据（B2 batch 记录复核）**：已记录的 16 次 infra 失败全部是 sandbox
+控制通道失联，首次错误多出现在 agent 开始后几分钟内，且 dsh 在 parallel 2 与 parallel 1 下
+的失败数相同（各 4/27）；因此内存感知并行降为前置检查，先做失联即中止与根因定位。
+验收不再写"infra 率低于某个值"：小批量下该比率没有统计意义。cross-solver 4 题中 0004
+三栈全 1.0、0002/0003 各栈不超过 0.333，加难只会产生地板效应，暂缓。
 
 - **B3 暂缓**：pi/hermes 需先有 Bailian provider 配置与 usage 口径；B2 已有三栈结果，边际收益低。
 - **不做**（除非 owner 另行决定）：org 迁移、公告、n>3 的统计扩展。

@@ -17,8 +17,9 @@ The first principle:
 
 ## Status
 
-Alpha, under active development. The v0.2.0-alpha task suite and tooling are
-released under MIT; B2 capability results are in
+Alpha, under active development. The v0.2.1-alpha release ships the
+v0.2.0-alpha task suite (unchanged) with the current tooling under MIT; B2
+capability results are in
 [`docs/results/2026-11-24-b2.md`](docs/results/2026-11-24-b2.md). Current contents:
 
 | Area | State |
