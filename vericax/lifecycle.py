@@ -200,9 +200,12 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
 
     Reads adapter.output.cost_path (a dotted path into each JSON event) and
     sums token usage across events. No stack branching happens here. Two
-    shapes are accepted: NDJSON (dsh/pi/opencode) and one pretty-printed JSON
-    envelope (openclaw --json); the envelope fallback only runs when no line
-    parsed as an event.
+    shapes are accepted: NDJSON events (dsh/pi/opencode), and one JSON envelope
+    that is not a line of its own, pretty-printed and possibly behind plain log
+    lines on the same stream (openclaw --json). The envelope is only searched
+    for when no line parsed as an event carrying usage. Token fields are the
+    uncached ones (prompt + completion), the same basis for every stack: a
+    stack's own ``total`` usually adds cache reads on top.
     """
     if not adapter.cost_path:
         return None
@@ -244,7 +247,6 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
         if isinstance(cost_node, dict) and isinstance(cost_node.get("total"), (int, float)):
             usd += float(cost_node["total"])
 
-    parsed_lines = 0
     for line in stdout.splitlines():
         line = line.strip()
         if not line.startswith("{"):
@@ -253,13 +255,18 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
             event = json.loads(line)
         except ValueError:
             continue
-        parsed_lines += 1
         consume(event)
-    if parsed_lines == 0:
-        try:
-            consume(json.loads(stdout))
-        except ValueError:
-            pass
+    if not seen:
+        decoder = json.JSONDecoder()
+        offset = 0
+        for line in stdout.splitlines(keepends=True):
+            stripped = line.lstrip()
+            if not seen and stripped.startswith("{"):
+                try:
+                    consume(decoder.raw_decode(stdout, offset + len(line) - len(stripped))[0])
+                except ValueError:
+                    pass
+            offset += len(line)
     if not seen:
         return None
     totals["usd_estimate"] = round(usd, 6) if usd else None
