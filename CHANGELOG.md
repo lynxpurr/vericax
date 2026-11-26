@@ -4,7 +4,12 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.1-alpha] - 2026-11-26
+
+Patch release of the tooling: the per-episode proxy socket fix, the Bailian
+adapter variants, the n>=3 capability report tool and the published B2
+results. The 26-package task suite is unchanged from v0.2.0-alpha (same
+task `tree_version`s).
 
 ### Added
 - `docs/spec/11-capability-runs.md`: the n>=3 capability-run protocol, batch
@@ -29,6 +34,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `opencode-bailian`) pushed the AF_UNIX path over the 108-byte limit and
   failed the episode as `infra_incomplete`; the temp directory is removed when
   the proxy stops.
+- `vericax --version` reported `0.1.0` on both release branches; `__version__`
+  now tracks the release tag.
+
+### Known limitations
+- B2 infra failures were all sandbox control-channel losses; `vericax batch`
+  records them but does not retry them automatically yet.
+- The openclaw and hermes adapters do not read token usage; their cost is
+  reported as `n/a`.
 
 ## [0.2.0-alpha] - 2026-11-22
 
