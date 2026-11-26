@@ -15,6 +15,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `adapters/opencode-bailian.toml` and `adapters/openclaw-bailian.toml` with
   their profiles: the same headless contracts on the Aliyun Bailian Token Plan
   gateway; credentials stay in `BAILIAN_API_KEY` via `env_from`.
+- v0.2 B2 capability results: 22 tasks × 3 stacks × n=3 on the v0.2.0-alpha
+  suite (198 native-scored episodes), published in
+  `docs/results/2026-11-24-b2.md`.
 
 ### Fixed
 - `capability_report.py` now reads `active_duration_seconds` (the previous

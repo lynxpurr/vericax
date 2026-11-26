@@ -28,6 +28,7 @@ records are released under MIT. Current contents:
 | Tooling | audit harness, package validator, VM probe, dependency resolver, parallel `vericax batch`, `scripts/audit_suite.py`, local CI gate |
 | Agent stacks | dsh 0.2.1-rc.5, pi 1.4.0, opencode 1.19.5, hermes 0.21.6, openclaw 2026.9.9; all five have n≥1 conformance episodes |
 | Runtime | Phase 2 complete: tier-1 scoring, per-episode overlays, 2-VM parallel batches, L6 provenance/challenge binding |
+| Results | [v0.2 B2 capability results](docs/results/2026-11-24-b2.md): 22 tasks × 3 stacks × n=3 on the v0.2.0-alpha suite |
 | CI | GitHub Actions (green on `main` and `develop` since 2026-11-22); `scripts/ci_local.sh` mirrors the workflow offline |
 
 ## Layout

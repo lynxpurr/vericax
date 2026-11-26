@@ -35,7 +35,7 @@
 
 - [ ] 5 求解器 × 20 题 = 100 题（复用 EngiWorld 15 镜像中 CAE 五个，31.6GB）
 - [ ] CAM 先发 20 题（freecad-path 镜像，社区空白域）
-- [ ] 排行榜 v1：至少 3 个 agent 栈 × n≥3（当前建议 dsh / pi / opencode；协议与批次见 spec/11）
+- [x] 排行榜 v1：至少 3 个 agent 栈 × n≥3（2026-11-24 完成：dsh / opencode / openclaw × 22 题 × n=3；见 `docs/results/2026-11-24-b2.md`；协议 spec/11）
 - [ ] Fleet CP 加 VeriCAx tab（ECharts 骨架现成）：通过率/留存率/$每题/错误分类
 
 ## 里程碑语义
