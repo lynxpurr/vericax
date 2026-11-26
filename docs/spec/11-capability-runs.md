@@ -13,6 +13,10 @@ n、均值、极差、成本、活跃时长和错误分类。本文补全 spec/1
 G1–G3；B2 结果已发布（`docs/results/2026-11-24-b2.md`）。B3（五栈）未启动；
 `pi`/`hermes` 需要各自的 Bailian provider 配置。
 
+**后续（2026-11-26）**：B3 暂缓，前置条件是 pi/hermes 的 Bailian provider 与
+usage 解析；可靠性/成本改进与难度校准见 spec/05 的下一阶段计划。新题校准仍按
+本文的 n=3 协议与报告契约执行。
+
 ## 2. 术语
 
 - **episode**：一次完整 run（prepare → run → freeze → score → record），落在
