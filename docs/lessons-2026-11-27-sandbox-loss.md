@@ -94,6 +94,9 @@ bit 7 and has no name, so the number is the only spelling; the guest prints
   minutes without a panic.
 - Untreated VMs in the same windows crashed; over the day 4 of 21 untreated
   idle VMs passed 90 minutes.
+- An 8-hour idle hold on 6 VMs with the parameter (3 FEniCS, 3 CalculiX)
+  ended without a panic; the three rebuilt images passed 2-hour idle soaks
+  (3 VMs each) and the model-free acceptance episodes.
 - `nousershstk` does not work: it clears only the synthetic `USER_SHSTK`,
   which `setup_cet()` sets again.
 
