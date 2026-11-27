@@ -83,23 +83,30 @@ def load_rows(runs_dir: Path, batch_dirs: list[Path] | None = None):
     return rows, {"batches": batches}
 
 
-def reextract_cost(rows: list[dict]) -> int:
-    """Fill ``cost`` on episodes whose summary has none; returns how many.
+def reextract_cost(rows: list[dict], mode: str = "missing") -> dict:
+    """Re-derive ``cost`` from the episodes' stored agent streams.
 
     The agent streams under ``logs/`` are the primary record and the summary's
-    ``cost`` is derived from them, so a cost extractor that learns a new output
-    shape (openclaw's envelope behind log lines) can be applied to episodes
-    recorded before the fix. This is a cost re-score: scores are not touched,
-    a cost that is already present is never overwritten, and no file is
-    written. The caller states it in the report.
+    ``cost`` is derived from them, so an extractor that learned a new output
+    shape (openclaw's envelope behind log lines) or a new field (cache reads)
+    can be applied to episodes recorded before the change. This is a cost
+    re-score: scores are not touched and no file is written. The caller states
+    it in the report.
+
+    ``mode="missing"`` fills only episodes without a cost record. ``mode="all"``
+    re-derives every episode whose streams are still available and counts the
+    ones whose recorded token totals differ, so a drift is reported rather than
+    silently replaced. Returns ``{"filled", "refreshed", "changed"}``.
     """
     sys.path.insert(0, str(REPO))
     from vericax import adapters, lifecycle  # offline: no VM, docker or model
 
-    filled = 0
+    counted = ("llm_calls", "prompt_tokens", "completion_tokens", "reasoning_tokens")
+    counts = {"filled": 0, "refreshed": 0, "changed": 0}
     adapters_by_name: dict[str, object] = {}
     for row in rows:
-        if row.get("cost") is not None:
+        recorded = row.get("cost")
+        if mode == "missing" and recorded is not None:
             continue
         name = row.get("adapter_name") or (row.get("agent") or {}).get("name")
         result_dir = row.get("result_dir")
@@ -120,11 +127,17 @@ def reextract_cost(rows: list[dict]) -> int:
             if not path.is_file():
                 continue
             cost = lifecycle._extract_cost(adapter, path.read_text(errors="ignore"))
-            if cost:
-                row["cost"] = cost
-                filled += 1
-                break
-    return filled
+            if not cost:
+                continue
+            if recorded is None:
+                counts["filled"] += 1
+            else:
+                counts["refreshed"] += 1
+                if any(recorded.get(key) != cost.get(key) for key in counted):
+                    counts["changed"] += 1
+            row["cost"] = cost
+            break
+    return counts
 
 
 def _usd(row: dict) -> float | None:
@@ -314,10 +327,14 @@ def render_markdown(report: dict, meta: dict) -> str:
         "token/task is always reported (prompt + completion); cache-read/task "
         "is shown where the stack reports cache reads",
     ]
-    reextracted = meta.get("cost_reextracted") or 0
-    if reextracted:
+    reextract = meta.get("cost_reextract") or {}
+    if reextract.get("filled"):
         lines.append(f"- cost re-extracted from the stored agent streams of "
-                     f"{reextracted} episode(s) with `--reextract-cost`; scores unchanged")
+                     f"{reextract['filled']} episode(s) that had none; scores unchanged")
+    if reextract.get("refreshed"):
+        lines.append(f"- cost re-derived from the stored agent streams of "
+                     f"{reextract['refreshed']} episode(s) (`--reextract-cost all`); "
+                     f"{reextract['changed']} differ from the recorded values")
     for batch in meta.get("batches", []):
         # retries=/infra= come from batches that retry infra jobs themselves;
         # older records only have jobs= and verdict=.
@@ -383,21 +400,30 @@ def main() -> int:
     parser.add_argument("--require-n", type=int, default=0,
                         help="fail when a (task, stack) cell has fewer scored episodes")
     parser.add_argument("--json", action="store_true", help="emit JSON instead of markdown")
-    parser.add_argument("--reextract-cost", action="store_true",
-                        help="fill a missing cost from each episode's stored agent "
-                             "streams (a cost re-score; scores and files are untouched)")
+    parser.add_argument("--reextract-cost", nargs="?", const="missing", default=None,
+                        choices=["missing", "all"],
+                        help="re-derive cost from each episode's stored agent streams: "
+                             "'missing' fills only episodes without a cost record, 'all' "
+                             "re-derives every episode (a cost re-score; scores and files "
+                             "are untouched)")
     parser.add_argument("--out", type=Path, default=None,
                         help="write the report to this path")
     args = parser.parse_args()
 
     rows, meta = load_rows(args.runs_dir, args.batch_dir)
     if args.reextract_cost:
-        meta["cost_reextracted"] = reextract_cost(rows)
+        meta["cost_reextract"] = reextract_cost(rows, mode=args.reextract_cost)
     registry = task_registry(args.tasks_dir)
     report = aggregate(rows, registry,
                        include_tests=args.include_tests,
                        allow_mixed_tree=args.allow_mixed_tree,
                        require_n=args.require_n)
+    changed = meta.get("cost_reextract", {}).get("changed")
+    if changed:
+        report["checks"].append({
+            "level": "warning",
+            "message": (f"{changed} episode(s) have token totals that differ between the "
+                        "recorded cost and the stored agent streams")})
 
     if not report["cells"]:
         print("capability_report: no capability episodes selected", file=sys.stderr)

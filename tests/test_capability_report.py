@@ -193,13 +193,37 @@ class AggregationTests(unittest.TestCase):
                            "cost": {"total": 0}}}, indent=2) + "\n")
         write_episode(self.runs, "b", cost={"prompt_tokens": 7, "completion_tokens": 3})
         rows, _meta = capability_report.load_rows(self.runs)
-        self.assertEqual(capability_report.reextract_cost(rows), 1)
+        counts = capability_report.reextract_cost(rows)
+        self.assertEqual(counts, {"filled": 1, "refreshed": 0, "changed": 0})
         by_id = {row["episode_id"]: row for row in rows}
         self.assertEqual(by_id["a"]["cost"]["prompt_tokens"], 3884)
-        self.assertEqual(by_id["a"]["cost"]["completion_tokens"], 9196)
+        self.assertEqual(by_id["a"]["cost"]["cache_read_tokens"], 18176)
         self.assertEqual(by_id["b"]["cost"]["prompt_tokens"], 7)  # never overwritten
         # A re-score of cost only: the summary on disk still has no cost.
         self.assertIsNone(json.loads((episode / "summary.json").read_text())["cost"])
+
+    def test_reextract_cost_all_rederives_recorded_values(self):
+        # dsh reports cache reads next to the uncached counts; a summary recorded
+        # before the extractor knew the field carries no cache_read_tokens.
+        episode = write_episode(
+            self.runs, "a", adapter_name="dsh", result_dir=str(self.runs / "ep-a"),
+            cost={"llm_calls": 1, "prompt_tokens": 100, "completion_tokens": 20,
+                  "reasoning_tokens": 0, "cache_read_tokens": 0})
+        (episode / "logs").mkdir()
+        (episode / "logs" / "agent.stdout").write_text(json.dumps(
+            {"type": "status", "usage": {"inputTokens": 100, "outputTokens": 20,
+                                         "cacheReadTokens": 800}}))
+        write_episode(self.runs, "b")  # no stored streams: must stay untouched
+        rows, _meta = capability_report.load_rows(self.runs)
+        self.assertEqual(capability_report.reextract_cost(rows, mode="missing"),
+                         {"filled": 0, "refreshed": 0, "changed": 0})
+        rows, _meta = capability_report.load_rows(self.runs)
+        self.assertEqual(capability_report.reextract_cost(rows, mode="all"),
+                         {"filled": 0, "refreshed": 1, "changed": 0})
+        by_id = {row["episode_id"]: row for row in rows}
+        self.assertEqual(by_id["a"]["cost"]["cache_read_tokens"], 800)
+        self.assertEqual(by_id["a"]["cost"]["prompt_tokens"], 100)
+        self.assertEqual(by_id["b"]["cost"]["prompt_tokens"], 100)
 
     def test_different_tasks_may_have_different_trees(self):
         write_episode(self.runs, "a", tree_version="sha256:aaaa")
