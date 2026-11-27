@@ -4,7 +4,12 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.2-alpha] - 2026-11-27
+
+Tooling patch release; the 26-package task suite is unchanged. `vericax batch`
+now survives sandbox losses (fail-fast, retry, breaker), cost accounting reads
+every stack and the cache reads, and the published B2 tables are corrected
+(infra 19/217 = 8.8 %, the openclaw token column, a cache-read column).
 
 ### Added
 - Cache-read and cache-write tokens are recorded in the cost record
@@ -34,7 +39,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   memory before each launch (`--min-free-mb`, `--memory-wait`).
 - A sandbox that never answers after network isolation now fails the episode
   before the agent starts.
-- `tests/test_runtime_reliability.py`: 30 offline tests for the loss check,
+- `capability_report.py --reextract-cost [missing|all]` re-derives cost from
+  the stored agent streams: `missing` fills episodes without a cost record,
+  `all` re-derives every episode and reports how many recorded token totals
+  differ. Used to re-score B2's openclaw tokens and the cache-read column; no
+  `summary.json` was changed.
+- `tests/test_runtime_reliability.py`: 31 offline tests for the loss check,
   the agent abort, the episode wiring, batch retries and breaker, container
   release and the VM inventory.
 
@@ -54,12 +64,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   parsed whole-line JSON events or an entire-output envelope, so every openclaw
   episode recorded `cost: null`. Re-running the extractor on the 68
   native-scored openclaw episodes of B2 reads usage for all of them. The
-  published B2 table still shows `n/a` for openclaw; filling it in is a
-  results-publication change.
+  published B2 table carries the re-extracted column since 2026-11-27.
+- The pre-batch VM inventory recognises symlinked suite images. It resolved a
+  container's image path before comparing it with the images directory, and a
+  suite directory links to images stored elsewhere, so every image but the
+  batch's own looked foreign and its VM went unreported.
+- The proxy's `sandbox_error` record was mislabelled: a field of the same name
+  overwrote the record's label in `commands.jsonl`. The loss event is now set
+  only after the `sandbox_lost` record is written.
 
 ### Known limitations
-- The cause of the sandbox control-channel losses seen in B2 is not yet known.
-  `logs/sandbox-loss.json` is the evidence for the root-cause investigation.
+- The sandbox losses seen in B2 are guest kernel panics. In the self-built
+  images PID 1 (systemd 255.4-1ubuntu8.18, kernel 6.8.0-147-generic) dies when
+  its main thread faults on return from a system call (`epoll_wait`,
+  `clone3`), and a dead PID 1 is a kernel panic. It happens without any agent
+  activity: an untouched VM panicked 41 minutes after boot, and VMs with an
+  agent at 3.4 and 7 minutes. Host pressure and guest memory were ruled out
+  for the captured cases. The trigger is not known. `vericax batch` detects
+  the loss about a minute after the first error, records the episode as infra
+  and retries it with a new VM; `logs/vm-console.log` and
+  `logs/sandbox-loss.json` hold the evidence.
 
 ## [0.2.1-alpha] - 2026-11-26
 
