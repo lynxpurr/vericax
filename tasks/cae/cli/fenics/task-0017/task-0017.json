@@ -1,0 +1,75 @@
+{
+  "id": "cae--cli--fenics--task-0017",
+  "schema_version": "0.1",
+  "snapshot": "FEniCS",
+  "interface": "cli",
+  "instruction": "Work from a terminal in this FEniCS environment (FEniCSx / dolfinx 0.10 is installed for python3; the `gmsh` binary is on PATH, and `meshio` is available).\n\nProblem: a thin square plate 200 mm x 200 mm with a central circular hole of radius 20 mm carries a volumetric heat source and, in one load case, a uniform tension. Model ONE QUARTER of the plate (a 100 mm x 100 mm domain with the hole quarter at the origin) and run two stages on the SAME mesh.\n\nStage 1, steady heat conduction: -k div(grad T) = f with k = 45 and f(x) = 4.0 * cos(pi * x / 200) (largest at x = 0, zero at x = 100). T = 0 on the edge x = 100; every other boundary, including the hole arc, is insulated (zero flux). Use continuous piecewise-linear (P1 Lagrange) elements for T.\n\nStage 2, plane-stress thermo-elasticity with the Stage-1 temperature: sigma = 2 mu eps + lam_star tr(eps) I - beta T I, with mu = E / (2 (1 + nu)), lam = E nu / ((1 + nu) (1 - 2 nu)), lam_star = 2 lam mu / (lam + 2 mu) and beta = E alpha / (1 - nu). E = 210000 MPa, nu = 0.3, alpha = 1.2e-5 1/K, thickness 1 mm. Symmetry: ux = 0 on the edge x = 0; uy = 0 on the edge y = 0. All other edges are traction-free unless a traction is listed. Use continuous piecewise-quadratic (P2 Lagrange) vector elements for the displacement.\n\nRun three load cases of Stage 2 on the same mesh:\n- `th`: thermal only (the Stage-1 temperature, no traction);\n- `m`: mechanical only (T = 0, uniform traction t = (100, 0) MPa on the edge x = 100);\n- `both`: the Stage-1 temperature and the traction together.\n\nDeliver in /home/user/Desktop:\n1. `mesh.msh` - a gmsh ASCII mesh (2.2 or 4.1) of the quarter domain with triangular elements, refined around the hole: at least 80 element edges along the hole arc, at least 3000 triangular elements in total, and no nodes inside the hole.\n2. `solve.py` - the Python script that builds the mesh and solves both stages (kept for reproduction; the evaluator does not execute it).\n3. `summary.txt` - exactly one line with four comma-separated numbers: `T_max, ux_th, ux_m, ux_both` where\n   - `T_max` is the maximum temperature over the mesh vertices, in K;\n   - `ux_th`, `ux_m`, `ux_both` are, for the `th`, `m` and `both` cases, the mean of ux along the edge x = 100 (the integral of ux over that edge divided by its length, 100 mm), in mm.\n\nThe three cases must come from one consistent model on the same mesh. Solve with dolfinx. The evaluator re-solves both stages on the submitted mesh independently and cross-checks the three cases against each other; the reported numbers must come from your own computation on that mesh.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {
+            "local_path": "task-0017/init_file/brief.md",
+            "path": "/home/user/Desktop/brief.md"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/mesh.msh",
+    "/home/user/Desktop/summary.txt",
+    "/home/user/Desktop/solve.py"
+  ],
+  "integrity_policy": {
+    "native_interface_only": true,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": [
+      "scipy",
+      "sympy",
+      "sklearn",
+      "torch",
+      "pyvista"
+    ],
+    "forbid_read": [
+      "ground_truth",
+      "evaluator"
+    ]
+  },
+  "evaluator": {
+    "func": "exact_match",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "task-0017/eval.py",
+              "path": "/home/user/vericax/eval.py"
+            }
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    }
+  },
+  "limits": {
+    "cli_max_steps": 100,
+    "gui_max_steps": null,
+    "active_time_seconds": 1800
+  },
+  "related_apps": [
+    "fenics"
+  ],
+  "capability": "cross-stage-consistency",
+  "splits": [],
+  "possibility_of_env_change": "low",
+  "solver_probe": "python3 -c 'import dolfinx;print(dolfinx.__version__)'"
+}
