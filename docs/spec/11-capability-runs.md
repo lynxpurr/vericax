@@ -38,9 +38,14 @@ usage 解析；可靠性/成本改进与难度校准见 spec/05 的下一阶段�
    不得进入发布表。
 4. **infra 失败**：不计分；同一（task, run_index）最多重试 2 次，使用新 episode；
    报告记录重试次数与 infra 率。batch 内 infra 率 >10% 时暂停并诊断。
+   `vericax batch` 自 2026-11-26 起自动执行该重试：首轮跑完后统一重试，连续 3 次 infra
+   熔断；每个 attempt 都进 `batch.json`（`attempt`、`infra_attempts`、`infra_rate`、
+   `retried_jobs`），报告 infra 率时失败的重试也要计入。
 5. **成本**：只有 `cost.usd_estimate` 全部可用时才聚合 $/题；订阅制网关（如 Bailian
    Token Plan）没有 USD 单价时，报告 **token/题** 并写 `$/题 n/a`，不得静默按价目表
-   估算。token 计数始终记录。
+   估算。token 计数始终记录。token/题 = prompt + completion，不含缓存读取；栈单独上报的
+   缓存读取记在 `cost.cache_read_tokens`，报告里单列 cache-read/task（B2 里缓存读取占 dsh
+   网关总用量的 77%、openclaw 的 88%，不单列会严重低估网关侧用量）。
 6. **时长**：报告 `active_time_seconds` 中位数，并注明覆盖率。
 7. **错误分类**：按栈汇总 `error_category` 占比。
 8. **发布**：原始 `runs/` 不入库；聚合表写入 `docs/results/<date>-<batch>.md`。
@@ -53,7 +58,9 @@ usage 解析；可靠性/成本改进与难度校准见 spec/05 的下一阶段�
 栈的选择：B0–B2 使用 `dsh`、`opencode-bailian`、`openclaw-bailian`（同一个
 Bailian Token Plan 网关；dsh/opencode 的 cost 可读，openclaw 为 `null`，结果表标
 `n/a`）。`pi` 与 `hermes` 需要各自的 Bailian provider 配置，暂不进入 B0–B2；
-B3 可在补齐配置与 usage 解析后加入。
+B3 可在补齐配置与 usage 解析后加入。openclaw 的 usage 信封解析已于 2026-11-26 修复
+（`_extract_cost` 能定位 stderr 日志行之后的缩进 JSON 信封），此后的批次可读；
+B2 结果表里的 `n/a` 是修复前的记录，可用本地 episode 离线重算后补上。
 
 | batch | 范围 | 栈 | n | episode 数 | 目的 | 估算 |
 |---|---|---|---|---|---|---|

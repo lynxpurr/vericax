@@ -4,6 +4,87 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2-alpha] - 2026-11-27
+
+Tooling patch release; the 26-package task suite is unchanged. `vericax batch`
+now survives sandbox losses (fail-fast, retry, breaker), cost accounting reads
+every stack and the cache reads, and the published B2 tables are corrected
+(infra 19/217 = 8.8 %, the openclaw token column, a cache-read column).
+
+### Added
+- Cache-read and cache-write tokens are recorded in the cost record
+  (`cache_read_tokens`, `cache_write_tokens`; spec/03) and shown per task in
+  the capability report. token/task stays prompt + completion. In B2, cache
+  reads were 77 % of what the gateway served to dsh and 88 % for openclaw
+  (opencode reports none), so token/task showed about a fifth of the usage.
+- Sandbox-loss fail-fast (spec/09 section 9): when a controller call gives up
+  on the sandbox, the proxy waits out the runtime's fast-fail window and probes
+  once. On confirmation the agent container is stopped (about a minute after
+  the first error, instead of at the deadline) and the episode is recorded as
+  infra. `logs/sandbox-loss.json` then holds the host memory, load and
+  pressure-stall figures, the VM process tree with its peak memory, and the
+  VM container's state and log tail.
+- Every episode keeps the sandbox guest's console log
+  (`logs/vm-console.log`) and a guest baseline (`logs/guest-profile.txt`: OS,
+  kernel, init, memory and active timers). The guest console is the only place
+  a guest-side crash shows: two VMs left over from a B2-era batch had died in
+  a kernel panic (PID 1, systemd, segfaulted) about 35 minutes after boot.
+- `vericax batch` retries infra jobs with a new episode once the pass has
+  drained (`--infra-retries`, default 2; spec/11 section 3.4) and stops after
+  three infra results in a row (`--infra-breaker`). Every attempt is recorded
+  in `batch.json` with its attempt number; the verdict is `pass_after_retry`
+  when a retry succeeded.
+- `vericax batch` checks every task offline before the first VM boots, reports
+  VeriCAx VM containers left over from earlier episodes, and waits for free
+  memory before each launch (`--min-free-mb`, `--memory-wait`).
+- A sandbox that never answers after network isolation now fails the episode
+  before the agent starts.
+- `capability_report.py --reextract-cost [missing|all]` re-derives cost from
+  the stored agent streams: `missing` fills episodes without a cost record,
+  `all` re-derives every episode and reports how many recorded token totals
+  differ. Used to re-score B2's openclaw tokens and the cache-read column; no
+  `summary.json` was changed.
+- `tests/test_runtime_reliability.py`: 31 offline tests for the loss check,
+  the agent abort, the episode wiring, batch retries and breaker, container
+  release and the VM inventory.
+
+### Fixed
+- `SandboxVM.close()` retries and verifies the removal of the VM container. A
+  transient docker API error used to skip the removal silently and leave a VM
+  running; an unverifiable removal now writes `logs/leak.json`.
+- A control-channel loss at freeze is classified as `infra_incomplete` with its
+  cause; it used to surface as `unexpected: SandboxUnavailable`.
+- A harness or configuration error inside a batch job (a stale manifest, for
+  example) stops the batch instead of being recorded as infra and retried.
+- The proxy closes every accepted connection.
+- GitHub Actions runs `tests.test_capability_report`; it was only in the local
+  gate.
+- Openclaw token usage is read. `openclaw --json` prints one indented JSON
+  envelope after a few plain log lines on stderr; the cost extractor only
+  parsed whole-line JSON events or an entire-output envelope, so every openclaw
+  episode recorded `cost: null`. Re-running the extractor on the 68
+  native-scored openclaw episodes of B2 reads usage for all of them. The
+  published B2 table carries the re-extracted column since 2026-11-27.
+- The pre-batch VM inventory recognises symlinked suite images. It resolved a
+  container's image path before comparing it with the images directory, and a
+  suite directory links to images stored elsewhere, so every image but the
+  batch's own looked foreign and its VM went unreported.
+- The proxy's `sandbox_error` record was mislabelled: a field of the same name
+  overwrote the record's label in `commands.jsonl`. The loss event is now set
+  only after the `sandbox_lost` record is written.
+
+### Known limitations
+- The sandbox losses seen in B2 are guest kernel panics. In the self-built
+  images PID 1 (systemd 255.4-1ubuntu8.18, kernel 6.8.0-147-generic) dies when
+  its main thread faults on return from a system call (`epoll_wait`,
+  `clone3`), and a dead PID 1 is a kernel panic. It happens without any agent
+  activity: an untouched VM panicked 41 minutes after boot, and VMs with an
+  agent at 3.4 and 7 minutes. Host pressure and guest memory were ruled out
+  for the captured cases. The trigger is not known. `vericax batch` detects
+  the loss about a minute after the first error, records the episode as infra
+  and retries it with a new VM; `logs/vm-console.log` and
+  `logs/sandbox-loss.json` hold the evidence.
+
 ## [0.2.1-alpha] - 2026-11-26
 
 Patch release of the tooling: the per-episode proxy socket fix, the Bailian

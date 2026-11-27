@@ -108,6 +108,22 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(cell["active_median"], 10)
         self.assertEqual(cell["active_coverage"], "3/3")
 
+    def test_cache_reads_are_reported_next_to_tokens_per_task(self):
+        write_episode(self.runs, "a", cost={"prompt_tokens": 100, "completion_tokens": 20,
+                                            "cache_read_tokens": 800})
+        write_episode(self.runs, "b", cost={"prompt_tokens": 100, "completion_tokens": 20,
+                                            "cache_read_tokens": 400})
+        write_episode(self.runs, "c")  # a stack that reports no cache reads
+        cell = self._report()["cells"][0]
+        self.assertEqual(cell["tokens_per_task"], 120)      # prompt + completion only
+        self.assertEqual(cell["cache_read"], 1200)
+        self.assertEqual(cell["cache_read_per_task"], 400)  # divided by n like tokens/task
+        rows, meta = capability_report.load_rows(self.runs)
+        text = capability_report.render_markdown(
+            capability_report.aggregate(rows, self.registry), meta)
+        self.assertIn("cache-read/task", text)
+        self.assertIn("| 120 | 400 |", text)
+
     def test_test_and_debug_are_excluded_by_default(self):
         write_episode(self.runs, "a")
         write_episode(self.runs, "b", kind="test", score=0.0)
@@ -165,6 +181,49 @@ class AggregationTests(unittest.TestCase):
         report = capability_report.aggregate(rows, self.registry)
         self.assertEqual(report["selected"], 1)
         self.assertEqual(meta["batches"][0]["adapter"], "dsh")
+
+    def test_reextract_cost_fills_only_missing_values(self):
+        episode = write_episode(self.runs, "a", cost=None, adapter_name="openclaw-bailian",
+                                result_dir=str(self.runs / "ep-a"))
+        # openclaw --json leaves one indented envelope after plain log lines.
+        (episode / "logs").mkdir()
+        (episode / "logs" / "agent.stderr").write_text(
+            "[agent] settled turn\n" + json.dumps(
+                {"usage": {"input": 3884, "output": 9196, "cacheRead": 18176,
+                           "cost": {"total": 0}}}, indent=2) + "\n")
+        write_episode(self.runs, "b", cost={"prompt_tokens": 7, "completion_tokens": 3})
+        rows, _meta = capability_report.load_rows(self.runs)
+        counts = capability_report.reextract_cost(rows)
+        self.assertEqual(counts, {"filled": 1, "refreshed": 0, "changed": 0})
+        by_id = {row["episode_id"]: row for row in rows}
+        self.assertEqual(by_id["a"]["cost"]["prompt_tokens"], 3884)
+        self.assertEqual(by_id["a"]["cost"]["cache_read_tokens"], 18176)
+        self.assertEqual(by_id["b"]["cost"]["prompt_tokens"], 7)  # never overwritten
+        # A re-score of cost only: the summary on disk still has no cost.
+        self.assertIsNone(json.loads((episode / "summary.json").read_text())["cost"])
+
+    def test_reextract_cost_all_rederives_recorded_values(self):
+        # dsh reports cache reads next to the uncached counts; a summary recorded
+        # before the extractor knew the field carries no cache_read_tokens.
+        episode = write_episode(
+            self.runs, "a", adapter_name="dsh", result_dir=str(self.runs / "ep-a"),
+            cost={"llm_calls": 1, "prompt_tokens": 100, "completion_tokens": 20,
+                  "reasoning_tokens": 0, "cache_read_tokens": 0})
+        (episode / "logs").mkdir()
+        (episode / "logs" / "agent.stdout").write_text(json.dumps(
+            {"type": "status", "usage": {"inputTokens": 100, "outputTokens": 20,
+                                         "cacheReadTokens": 800}}))
+        write_episode(self.runs, "b")  # no stored streams: must stay untouched
+        rows, _meta = capability_report.load_rows(self.runs)
+        self.assertEqual(capability_report.reextract_cost(rows, mode="missing"),
+                         {"filled": 0, "refreshed": 0, "changed": 0})
+        rows, _meta = capability_report.load_rows(self.runs)
+        self.assertEqual(capability_report.reextract_cost(rows, mode="all"),
+                         {"filled": 0, "refreshed": 1, "changed": 0})
+        by_id = {row["episode_id"]: row for row in rows}
+        self.assertEqual(by_id["a"]["cost"]["cache_read_tokens"], 800)
+        self.assertEqual(by_id["a"]["cost"]["prompt_tokens"], 100)
+        self.assertEqual(by_id["b"]["cost"]["prompt_tokens"], 100)
 
     def test_different_tasks_may_have_different_trees(self):
         write_episode(self.runs, "a", tree_version="sha256:aaaa")

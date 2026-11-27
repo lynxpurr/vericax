@@ -82,6 +82,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--run-mode", default="rerun", choices=["rerun", "rescore"])
     p.add_argument("--kind", default="capability", choices=["capability", "test", "debug"])
     p.add_argument("--tree-version", default=None)
+    p.add_argument("--infra-retries", type=int, default=batch_mod.DEFAULT_INFRA_RETRIES,
+                   help="retries with a new episode for a job that ends infra "
+                        "(spec/11 section 3.4; 0 disables)")
+    p.add_argument("--infra-breaker", type=int, default=batch_mod.DEFAULT_INFRA_BREAKER,
+                   help="stop the batch after this many infra results in a row (0 disables)")
+    p.add_argument("--min-free-mb", type=int, default=batch_mod.DEFAULT_MIN_FREE_MB,
+                   help="available host memory each in-flight episode needs before it "
+                        "launches (0 disables the gate)")
+    p.add_argument("--memory-wait", type=int, default=batch_mod.DEFAULT_MEMORY_WAIT,
+                   help="seconds a launch waits for that memory before the batch stops")
 
     p = sub.add_parser("score", help="tier-1 score an existing episode's frozen artifacts")
     p.add_argument("--task", required=True)
@@ -176,8 +186,12 @@ def main(argv: list[str] | None = None) -> int:
             kind=args.kind,
             tree_version=args.tree_version,
             image_overrides=image_map,
+            infra_retries=args.infra_retries,
+            infra_breaker=args.infra_breaker,
+            min_free_mb=args.min_free_mb,
+            memory_wait=args.memory_wait,
         )
-        return 0 if result["verdict"] == "pass" else 3
+        return 0 if result["verdict"] in ("pass", "pass_after_retry") else 3
 
     if args.command == "score":
         if not args.episode and not args.from_dir:

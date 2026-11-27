@@ -136,6 +136,40 @@ class CostExtractionTests(unittest.TestCase):
         self.assertEqual(cost["prompt_tokens"], 9)
         self.assertEqual(cost["completion_tokens"], 1)
 
+    def test_pretty_json_envelope_behind_log_lines(self):
+        # openclaw --json prints one indented envelope after a few plain log
+        # lines on the same stream: neither per-line NDJSON nor a whole-output
+        # parse reaches it, which left its cost null in B2.
+        envelope = json.dumps({"status": "ok", "usage": {
+            "input": 3884, "output": 9196, "cacheRead": 18176,
+            "reasoningTokens": 8347, "total": 31256, "cost": {"total": 0}}}, indent=2)
+        stream = "[agent] settled turn\n[session] worker retired\n" + envelope + "\n[agent] done\n"
+        cost = lifecycle._extract_cost(self._adapter([]), stream)
+        self.assertEqual(cost["llm_calls"], 1)
+        self.assertEqual(cost["prompt_tokens"], 3884)
+        self.assertEqual(cost["completion_tokens"], 9196)
+        self.assertEqual(cost["reasoning_tokens"], 8347)
+        self.assertIsNone(cost["usd_estimate"])
+        self.assertEqual(cost["cache_read_tokens"], 18176)
+        self.assertEqual(cost["cache_write_tokens"], 0)
+
+    def test_cache_reads_do_not_change_the_token_basis(self):
+        # dsh reports cache reads next to the uncached counts, and its own
+        # total adds them: 1019 + 93 + 5632 = 6744.
+        stdout = json.dumps({"type": "status", "usage": {
+            "inputTokens": 1019, "outputTokens": 93, "totalTokens": 6744,
+            "cacheReadTokens": 5632}})
+        cost = lifecycle._extract_cost(self._adapter([]), stdout)
+        self.assertEqual(cost["prompt_tokens"], 1019)
+        self.assertEqual(cost["completion_tokens"], 93)
+        self.assertEqual(cost["cache_read_tokens"], 5632)
+        self.assertEqual(cost["cache_write_tokens"], 0)
+
+    def test_events_without_usage_stay_null(self):
+        stdout = "\n".join(json.dumps(event) for event in [{"type": "a"}, {"type": "b"}])
+        self.assertIsNone(lifecycle._extract_cost(self._adapter([]), stdout))
+        self.assertIsNone(lifecycle._extract_cost(self._adapter([]), "plain text\n"))
+
 
 class ReportTests(unittest.TestCase):
     def _row(self, agent, score, kind=None):

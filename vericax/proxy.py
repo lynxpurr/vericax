@@ -12,6 +12,12 @@ of every run (via a per-episode sentinel appended after the command) and
 restarts the next run in that directory, reproducing interactive-shell
 semantics without a persistent shell process. Environment variables are NOT
 persisted; agents must inline ``export`` with the command that needs them.
+
+Sandbox loss: a controller call that gives up on the VM starts one loss check
+(see the constants below). Once the loss is confirmed the proxy answers every
+request at once and ``loss_event`` tells the agent runner to stop the
+container; the episode is then recorded as infra instead of letting the agent
+run to its deadline against a dead VM.
 """
 from __future__ import annotations
 
@@ -31,6 +37,15 @@ GET_FILE_LIMIT = 64 * 1024 * 1024
 ALLOWED_ROOTS = ("/home/user", "/tmp")
 
 _VERBS = ("run", "put", "get", "done", "whoami")
+
+# Sandbox-loss detection. The runtime retries one controller call for about
+# 90 s and then fast-fails every call on that VM for a sticky 30 s window, so a
+# probe sent inside the window says nothing about the VM. Wait the window out,
+# then probe once: a healthy VM answers in about a second, a dead one leaves
+# the controller retrying.
+LOSS_WINDOW_WAIT = 32.0
+LOSS_PROBE_TIMEOUT = 25.0
+LOSS_PROBE_COMMAND = "echo vericax-ok"
 
 
 def temp_socket_path() -> Path:
@@ -82,6 +97,11 @@ class ProxyServer:
         self._log_lock = threading.Lock()
         self._cmd_log = self._log_dir / "commands.jsonl"
         self._full_output_dir = self._log_dir / "command-outputs"
+        self._loss_lock = threading.Lock()
+        self._sandbox_lost = threading.Event()
+        self._loss_info: dict | None = None
+        self._first_error: dict | None = None
+        self._sandbox_errors = 0
 
     # ------------------------------------------------------------ lifecycle
     def start(self) -> None:
@@ -111,6 +131,20 @@ class ProxyServer:
     @property
     def done_requested(self) -> bool:
         return self._done_requested.is_set()
+
+    @property
+    def sandbox_lost(self) -> bool:
+        return self._sandbox_lost.is_set()
+
+    @property
+    def loss_event(self) -> threading.Event:
+        """Set once the sandbox is confirmed lost; the agent runner polls it."""
+        return self._sandbox_lost
+
+    @property
+    def loss_info(self) -> dict | None:
+        with self._loss_lock:
+            return dict(self._loss_info) if self._loss_info else None
 
     # ------------------------------------------------------------ server loop
     def _serve(self) -> None:
@@ -155,6 +189,11 @@ class ProxyServer:
                 self._reply(fh, {"ok": False, "error": f"proxy_error:{exc}"})
             except Exception:  # noqa: BLE001
                 pass
+        finally:
+            try:
+                conn.close()
+            except OSError:  # noqa: BLE001 - already gone
+                pass
 
     @staticmethod
     def _reply(fh, response: dict) -> None:
@@ -163,6 +202,10 @@ class ProxyServer:
 
     # ------------------------------------------------------------ verbs
     def _dispatch(self, verb: str, request: dict) -> dict:
+        if self._sandbox_lost.is_set():
+            # The VM is gone and the agent is being stopped: answer at once
+            # instead of spending another controller budget on it.
+            return {"ok": False, "error": "sandbox_unavailable", "lost": True}
         handler = {
             "run": self._verb_run,
             "put": self._verb_put,
@@ -174,9 +217,62 @@ class ProxyServer:
         try:
             response = handler(request)
         except Exception as exc:  # noqa: BLE001
+            if type(exc).__name__ == "SandboxUnavailable":
+                self._log(verb, {"error": type(exc).__name__})
+                self._note_sandbox_error(verb, exc)
             response = {"ok": False, "error": f"{type(exc).__name__}:{exc}"}
         response["duration_ms"] = int((time.monotonic() - started) * 1000)
         return response
+
+    def _note_sandbox_error(self, verb: str, exc: Exception) -> None:
+        """Count a controller call that gave up on the VM; confirm the loss once."""
+        with self._loss_lock:
+            self._sandbox_errors += 1
+            first = self._first_error is None
+            if first:
+                self._first_error = {"ts": time.time(), "verb": verb,
+                                     "error": type(exc).__name__,
+                                     "detail": str(exc)[:300]}
+        if first:
+            self._log("sandbox_error", {"failing_verb": verb, "error": type(exc).__name__})
+            threading.Thread(target=self._confirm_loss, name="vericax-loss-check",
+                             daemon=True).start()
+
+    def _confirm_loss(self) -> None:
+        time.sleep(LOSS_WINDOW_WAIT)
+        if not self._accepting:
+            # The agent already exited; freeze reports the loss instead.
+            return
+        if self._probe():
+            with self._loss_lock:
+                self._first_error = None
+                self._sandbox_errors = 0
+            self._log("sandbox_recovered", {})
+            return
+        with self._loss_lock:
+            self._loss_info = {"first_error": self._first_error,
+                               "confirmed_at": time.time(),
+                               "errors": self._sandbox_errors}
+        errors = self._sandbox_errors
+        self._log("sandbox_lost", {"errors": errors})
+        # Set the event last: whoever observes it set must also find the record.
+        self._sandbox_lost.set()
+
+    def _probe(self) -> bool:
+        """One controller probe under a hard wait; a healthy VM answers at once."""
+        done = threading.Event()
+        verdict = {"ok": False}
+
+        def run() -> None:
+            try:
+                result = self._vm.bash(LOSS_PROBE_COMMAND, timeout=30)
+                verdict["ok"] = "vericax-ok" in result.get("output", "")
+            except Exception:  # noqa: BLE001 - any failure means not healthy
+                verdict["ok"] = False
+            done.set()
+
+        threading.Thread(target=run, name="vericax-loss-probe", daemon=True).start()
+        return done.wait(LOSS_PROBE_TIMEOUT) and verdict["ok"]
 
     def _verb_run(self, request: dict) -> dict:
         cmd = str(request.get("cmd", "")).strip()
@@ -206,6 +302,7 @@ class ProxyServer:
                               "error": type(exc).__name__})
             if type(exc).__name__ == "SandboxCommandTimeout":
                 return {"ok": False, "error": "timeout", "timeout_seconds": timeout}
+            self._note_sandbox_error("run", exc)
             return {"ok": False, "error": "sandbox_unavailable"}
 
         output = result["output"]
@@ -276,7 +373,8 @@ class ProxyServer:
 
     # ------------------------------------------------------------ logging
     def _log(self, verb: str, fields: dict) -> None:
-        record = {"ts": time.time(), "episode": self._episode_id, "verb": verb, **fields}
+        # ``verb`` last: a field of the same name must never relabel a record.
+        record = {"ts": time.time(), "episode": self._episode_id, **fields, "verb": verb}
         with self._log_lock:
             self._cmd_log.parent.mkdir(parents=True, exist_ok=True)
             with self._cmd_log.open("a") as fh:

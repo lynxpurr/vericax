@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import adapters as adapters_mod
-from . import config, freeze, scoring, summary as summary_mod, validity
+from . import config, freeze, host, scoring, summary as summary_mod, validity
 from .agent_runner import run_agent, cleanup_container
 from .errors import (
     EpisodeError,
@@ -27,7 +27,7 @@ from .errors import (
     CAT_AGENT_ERROR,
 )
 from .proxy import ProxyServer, temp_socket_path
-from .sandbox_vm import SandboxVM, SandboxBootError
+from .sandbox_vm import SandboxBootError, SandboxUnavailable, SandboxVM
 
 REPO = config.REPO
 BOOT_TIMEOUT = 900  # spec/04: readiness window; observed boot ~177s
@@ -195,20 +195,74 @@ def episode_challenge(task_json: dict, override: str | None = None) -> str | Non
     return None
 
 
+def _record_sandbox_loss(logs_dir: Path, *, task_id: str, adapter: str, episode_id: str,
+                         stage: str, vm: SandboxVM, proxy: dict | None, agent,
+                         detail: str) -> None:
+    """Capture why a sandbox was lost, before its container is removed."""
+    try:
+        record = host.sandbox_loss_record(
+            episode_id=episode_id, task_id=task_id, adapter=adapter, stage=stage,
+            detail=detail, proxy=proxy,
+            agent={"exit_code": agent.exit_code,
+                   "killed_by_deadline": agent.killed_by_deadline,
+                   "aborted": agent.aborted,
+                   "duration_seconds": agent.duration_seconds},
+            vm_state=vm.container_state(log_tail=60))
+        path = host.write_loss_record(logs_dir, record)
+        print(f"run: sandbox lost at {stage}; evidence -> {path}")
+    except Exception as exc:  # noqa: BLE001 - forensics only, never fatal
+        print(f"run: WARNING - could not capture sandbox-loss evidence: {exc!r}")
+
+
+GUEST_PROFILE_SCRIPT = (
+    "echo '== os =='; head -4 /etc/os-release; uname -r; "
+    "echo '== init =='; ps -p 1 -o args=; systemctl --version 2>/dev/null | head -1; "
+    "echo '== resources =='; free -m | sed -n '1,3p'; nproc; cat /proc/uptime; "
+    "echo '== timers =='; systemctl list-timers --all --no-pager --no-legend 2>&1 | head -40"
+)
+
+
+def _save_guest_profile(logs_dir: Path, vm: SandboxVM) -> None:
+    """Record the guest baseline before the agent starts.
+
+    The timer list is there on purpose: two B2-era guests crashed in PID 1
+    about 35 minutes after boot while idle, and nothing else said what the
+    guest had scheduled. Forensics only, never fatal.
+    """
+    try:
+        text = vm.bash(GUEST_PROFILE_SCRIPT, timeout=60).get("output", "")
+    except Exception as exc:  # noqa: BLE001
+        text = f"<profile unavailable: {type(exc).__name__}>"
+    (logs_dir / "guest-profile.txt").write_text(text)
+
+
+def _save_console(logs_dir: Path, vm: SandboxVM) -> None:
+    """Keep the guest console before the VM container is removed."""
+    try:
+        (logs_dir / "vm-console.log").write_text(vm.console_log())
+    except Exception as exc:  # noqa: BLE001 - forensics only, never fatal
+        print(f"run: WARNING - could not save the VM console log: {exc!r}")
+
+
 def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
     """Data-driven cost extraction; returns spec/03 cost fields or None.
 
     Reads adapter.output.cost_path (a dotted path into each JSON event) and
     sums token usage across events. No stack branching happens here. Two
-    shapes are accepted: NDJSON (dsh/pi/opencode) and one pretty-printed JSON
-    envelope (openclaw --json); the envelope fallback only runs when no line
-    parsed as an event.
+    shapes are accepted: NDJSON events (dsh/pi/opencode), and one JSON envelope
+    that is not a line of its own, pretty-printed and possibly behind plain log
+    lines on the same stream (openclaw --json). The envelope is only searched
+    for when no line parsed as an event carrying usage. ``prompt_tokens`` and
+    ``completion_tokens`` are the uncached ones, the same basis for every
+    stack: a stack's own ``total`` usually adds cache reads on top. Cache reads
+    and writes that a stack reports separately go into their own fields, so
+    the cached part stays visible without changing token/task.
     """
     if not adapter.cost_path:
         return None
     keys = adapter.cost_path.split(".")
     totals = {"llm_calls": 0, "prompt_tokens": 0, "completion_tokens": 0,
-              "reasoning_tokens": 0}
+              "reasoning_tokens": 0, "cache_read_tokens": 0, "cache_write_tokens": 0}
     usd = 0.0
     seen = False
 
@@ -233,6 +287,11 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
             "prompt_tokens": ("input", "input_tokens", "inputTokens", "prompt_tokens"),
             "completion_tokens": ("output", "output_tokens", "outputTokens", "completion_tokens"),
             "reasoning_tokens": ("reasoning", "reasoning_tokens", "reasoningTokens"),
+            # dsh: cacheReadTokens; openclaw: cacheRead / cacheWrite
+            "cache_read_tokens": ("cacheRead", "cacheReadTokens", "cache_read",
+                                  "cache_read_tokens", "cached_tokens"),
+            "cache_write_tokens": ("cacheWrite", "cacheWriteTokens", "cache_write",
+                                   "cache_write_tokens", "cache_creation_tokens"),
         }
         for field_name, candidates in aliases.items():
             for candidate in candidates:
@@ -244,7 +303,6 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
         if isinstance(cost_node, dict) and isinstance(cost_node.get("total"), (int, float)):
             usd += float(cost_node["total"])
 
-    parsed_lines = 0
     for line in stdout.splitlines():
         line = line.strip()
         if not line.startswith("{"):
@@ -253,13 +311,18 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
             event = json.loads(line)
         except ValueError:
             continue
-        parsed_lines += 1
         consume(event)
-    if parsed_lines == 0:
-        try:
-            consume(json.loads(stdout))
-        except ValueError:
-            pass
+    if not seen:
+        decoder = json.JSONDecoder()
+        offset = 0
+        for line in stdout.splitlines(keepends=True):
+            stripped = line.lstrip()
+            if not seen and stripped.startswith("{"):
+                try:
+                    consume(decoder.raw_decode(stdout, offset + len(line) - len(stripped))[0])
+                except ValueError:
+                    pass
+            offset += len(line)
     if not seen:
         return None
     totals["usd_estimate"] = round(usd, 6) if usd else None
@@ -572,7 +635,13 @@ def run_episode(
                                        scored=False) from exc
                 print("run: VM boot failed; retrying once (spec/09 section 8)")
         sandbox_isolated, sandbox_isolation_detail = vm.isolate_network()
-        vm.wait_healthy()
+        # A sandbox that never answers again must fail here, before an agent
+        # spends its whole budget on calls that cannot succeed.
+        if not vm.wait_healthy():
+            raise EpisodeError(CAT_ENVIRONMENT_ERROR,
+                               "sandbox control plane not healthy after network isolation",
+                               scored=False)
+        _save_guest_profile(logs_dir, vm)
         (logs_dir / "network_isolation.json").write_text(json.dumps({
             "sandbox": {"isolated": sandbox_isolated, "detail": sandbox_isolation_detail},
         }, indent=2) + "\n")
@@ -629,27 +698,60 @@ def run_episode(
             deadline_epoch=deadline_epoch,
             grace_seconds=adapter.grace_seconds,
             stdin_bytes=inst_path.read_bytes() if needs_stdin else None,
+            abort_event=proxy.loss_event,
         )
         (logs_dir / "agent.stdout").write_text(agent_result.stdout)
         (logs_dir / "agent.stderr").write_text(agent_result.stderr)
         (logs_dir / "agent-container.json").write_text(json.dumps({
             "exit_code": agent_result.exit_code,
             "killed_by_deadline": agent_result.killed_by_deadline,
+            "aborted_on_sandbox_loss": agent_result.aborted,
             "duration_seconds": agent_result.duration_seconds,
             "container": agent_result.container,
         }, indent=2) + "\n")
 
+        # ---- sandbox lost mid-run: stop here. There is nothing to freeze, and
+        # the evidence is captured before the container is removed.
+        if proxy.sandbox_lost:
+            loss = proxy.loss_info or {}
+            trigger = (loss.get("first_error") or {}).get("verb", "?")
+            _record_sandbox_loss(
+                logs_dir, task_id=task_id, adapter=adapter.name,
+                episode_id=episode_dir.name, stage="run", vm=vm,
+                proxy=loss, agent=agent_result,
+                detail=f"agent aborted {agent_result.duration_seconds:.0f}s in; "
+                       f"first failing verb: {trigger}")
+            raise EpisodeError(
+                CAT_INFRA_INCOMPLETE,
+                f"sandbox lost during the run (first failing verb: {trigger}); "
+                f"agent aborted {agent_result.duration_seconds:.0f}s in",
+                scored=False)
+
         # ---- freeze (agent already dead; proxy entry closes first, E5)
+        loss_info = proxy.loss_info
         stop_proxy()
-        manifest = freeze.freeze(
-            vm, artifact_paths, episode_dir, image_sha, task_id, episode_dir.name)
+        try:
+            manifest = freeze.freeze(
+                vm, artifact_paths, episode_dir, image_sha, task_id, episode_dir.name)
+        except SandboxUnavailable as exc:
+            _record_sandbox_loss(
+                logs_dir, task_id=task_id, adapter=adapter.name,
+                episode_id=episode_dir.name, stage="freeze", vm=vm,
+                proxy=loss_info, agent=agent_result, detail=str(exc))
+            raise EpisodeError(
+                CAT_INFRA_INCOMPLETE,
+                f"freeze failed, sandbox unavailable: {exc}", scored=False) from exc
 
         # ---- close the sandbox before scoring (spec/09 E5 cleanup order:
         # kill agent -> close proxy -> freeze -> close sandbox -> scoring).
         # Keeping the sandbox alive during scoring would hold two VMs per
         # episode and make 2-episode parallelism a 4-VM load.
         (logs_dir / "vm_processes_after.txt").write_text(vm.process_snapshot())
-        vm.close()
+        _save_console(logs_dir, vm)
+        if not vm.close():
+            # Same warning as in the cleanup path below.
+            print(f"run: WARNING - sandbox VM container may still be running: "
+                  f"{vm.surviving_container}")
         vm = None
 
         # ---- termination semantics (spec/08 section 7)
@@ -702,7 +804,18 @@ def run_episode(
                 (logs_dir / "vm_processes_after.txt").write_text(vm.process_snapshot())
             except Exception:  # noqa: BLE001 - forensics only
                 pass
-            vm.close()
+            _save_console(logs_dir, vm)
+            if not vm.close():
+                # Never silent: a surviving VM holds its RAM and cores until
+                # someone removes it by hand, and shifts the next episodes
+                # towards control-channel loss.
+                (logs_dir / "leak.json").write_text(json.dumps({
+                    "episode_id": episode_dir.name,
+                    "container": vm.surviving_container,
+                    "ts": time.time(),
+                }, indent=2) + "\n")
+                print(f"run: WARNING - sandbox VM container may still be running: "
+                      f"{vm.surviving_container}")
         cleanup_container(container_name)
 
     wall = time.monotonic() - wall_started

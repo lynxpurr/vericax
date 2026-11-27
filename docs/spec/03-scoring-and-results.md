@@ -40,7 +40,9 @@
   "artifact_uri": null,          // ▲ 交付物快照存档（复现审计用）；2026-11-18 定形：逐文件副本 +
                                  //   artifacts.json manifest（basename 扁平化 + sha256），tarball 仅作归档
   "cost": {"llm_calls": 148, "prompt_tokens": 2190000, "completion_tokens": 475000,
-           "reasoning_tokens": 402000, "usd_estimate": null},   // ▲ token 三分口径实测验证有效
+           "reasoning_tokens": 402000, "cache_read_tokens": 0, "cache_write_tokens": 0,
+           "usd_estimate": null},   // ▲ token 三分口径实测验证有效；缓存读写单列（2026-11-27），
+                                    //   栈没有上报时为 0；token/题仍是 prompt + completion
   "wall_duration_seconds": 4658.2,
   "paused_seconds": 0.0,                             // 暂停去重计账（重叠只算一次）
   "active_duration_seconds": 4658.2,
