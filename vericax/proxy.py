@@ -234,7 +234,7 @@ class ProxyServer:
                                      "error": type(exc).__name__,
                                      "detail": str(exc)[:300]}
         if first:
-            self._log("sandbox_error", {"verb": verb, "error": type(exc).__name__})
+            self._log("sandbox_error", {"failing_verb": verb, "error": type(exc).__name__})
             threading.Thread(target=self._confirm_loss, name="vericax-loss-check",
                              daemon=True).start()
 
@@ -253,8 +253,10 @@ class ProxyServer:
             self._loss_info = {"first_error": self._first_error,
                                "confirmed_at": time.time(),
                                "errors": self._sandbox_errors}
+        errors = self._sandbox_errors
+        self._log("sandbox_lost", {"errors": errors})
+        # Set the event last: whoever observes it set must also find the record.
         self._sandbox_lost.set()
-        self._log("sandbox_lost", {"errors": self._loss_info["errors"]})
 
     def _probe(self) -> bool:
         """One controller probe under a hard wait; a healthy VM answers at once."""
@@ -371,7 +373,8 @@ class ProxyServer:
 
     # ------------------------------------------------------------ logging
     def _log(self, verb: str, fields: dict) -> None:
-        record = {"ts": time.time(), "episode": self._episode_id, "verb": verb, **fields}
+        # ``verb`` last: a field of the same name must never relabel a record.
+        record = {"ts": time.time(), "episode": self._episode_id, **fields, "verb": verb}
         with self._log_lock:
             self._cmd_log.parent.mkdir(parents=True, exist_ok=True)
             with self._cmd_log.open("a") as fh:

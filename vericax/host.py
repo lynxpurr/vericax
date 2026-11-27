@@ -73,6 +73,16 @@ def top_processes(limit: int = 12) -> list[dict]:
     return rows[:limit]
 
 
+def _variants(path: Path) -> set[Path]:
+    """A path as given, plus the same path with its symlinks resolved."""
+    variants = {path}
+    try:
+        variants.add(path.resolve())
+    except OSError:
+        pass
+    return variants
+
+
 def is_vericax_vm(attrs: dict, images_dir: Path | None, extra_images: set[str] | None = None) -> bool:
     """True for a VM container that boots one of VeriCAx's images.
 
@@ -80,22 +90,26 @@ def is_vericax_vm(attrs: dict, images_dir: Path | None, extra_images: set[str] |
     under the configured ``[images] dir`` counts, and so does one this batch
     passes through ``--image SNAPSHOT=PATH``. Other projects' VM containers are
     never claimed, whatever image they run.
+
+    Paths are compared as given and with symlinks resolved. A suite directory
+    usually links to images stored elsewhere (``suite/FEniCS.qcow2 ->
+    ../fenics/out/FEniCS.qcow2``); resolving first made every image but the
+    batch's own look foreign, which hid exactly the leftovers the inventory is
+    for.
     """
-    base = Path(images_dir).resolve() if images_dir is not None else None
-    explicit = set()
+    bases: set[Path] = set()
+    if images_dir is not None:
+        bases |= _variants(Path(images_dir))
+    explicit: set[Path] = set()
     for source in extra_images or ():
-        try:
-            explicit.add(Path(source).resolve())
-        except OSError:
-            continue
+        explicit |= _variants(Path(source))
     for mount in attrs.get("Mounts") or []:
-        if mount.get("Destination") != SYSTEM_IMAGE_MOUNT:
+        if mount.get("Destination") != SYSTEM_IMAGE_MOUNT or not mount.get("Source"):
             continue
-        try:
-            path = Path(mount.get("Source") or "").resolve()
-        except OSError:
-            continue
-        if path in explicit or (base is not None and path.is_relative_to(base)):
+        variants = _variants(Path(mount["Source"]))
+        if variants & explicit:
+            return True
+        if any(path.is_relative_to(base) for path in variants for base in bases):
             return True
     return False
 

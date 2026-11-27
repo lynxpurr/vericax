@@ -98,7 +98,17 @@ class ProxyLossTests(unittest.TestCase):
         self.assertTrue(again["lost"])
         self.assertEqual(self.vm.calls, calls_after_loss)
         self.assertEqual(self.server.loss_info["first_error"]["verb"], "run")
-        self.assertIn('"verb": "sandbox_lost"', (self.logs / "commands.jsonl").read_text())
+        # The record is written before the event is set; give the reader a
+        # moment anyway, so the test does not depend on thread scheduling.
+        deadline = time.monotonic() + 5
+        log_text = ""
+        while time.monotonic() < deadline:
+            log_text = (self.logs / "commands.jsonl").read_text()
+            if '"verb": "sandbox_lost"' in log_text:
+                break
+            time.sleep(0.01)
+        self.assertIn('"verb": "sandbox_lost"', log_text)
+        self.assertIn('"verb": "sandbox_error"', log_text)
 
     def test_a_single_failure_that_recovers_is_not_a_loss(self):
         class FlakyVM(FakeVM):
@@ -368,6 +378,21 @@ class HostInventoryTests(unittest.TestCase):
         self.assertTrue(host.is_vericax_vm(self._attrs(override), self.images,
                                            {override}))
         self.assertFalse(host.is_vericax_vm(self._attrs(None), self.images))
+
+    def test_symlinked_suite_images_are_claimed(self):
+        # The suite directory links to images stored elsewhere; a leftover VM of
+        # another snapshot must still be recognised as VeriCAx's.
+        real = self.images.parent / f"{self.images.name}-real"
+        real.mkdir()
+        self.addCleanup(shutil.rmtree, real, ignore_errors=True)
+        link = self.images / "FEniCS.qcow2"
+        link.symlink_to(real / "FEniCS.qcow2")
+        self.assertTrue(host.is_vericax_vm(self._attrs(str(link)), self.images))
+        self.assertTrue(host.is_vericax_vm(
+            self._attrs(str(link)), self.images, {str(self.images / "CalculiX-2.21.qcow2")}))
+        # A link that leads out of the suite directory is somebody else's image.
+        outside = self.images.parent / "engiworld-playground" / "CalculiX-2.21.qcow2"
+        self.assertFalse(host.is_vericax_vm(self._attrs(str(outside)), self.images))
 
     def test_running_vericax_vms_are_listed_with_their_creation_time(self):
         containers = [
