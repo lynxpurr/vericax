@@ -1,10 +1,11 @@
 # Verifier audit record
 
-- date: 2026-11-22
+- date: 2026-11-28
 - task: cae--cli--cross-solver--task-0005 (evaluator func: exact_match)
 - image: VeriCAx-merged
 - reference submission summary: `5457.4088422138`
 - robust: 10/10 consistent (verdicts: True, True, True, True, True, ...)
+- rejection margin: n/a (no numeric expectations)
 
 | case | expectation | actual | verdict |
 |---|---|---|---|
