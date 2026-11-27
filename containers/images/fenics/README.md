@@ -89,6 +89,11 @@ $HOME/vericax-image-build/fenics/out/provision-info.txt
 
 ## Status (2026-11-21): P3b accepted
 
+**Rebuilt on 2026-11-27** from this recipe with `clearcpuid=519` on the kernel
+command line (see below): `FEniCS.qcow2`, SHA-256
+`ff6d3b5ef7bf7be00fec4c483bc000256412bb35f1049a9657886e6f9780dad0`, 2.21 GB. The recorded package versions are identical to the
+2026-11-21 build; the suite's 26 packages were re-audited on the rebuilt images.
+
 A **fresh clean build from this recipe** produced a CLI-only Ubuntu 24.04
 image with dolfinx 0.10.0.post2 (2.19 GB qcow2, vs the 17 GB desktop-profile
 reference) and passed both gates on 2026-11-21:

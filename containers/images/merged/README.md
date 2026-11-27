@@ -48,6 +48,11 @@ $HOME/vericax-image-build/merged/out/provision-info.txt
 
 ## Status (2026-11-21): P3c accepted
 
+**Rebuilt on 2026-11-27** from this recipe with `clearcpuid=519` on the kernel
+command line (see below): `VeriCAx-merged.qcow2`, SHA-256
+`98bf5ce7b77e763d0e7094c022ba08e85f8da8af68014666f7908fc9e24cec33`, 2.18 GB. The recorded package versions are identical to the
+2026-11-21 build; the suite's 26 packages were re-audited on the rebuilt images.
+
 Image under test: `VeriCAx-merged.qcow2`, SHA-256
 `e6514410ac15646954cb1d4cf4cb86f5ae0b2491f9b5cc43fc13e4af3c81a262`
 (2.30 GB). Validation evidence:

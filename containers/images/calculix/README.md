@@ -6,6 +6,11 @@ merged cross-solver image are P3b/P3c.
 
 ## Status (2026-11-20): P3a accepted
 
+**Rebuilt on 2026-11-27** from this recipe with `clearcpuid=519` on the kernel
+command line (see below): `CalculiX-2.21.qcow2`, SHA-256
+`822915ceb69bc0d4e9baea274983ef99173ec86624bb472f79487f73f597d44a`, 1.56 GB. The recorded package versions are identical to the
+2026-11-20 build; the suite's 26 packages were re-audited on the rebuilt images.
+
 A **fresh clean build from this recipe** produced an Ubuntu 24.04 image with
 `ccx` 2.21-1 and the OSWorld server, and passed both gates on 2026-11-20:
 

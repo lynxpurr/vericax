@@ -26,7 +26,9 @@ across four splits: `v0.1-cae-cli-pilot` (3), this one (18),
 file as the suite grows.
 
 All 26 packages were re-audited on the three self-built images on 2026-11-22
-and their L0 records now carry the matching `image_sha256` (spec/10 §3).
+and again on 2026-11-27 on the rebuilt images (kernel command line
+`clearcpuid=519`); their L0 records carry the matching `image_sha256`
+(spec/10 §3).
 
 ### Why `calculix/task-0001..0003` are not listed
 
