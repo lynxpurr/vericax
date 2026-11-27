@@ -120,6 +120,21 @@ Three recipe lessons from the first builds (all fixed in `provision.sh`):
    nanobind 2.9.2, and nanobind 2.15 type-casters reject the
    `Form_float64(form_ints, ...)` call shape the dolfinx python layer uses.
 
+## Kernel command line (2026-11-27)
+
+`provision.sh` writes `/etc/default/grub.d/99-vericax-cmdline.cfg`, which
+appends `clearcpuid=519` to the kernel command line, and fails the build if
+`update-grub` does not carry it into `/boot/grub/grub.cfg`. The parameter
+hides `X86_FEATURE_SHSTK` (word 16, bit 7; the feature has no name, so the
+number is the only spelling) from the guest kernel. Without it the kernel
+arms CET, and PID 1 dies on a shadow-stack state that nothing in the guest
+set: the guest panics a few minutes after boot
+(`docs/lessons-2026-11-27-sandbox-loss.md`). The guest cannot use shadow
+stacks anyway. A VM booted from this image prints `Clearing CPUID bits: 16:7`
+on its console, and `/proc/cpuinfo` does not list `user_shstk`. The parameter
+takes effect at the next boot after provisioning, so the build VM itself runs
+without it.
+
 ## Validate
 
 ```bash
