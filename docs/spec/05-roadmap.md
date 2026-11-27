@@ -63,6 +63,20 @@ B2 已完成并发布。2026-11-26 owner 决定按 v0.2.1-alpha → 可靠性/�
 验收不再写"infra 率低于某个值"：小批量下该比率没有统计意义。cross-solver 4 题中 0004
 三栈全 1.0、0002/0003 各栈不超过 0.333，加难只会产生地板效应，暂缓。
 
+**2026-11-27 进展**：
+
+- **v0.2.2-alpha 工具补丁**（#38–#43，任务套件不变）：失联即中止与取证、batch 自动
+  infra 重试/熔断/预检、openclaw usage 解析、缓存读取口径，以及 B2 结果的三处更正
+  （infra 19/217 = 8.8%、openclaw token 列、cache-read 列）。
+- **步骤 2 的失联机制已确认**：sandbox 失联是 guest kernel panic。自建镜像里 PID 1
+  （systemd 255.4-1ubuntu8.18，内核 6.8.0-147-generic）的主线程从系统调用
+  （`epoll_wait`、`clone3`）返回时出错，PID 1 一死内核即 panic。不接 agent 的 VM 也
+  会崩（开机后 41 分钟）；捕获到的几次都没有主机压力或 guest 内存不足。触发条件未知，
+  下一步是内核层面的定位；`logs/vm-console.log` 与 `logs/sandbox-loss.json` 是证据。
+  原定的 8G 内存对照组因此取消，agent 命令回放也不再需要。
+- **步骤 3 试点**：`cae--cli--fenics--task-0017`（热弹两阶段分析，L1–L4）已过审计
+  19/19、robust 10/10，尚未进 split。
+
 - **B3 暂缓**：pi/hermes 需先有 Bailian provider 配置与 usage 口径；B2 已有三栈结果，边际收益低。
 - **不做**（除非 owner 另行决定）：org 迁移、公告、n>3 的统计扩展。
 - 发布规则见 spec/11 与 `docs/results/2026-11-24-b2.md`：只发布聚合表，不发布 raw runs、账户信息或 verifier 规则文本。
