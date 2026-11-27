@@ -89,6 +89,11 @@ $HOME/vericax-image-build/fenics/out/provision-info.txt
 
 ## Status (2026-11-21): P3b accepted
 
+**Rebuilt on 2026-11-27** from this recipe with `clearcpuid=519` on the kernel
+command line (see below): `FEniCS.qcow2`, SHA-256
+`ff6d3b5ef7bf7be00fec4c483bc000256412bb35f1049a9657886e6f9780dad0`, 2.21 GB. The recorded package versions are identical to the
+2026-11-21 build; the suite's 26 packages were re-audited on the rebuilt images.
+
 A **fresh clean build from this recipe** produced a CLI-only Ubuntu 24.04
 image with dolfinx 0.10.0.post2 (2.19 GB qcow2, vs the 17 GB desktop-profile
 reference) and passed both gates on 2026-11-21:
@@ -119,6 +124,21 @@ Three recipe lessons from the first builds (all fixed in `provision.sh`):
 3. nanobind must be pinned to 2.9.x: the reference deb was built against
    nanobind 2.9.2, and nanobind 2.15 type-casters reject the
    `Form_float64(form_ints, ...)` call shape the dolfinx python layer uses.
+
+## Kernel command line (2026-11-27)
+
+`provision.sh` writes `/etc/default/grub.d/99-vericax-cmdline.cfg`, which
+appends `clearcpuid=519` to the kernel command line, and fails the build if
+`update-grub` does not carry it into `/boot/grub/grub.cfg`. The parameter
+hides `X86_FEATURE_SHSTK` (word 16, bit 7; the feature has no name, so the
+number is the only spelling) from the guest kernel. Without it the kernel
+arms CET, and PID 1 dies on a shadow-stack state that nothing in the guest
+set: the guest panics a few minutes after boot
+(`docs/lessons-2026-11-27-sandbox-loss.md`). The guest cannot use shadow
+stacks anyway. A VM booted from this image prints `Clearing CPUID bits: 16:7`
+on its console, and `/proc/cpuinfo` does not list `user_shstk`. The parameter
+takes effect at the next boot after provisioning, so the build VM itself runs
+without it.
 
 ## Validate
 

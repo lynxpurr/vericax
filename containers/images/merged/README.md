@@ -48,6 +48,11 @@ $HOME/vericax-image-build/merged/out/provision-info.txt
 
 ## Status (2026-11-21): P3c accepted
 
+**Rebuilt on 2026-11-27** from this recipe with `clearcpuid=519` on the kernel
+command line (see below): `VeriCAx-merged.qcow2`, SHA-256
+`98bf5ce7b77e763d0e7094c022ba08e85f8da8af68014666f7908fc9e24cec33`, 2.18 GB. The recorded package versions are identical to the
+2026-11-21 build; the suite's 26 packages were re-audited on the rebuilt images.
+
 Image under test: `VeriCAx-merged.qcow2`, SHA-256
 `e6514410ac15646954cb1d4cf4cb86f5ae0b2491f9b5cc43fc13e4af3c81a262`
 (2.30 GB). Validation evidence:
@@ -66,6 +71,21 @@ Image under test: `VeriCAx-merged.qcow2`, SHA-256
 The suite's existing tasks still run the EngiWorld images; the merged image
 is used by the `v0.2-cae-cli-merged` split. Switching any default image still
 requires re-baking pins and re-auditing every task on it (spec/04 §6).
+
+## Kernel command line (2026-11-27)
+
+`provision.sh` writes `/etc/default/grub.d/99-vericax-cmdline.cfg`, which
+appends `clearcpuid=519` to the kernel command line, and fails the build if
+`update-grub` does not carry it into `/boot/grub/grub.cfg`. The parameter
+hides `X86_FEATURE_SHSTK` (word 16, bit 7; the feature has no name, so the
+number is the only spelling) from the guest kernel. Without it the kernel
+arms CET, and PID 1 dies on a shadow-stack state that nothing in the guest
+set: the guest panics a few minutes after boot
+(`docs/lessons-2026-11-27-sandbox-loss.md`). The guest cannot use shadow
+stacks anyway. A VM booted from this image prints `Clearing CPUID bits: 16:7`
+on its console, and `/proc/cpuinfo` does not list `user_shstk`. The parameter
+takes effect at the next boot after provisioning, so the build VM itself runs
+without it.
 
 ## Not in this recipe
 

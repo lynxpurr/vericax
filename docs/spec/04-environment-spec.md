@@ -11,6 +11,7 @@
 | 命名 | `<Software>-<version>.qcow2.zst`（如 `CalculiX-2.21.qcow2.zst`） |
 | 基线 | Ubuntu 24.04 base + 被测软件官方版本 + 桌面环境（GUI 通道需要）+ osworld_server 服务 |
 | 分发 | HF org `vericax`（占位未建）+ ModelScope 镜像（国内实测 47s 拉 5.5GB，走 `--source modelscope`，须剥代理变量） |
+| 内核启动参数 | 追加 `clearcpuid=519`（对 guest 内核隐藏 `X86_FEATURE_SHSTK`，第 16 字第 7 位，无名字）。否则 guest 内核会启用 CET，PID 1 随后死于影子栈缺页、内核 panic（2026-11-27 定位；`docs/lessons-2026-11-27-sandbox-loss.md`） |
 
 ## 2. 运行时架构
 
@@ -28,6 +29,7 @@
 | **pip 安装路径断裂** | 包安装到 site-packages 后相对路径定位 engine 失效 | 源码仓一律 `pip install -e`；或显式 `ENGINE_PATH` 环境变量且代码走 env 优先 |
 | **代理计费** | ModelScope/dashscope 国内直连，默认 shell 挂 Clash | 下载/评分进程统一 `unset HTTP_PROXY HTTPS_PROXY ALL_PROXY ...` |
 | **CLI 工件写入策略** | runtime 的 CLI integrity policy 拒绝直接写入/覆盖 scored artifact（deck/summary 等）；首次写错后 shell 不能简单重写；agent 常转去探测 CGX，形成长循环 | 不要按 verifier 失败归因；记录 `artifact_write_rejected`/`agent_stalled`；任务书明确合法生成路径；修复语义见 spec/09 §11 开放问题 |
+| **影子栈缺页**（2026-11-27 前构建的自建镜像） | guest 开机 3–50 分钟后 `systemd[1]: segfault at … error 44`（十六进制，0x44/0x46），接着 `Kernel panic - not syncing: Attempted to kill init!`；runtime 侧表现为 `SandboxUnavailable` 或连接被重置 | 镜像的 grub 配置追加 `clearcpuid=519`（v0.2.3-alpha 起三张自建镜像都带）；排查 sandbox 失联先看 `logs/vm-console.log` |
 
 readiness 探测：轮询 `localhost:<port>/screenshot`（10s 超时 ×300s 窗口）；boot-to-ready 实测 177s。
 

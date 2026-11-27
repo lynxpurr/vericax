@@ -10,6 +10,21 @@ set -euxo pipefail
 # script must NOT power off itself.
 
 sudo cloud-init status --wait || true
+
+# Hide the shadow-stack CPU feature from the guest kernel (takes effect at
+# the next boot). The kernel arms CET whenever the CPU advertises SHSTK; a
+# stale shadow-stack state in the CPU then kills PID 1 on its next user-mode
+# ret/call (guest kernel panic; docs/lessons-2026-11-27-sandbox-loss.md). The
+# guest cannot use shadow stacks anyway. X86_FEATURE_SHSTK is word 16 bit 7
+# and has no name, so 519 is the only spelling; update-grub must carry it.
+sudo mkdir -p /etc/default/grub.d
+printf '%s\n' 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT clearcpuid=519"' \
+    | sudo tee /etc/default/grub.d/99-vericax-cmdline.cfg >/dev/null
+sudo update-grub >/dev/null
+sudo grep -q 'clearcpuid=519' /boot/grub/grub.cfg || {
+    echo "clearcpuid=519 did not reach /boot/grub/grub.cfg" >&2
+    exit 1
+}
 sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
     calculix-ccx=2.21-1 \
@@ -366,6 +381,7 @@ grep -q "displacements" /tmp/ccx_smoke.dat && echo "ccx smoke ok"
 {
     echo "image: VeriCAx merged CalculiX+FEniCS (P3c)"
     echo "base: Ubuntu 24.04 noble cloud image"
+    echo "kernel cmdline (grub.cfg): $(sudo grep -h -m1 -E '^[[:space:]]*linux[[:space:]]' /boot/grub/grub.cfg | sed -E 's/^[[:space:]]*linux[[:space:]]+[^[:space:]]+[[:space:]]+//')"
     echo "route: pinned apt versions + pinned upstream git tags (see recipe README)"
     { /usr/bin/ccx -v 2>&1 | head -2 || true; }
     sudo dpkg-query -W -f='${Package} ${Version}\n' \

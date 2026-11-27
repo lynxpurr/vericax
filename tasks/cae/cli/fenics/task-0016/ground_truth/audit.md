@@ -1,10 +1,11 @@
 # Verifier audit record
 
-- date: 2026-11-22
+- date: 2026-11-28
 - task: cae--cli--fenics--task-0016 (evaluator func: exact_match)
 - image: FEniCS
 - reference submission summary: `840.000000, 728.000000`
 - robust: 10/10 consistent (verdicts: True, True, True, True, True, ...)
+- rejection margin: n/a (no numeric expectations)
 
 | case | expectation | actual | verdict |
 |---|---|---|---|
