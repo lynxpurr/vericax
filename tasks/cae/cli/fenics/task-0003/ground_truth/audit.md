@@ -1,10 +1,11 @@
 # Verifier audit record
 
-- date: 2026-11-22
+- date: 2026-11-28
 - task: cae--cli--fenics--task-0003 (evaluator func: quantified_score)
 - image: FEniCS
 - reference submission summary: `30.500000, 391.421171, 0.077052`
 - robust: 10/10 consistent (verdicts: 0.926584, 0.926584, 0.926584, 0.926584, 0.926584, ...)
+- rejection margin: 0.892824 (min positive 0.892824 - max negative 0.000000)
 
 | case | expectation | actual | verdict |
 |---|---|---|---|

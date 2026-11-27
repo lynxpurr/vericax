@@ -4,6 +4,47 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3-alpha] - 2026-11-27
+
+Image fix release. The three self-built VM images hide the shadow-stack CPU
+feature from the guest kernel (`clearcpuid=519` on the kernel command line).
+Without it the guest's PID 1 died on a shadow-stack page fault and the guest
+panicked; that was the cause of the "infra" sandbox losses. The task suite is
+unchanged in content; all 26 packages were re-audited on the rebuilt images.
+
+### Fixed
+- Guest kernel panic in the self-built images. The guest console showed
+  `systemd[1]: segfault at ... error 44` (hexadecimal 0x44/0x46: a user-mode
+  shadow-stack access to a page that is not present) and then
+  `Attempted to kill init!`. Idle VMs reproduced it 3 to 53 minutes after
+  boot, and the loss rate rose with episode length (about 40 % per
+  30-minute episode). The Linux guest arms CET whenever the CPU advertises
+  SHSTK, although nothing in the guest uses shadow stacks. The image recipes
+  (`containers/images/*/provision.sh`) append `clearcpuid=519` through a grub
+  drop-in and fail the build when `update-grub` does not carry it. With the
+  parameter, 6 VMs (3 FEniCS, 3 CalculiX) idled 90 minutes without a panic,
+  against 4 of 21 untreated idle VMs passing 90 minutes; an 8-hour idle hold
+  on 6 VMs with the parameter ended without a panic, and the rebuilt images
+  passed 2-hour idle soaks (9 VMs) and the model-free acceptance episodes.
+  Cause, method and evidence: `docs/lessons-2026-11-27-sandbox-loss.md`.
+- Known limitation: the shadow-stack state the guest faults on is not set by
+  the guest (a kernel module watched `IA32_U_CET` go from 0 to 1 on one CPU
+  170 ms before PID 1 died). Where it comes from is not known, nor why a
+  reference image on the same host is not affected. The parameter makes the
+  guest insensitive to that state; it does not remove it.
+
+### Changed
+- Rebuilt images with new SHA-256: CalculiX-2.21
+  `822915ce…7d44a`, FEniCS `ff6d3b5e…0dad0`, VeriCAx-merged
+  `98bf5ce7…cec33` (spec/10 section 3). The recorded package versions are
+  identical to the previous builds. All 26 packages were re-audited on them
+  (audit, robustness 10/10, L0, pack): gold summaries and pinned reference
+  values are unchanged; `audit.md`, the manifests and the L0 records carry
+  the new date and `image_sha256`. B2 capability results stay as measured on
+  the previous images.
+- `docs/spec/04`: the kernel command line is part of the image specification;
+  a deployment-pitfall row for the shadow-stack fault.
+
 ## [0.2.2-alpha] - 2026-11-27
 
 Tooling patch release; the 26-package task suite is unchanged. `vericax batch`

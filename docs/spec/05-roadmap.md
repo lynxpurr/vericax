@@ -68,12 +68,15 @@ B2 已完成并发布。2026-11-26 owner 决定按 v0.2.1-alpha → 可靠性/�
 - **v0.2.2-alpha 工具补丁**（#38–#43，任务套件不变）：失联即中止与取证、batch 自动
   infra 重试/熔断/预检、openclaw usage 解析、缓存读取口径，以及 B2 结果的三处更正
   （infra 19/217 = 8.8%、openclaw token 列、cache-read 列）。
-- **步骤 2 的失联机制已确认**：sandbox 失联是 guest kernel panic。自建镜像里 PID 1
-  （systemd 255.4-1ubuntu8.18，内核 6.8.0-147-generic）的主线程从系统调用
-  （`epoll_wait`、`clone3`）返回时出错，PID 1 一死内核即 panic。不接 agent 的 VM 也
-  会崩（开机后 41 分钟）；捕获到的几次都没有主机压力或 guest 内存不足。触发条件未知，
-  下一步是内核层面的定位；`logs/vm-console.log` 与 `logs/sandbox-loss.json` 是证据。
-  原定的 8G 内存对照组因此取消，agent 命令回放也不再需要。
+- **步骤 2 的失联根因已定位并修复（v0.2.3-alpha）**：sandbox 失联是 guest kernel
+  panic，原因是 PID 1 的影子栈缺页（控制台 `error 44/46` 是十六进制 0x44/0x46）。guest
+  内核只要看到 CPU 报告影子栈特性就会启用 CET，而 guest 里没人用影子栈；一份来源
+  不明的影子栈状态让用户态的下一条 `ret`/`call` 出错。已用实验排除内核启动参数、
+  内核版本、CPU 漏洞缓解、内存保护键、主机与 guest 内存、agent 命令。三张自建镜像的
+  启动参数加 `clearcpuid=519` 后重建：6 台 VM 空闲 90 分钟零 panic（未处理的 21 台
+  空闲 VM 里只有 4 台跑过 90 分钟），26 个包重审计。残留状态从哪来、为什么对照镜像
+  不受影响，还没有解释；见 `docs/lessons-2026-11-27-sandbox-loss.md`。原定的 8G 内存
+  对照组因此取消，agent 命令回放也不再需要。
 - **步骤 3 试点**：`cae--cli--fenics--task-0017`（热弹两阶段分析，L1–L4）已过审计
   19/19、robust 10/10，尚未进 split。
 

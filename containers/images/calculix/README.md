@@ -6,6 +6,11 @@ merged cross-solver image are P3b/P3c.
 
 ## Status (2026-11-20): P3a accepted
 
+**Rebuilt on 2026-11-27** from this recipe with `clearcpuid=519` on the kernel
+command line (see below): `CalculiX-2.21.qcow2`, SHA-256
+`822915ceb69bc0d4e9baea274983ef99173ec86624bb472f79487f73f597d44a`, 1.56 GB. The recorded package versions are identical to the
+2026-11-20 build; the suite's 26 packages were re-audited on the rebuilt images.
+
 A **fresh clean build from this recipe** produced an Ubuntu 24.04 image with
 `ccx` 2.21-1 and the OSWorld server, and passed both gates on 2026-11-20:
 
@@ -81,6 +86,21 @@ $HOME/vericax-image-build/calculix/out/CalculiX-2.21.qcow2.sha256
 $HOME/vericax-image-build/calculix/out/image-build.json
 $HOME/vericax-image-build/calculix/out/provision-info.txt
 ```
+
+## Kernel command line (2026-11-27)
+
+`provision.sh` writes `/etc/default/grub.d/99-vericax-cmdline.cfg`, which
+appends `clearcpuid=519` to the kernel command line, and fails the build if
+`update-grub` does not carry it into `/boot/grub/grub.cfg`. The parameter
+hides `X86_FEATURE_SHSTK` (word 16, bit 7; the feature has no name, so the
+number is the only spelling) from the guest kernel. Without it the kernel
+arms CET, and PID 1 dies on a shadow-stack state that nothing in the guest
+set: the guest panics a few minutes after boot
+(`docs/lessons-2026-11-27-sandbox-loss.md`). The guest cannot use shadow
+stacks anyway. A VM booted from this image prints `Clearing CPUID bits: 16:7`
+on its console, and `/proc/cpuinfo` does not list `user_shstk`. The parameter
+takes effect at the next boot after provisioning, so the build VM itself runs
+without it.
 
 ## Validate
 

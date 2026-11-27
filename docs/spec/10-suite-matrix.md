@@ -71,7 +71,7 @@
 |---|---|---|---|---|
 | **CalculiX** | 2.21 / `CalculiX-2.21.qcow2` | 已验证（12 题） | 12 | P1 完成 12 题 |
 | **FEniCS** | 0.10.0.post2 / `FEniCS.qcow2` | **已验证（9 题）** | 9 | 第二求解器；P1 完成 9 题（DO/observation/open-environment） |
-| **cross-solver** | 2.21 + 0.10.0.post2 / `VeriCAx-merged.qcow2`（P3c 自建，sha `e6514410…a262`） | **已验证（4 题 + 原型）** | 4 | `software-selection` 专用；L6 判据见 spec/02 §1；merged image 2026-11-21 验收（calculix/fenics/cross-solver 三家族 L0 + 4 题全管线） |
+| **cross-solver** | 2.21 + 0.10.0.post2 / `VeriCAx-merged.qcow2`（P3c 自建，2026-11-27 重建，sha `98bf5ce7…ec33`） | **已验证（4 题 + 原型）** | 4 | `software-selection` 专用；L6 判据见 spec/02 §1；merged image 2026-11-21 验收（calculix/fenics/cross-solver 三家族 L0 + 4 题全管线） |
 
 D5 已定（2026-11-18），执行顺序：
 
@@ -79,6 +79,8 @@ D5 已定（2026-11-18），执行顺序：
 - **Phase 1：写自建镜像构建 recipe**，并产出一张自建镜像验证可复现（不切换）。
 - **Phase 2：切换自建 VeriCAx 镜像**并重跑审计；所有 pins 必须在同镜像内重新烘焙（换镜像 = 重跑审计，spec/04 §6）。三张自建镜像已全部验收（P3a CalculiX 2026-11-20、P3b FEniCS 2026-11-21、P3c merged 2026-11-21）；merged 镜像承载 4 道 `software-selection`（`v0.2-cae-cli-merged`）。
 - **默认镜像切换已完成（2026-11-22）**：26 个任务包全部在自建镜像上重跑 `audit_task.py --repeat 10` + L0 + `pack_task`；L0 的 `image_sha256` 与 snapshot 一一对应——CalculiX `91b1d6c8…`（13 包）、FEniCS `b0e2f239…`（9 包）、merged `e6514410…`（4 包）。task-0014/0016 的本地 wheelhouse 补了 `scipy 1.13.1`（scikit-fem/trimesh 的运行时依赖，自建镜像不含 scipy）。`vericax.toml` 的 `[images] dir` 现在指向三张镜像的 suite 链接目录；EngiWorld 镜像保留作对照。
+
+- **镜像重建（2026-11-27，v0.2.3-alpha）**：三张自建镜像的 grub 配置追加 `clearcpuid=519`，对 guest 内核隐藏 CPU 的影子栈特性——否则 guest 的 PID 1 会因影子栈缺页死亡、内核 panic（`docs/lessons-2026-11-27-sandbox-loss.md`）。干净重建后记录的包版本与此前逐项相同；26 个包再次全部重跑 `audit_task.py --repeat 10` + L0 + `pack_task`，L0 的 `image_sha256` 更新为CalculiX `822915ce…`（13 包）、FEniCS `ff6d3b5e…`（9 包）、merged `98bf5ce7…`（4 包）。
 
 无论哪条路径，**换镜像 = 重跑审计**；pinned 参考值与镜像绑定（spec/04 §6）。
 

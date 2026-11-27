@@ -1,10 +1,11 @@
 # Verifier audit record
 
-- date: 2026-11-22
+- date: 2026-11-27
 - task: cae--cli--calculix--task-0002 (evaluator func: quantified_score)
 - image: CalculiX-2.21
 - reference submission summary: `9.24, 6.68, -0.3455536`
 - robust: 10/10 consistent (verdicts: 0.350000, 0.350000, 0.350000, 0.350000, 0.350000, ...)
+- rejection margin: 0.350000 (min positive 0.350000 - max negative 0.000000)
 
 | case | expectation | actual | verdict |
 |---|---|---|---|
