@@ -162,8 +162,32 @@ class RenderTests(unittest.TestCase):
         totals = next(l for l in text.splitlines()
                       if l.startswith("dsh ") and "attempts" in l)
         self.assertIn("prompt+completion      3300", totals)   # 3 x (1000 + 100)
-        self.assertIn("native active median 25 s", totals)     # median of 12.5, 25, 37.5
+        self.assertIn("active median 25 s", totals)            # median of 12.5, 25, 37.5
         self.assertIn(f"tree ['{tree[7:19]}']", text)
+
+    def test_time_budget_episode_counts_as_a_scored_zero(self):
+        # spec/03 section 2: an episode that used up its active time budget is
+        # scored 0 on the basis active_time_budget; only infra attempts are excluded.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            tree = _tree(root / "wt")
+            runs = root / "runs"
+            episodes = [
+                _episode(runs, "b1", "dsh", 1, tree=tree, score=1.0),
+                _episode(runs, "b1", "dsh", 2, tree=tree, score=1.0),
+                _episode(runs, "b1", "dsh", 3, tree=tree, score=0.0, basis="active_time_budget"),
+                _episode(runs, "b1", "dsh", 4, tree=tree, score=0.0, basis="infra"),
+            ]
+            rows, excluded = report.collect([_batch(runs, "b1", "dsh", episodes)], {})
+            text = report.render(rows, excluded)
+
+        line = next(l for l in text.splitlines() if l.startswith(TASK))
+        self.assertIn("n=3 mean=0.667 [0.00-1.00] infra=1", line)
+        self.assertIn("scored 0: the active time budget ran out", text)
+        self.assertNotIn("verifier:", text)
+        totals = next(l for l in text.splitlines()
+                      if l.startswith("dsh ") and "attempts" in l)
+        self.assertIn("attempts  4 scored  3 (time budget 1) infra  1", totals)
 
 
 class CliTests(unittest.TestCase):

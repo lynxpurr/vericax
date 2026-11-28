@@ -7,7 +7,9 @@ Reads the batch records written by ``vericax batch`` and prints every
 episode with its scoring basis, score, active time, tokens (prompt +
 completion, the published basis; reasoning and cache reads are listed
 separately), the verifier's first debug line for a zero, and the task x
-stack matrix over the native episodes (n, mean, range, infra attempts).
+stack matrix over the scored episodes (n, mean, range, infra attempts). An
+episode that reached its active time budget is a scored 0 (spec/03 section 2)
+and counts; only infra attempts are excluded.
 
 ``--worktree`` names the checkout whose ``tasks/`` holds the current
 packages. An episode whose ``tree_version`` is not the task's current
@@ -29,6 +31,8 @@ from pathlib import Path
 
 STACK_ORDER = ["dsh", "opencode-bailian", "openclaw-bailian"]
 NATIVE = "native_evaluator"
+TIME_BUDGET = "active_time_budget"          # scored 0: the agent ran out of its active time
+SCORED = (NATIVE, TIME_BUDGET)
 PANIC = re.compile(r"kernel panic|attempted to kill init|segfault at", re.I)
 STAMP = re.compile(r"\[ +(\d+\.\d+)\]")
 
@@ -124,15 +128,15 @@ def median(values: list) -> float:
 
 
 def cell_text(cell: list[dict]) -> str:
-    native = [r for r in cell if r["basis"] == NATIVE]
-    infra = len(cell) - len(native)
+    scored = [r for r in cell if r["basis"] in SCORED]
+    infra = len(cell) - len(scored)
     if not cell:
         return "-"
-    if not native:
+    if not scored:
         return f"n=0 infra={infra}"
-    low, high = min(r["score"] for r in native), max(r["score"] for r in native)
-    mean = sum(r["score"] for r in native) / len(native)
-    return f"n={len(native)} mean={mean:.3f} [{low:.2f}-{high:.2f}] infra={infra}"
+    low, high = min(r["score"] for r in scored), max(r["score"] for r in scored)
+    mean = sum(r["score"] for r in scored) / len(scored)
+    return f"n={len(scored)} mean={mean:.3f} [{low:.2f}-{high:.2f}] infra={infra}"
 
 
 def render(rows: list[dict], excluded: list[dict]) -> str:
@@ -152,16 +156,18 @@ def render(rows: list[dict], excluded: list[dict]) -> str:
         for stack in stacks:
             for r in sorted((r for r in rows if r["task"] == task and r["adapter"] == stack),
                             key=lambda r: (r["run"] or 0, r["attempt"] or 0)):
-                if r["basis"] == NATIVE and (r["score"] or 0) < 1.0:
-                    out.append(f"{'':16s} {'':10s} verifier: {r['why']}")
                 active = f"{r['active']:.0f}" if isinstance(r["active"], (int, float)) else "-"
                 out.append(f"{stack:16s} {task.rsplit('--', 1)[-1]} run {r['run']} try {r['attempt']} | "
                            f"{r['basis'] or '-':16s} score {r['score']:.3f} | active {active:>5} s | "
                            f"{r['prompt_completion']:>8} tok (cache {r['cache_read']:>8}) calls {r['calls']} | "
                            f"{r['category'] or '-'} | console {r['console']}")
+                if r["basis"] == NATIVE and (r["score"] or 0) < 1.0 and r["why"]:
+                    out.append(f"{'':16s} {'':10s} verifier: {r['why']}")
+                elif r["basis"] == TIME_BUDGET:
+                    out.append(f"{'':16s} {'':10s} scored 0: the active time budget ran out")
 
     out.append("")
-    out.append("== task x stack matrix (native episodes only; infra attempts excluded) ==")
+    out.append("== task x stack matrix (scored episodes; infra attempts excluded) ==")
     width = max([len(cell_text([r for r in rows if r["task"] == t and r["adapter"] == s]))
                  for t in tasks for s in stacks] + [34]) if rows else 34
     out.append(f"{'task':28s} " + " ".join(f"{s:>{width}s}" for s in stacks))
@@ -173,13 +179,15 @@ def render(rows: list[dict], excluded: list[dict]) -> str:
     out.append("== totals per stack ==")
     for stack in stacks:
         cell = [r for r in rows if r["adapter"] == stack]
-        native = [r for r in cell if r["basis"] == NATIVE]
-        actives = [r["active"] for r in native if isinstance(r["active"], (int, float))]
-        out.append(f"{stack:16s} attempts {len(cell):2d} native {len(native):2d} infra {len(cell) - len(native):2d} | "
+        scored = [r for r in cell if r["basis"] in SCORED]
+        budgets = sum(1 for r in scored if r["basis"] == TIME_BUDGET)
+        actives = [r["active"] for r in scored if isinstance(r["active"], (int, float))]
+        out.append(f"{stack:16s} attempts {len(cell):2d} scored {len(scored):2d} (time budget {budgets}) "
+                   f"infra {len(cell) - len(scored):2d} | "
                    f"prompt+completion {sum(r['prompt_completion'] for r in cell):>9} "
                    f"reasoning {sum(r['reasoning'] for r in cell):>8} "
                    f"cache-read {sum(r['cache_read'] for r in cell):>9} | "
-                   f"native active median {median(actives):.0f} s | model {cell[0]['model']}")
+                   f"active median {median(actives):.0f} s | model {cell[0]['model']}")
 
     out.append("")
     out.append("== fingerprints ==")

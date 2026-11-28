@@ -18,7 +18,9 @@ values; only episodes of the *same* task must agree.
 
 Only ``kind=capability`` episodes enter the means by default; ``kind=test`` and
 ``kind=debug`` are excluded unless ``--include-tests`` is given. ``infra``
-scoring failures are counted and reported, but never scored.
+scoring failures are counted and reported, but never scored. An episode that
+reached its active time budget is a scored 0 (``scoring_basis =
+active_time_budget``, spec/03 section 2): it enters n and the mean.
 """
 from __future__ import annotations
 
@@ -33,6 +35,8 @@ REPO = Path(__file__).resolve().parents[1]
 DEFAULT_RUNS = REPO / "runs"
 DEFAULT_TASKS = REPO / "tasks"
 NATIVE = "native_evaluator"
+TIME_BUDGET = "active_time_budget"          # scored 0: the agent ran out of its active time
+SCORED = (NATIVE, TIME_BUDGET)
 
 
 def task_registry(tasks_dir: Path) -> dict[str, dict]:
@@ -203,7 +207,7 @@ def aggregate(rows: list[dict], registry: dict[str, dict], *,
     tasks = []
     for (task_id, agent, model, tree, mode), items in sorted(task_groups.items()):
         scored = [it["score"] for it in items
-                  if it.get("scoring_basis") == NATIVE and it.get("score") is not None]
+                  if it.get("scoring_basis") in SCORED and it.get("score") is not None]
         n = len(scored)
         tasks.append({
             "task_id": task_id,
@@ -224,7 +228,7 @@ def aggregate(rows: list[dict], registry: dict[str, dict], *,
     cells = []
     for (capability, solver, agent, model), items in sorted(cell_groups.items()):
         scored = [it["score"] for it in items
-                  if it.get("scoring_basis") == NATIVE and it.get("score") is not None]
+                  if it.get("scoring_basis") in SCORED and it.get("score") is not None]
         n = len(scored)
         infra = sum(1 for it in items if it.get("scoring_basis") == "infra")
         errors = Counter(it.get("error_category") for it in items

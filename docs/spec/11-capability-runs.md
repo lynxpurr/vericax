@@ -176,6 +176,11 @@ tree_version。同一 task 内混树或 n<3 时脚本以非零状态退出。原
 checkout，`tree_version` 不是该题当前 manifest 的集会被列为 excluded、不进矩阵：题目改过之后
 （修 verifier、改题面），之前的集不再说明当前题目。
 
+矩阵只排除 infra 尝试。用完活动时间预算的集（`scoring_basis = active_time_budget`，spec/03 §2
+记 0）是有效集，计入 n 和均值；`capability_report.py` 同样处理。2026-11-28 之前的两个脚本一个把它
+算成 infra、一个两边都不计，T2 的 dsh × task-0013 因此被报成 n=2 均值 1.000（正确是 n=3 均值
+0.667）；B2 没有这种集，已发布数字不受影响。
+
 ## 9. 风险
 
 | 风险 | 处理 |
