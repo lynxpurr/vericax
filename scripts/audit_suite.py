@@ -10,6 +10,14 @@ must be re-audited in this order:
     vericax audit               # L0 on the new image, refresh tree_version
     pack_task.py --check        # manifest must match
 
+A package that does not carry a passing L0 record cannot be packed first: the
+pack gate refuses, and ``vericax audit`` accepts a package that has no
+manifest, or whose record did not pass. There the first L0 runs before the
+pack, and a second L0 after it gives the record the final ``tree_version``:
+
+    new package, no manifest:        audit, L0, pack, L0, check
+    manifest, record did not pass:   L0, audit, pack, L0, check
+
 Run with the runtime venv python and ``VERICAX_IMAGE_DIR`` pointing at a
 directory that contains ``CalculiX-2.21.qcow2``, ``FEniCS.qcow2`` and
 ``VeriCAx-merged.qcow2``. Two tasks are in flight (one VM each); each task has
@@ -32,6 +40,32 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 VERICAX = REPO / "bin" / "vericax"
+sys.path.insert(0, str(REPO))
+
+from vericax import validity  # noqa: E402
+
+
+def task_dir_for(task_id: str) -> Path:
+    domain, iface, software, task = task_id.split("--")
+    return REPO / "tasks" / domain / iface / software / task
+
+
+def steps_for(task_id: str, repeat: int, has_manifest: bool, l0_passed: bool) -> list:
+    """The pipeline of one package, in the order its gates allow (see the module docstring)."""
+    audit = ("audit", [sys.executable, str(REPO / "scripts/audit_task.py"),
+                       "--task", task_id, "--repeat", str(repeat)])
+    pack = ("pack", [sys.executable, str(REPO / "scripts/pack_task.py"), "--task", task_id])
+    l0 = ("l0", [str(VERICAX), "audit", "--task", task_id])
+    l0_first = ("l0_first", [str(VERICAX), "audit", "--task", task_id])
+    check = ("check", [sys.executable, str(REPO / "scripts/pack_task.py"),
+                       "--task", task_id, "--check"])
+    if l0_passed:
+        return [audit, pack, l0, check]
+    if has_manifest:
+        # `vericax audit` refuses a stale manifest, so L0 has to see the
+        # package as it was packed, before the audit rewrites its records.
+        return [l0_first, audit, pack, l0, check]
+    return [audit, l0_first, pack, l0, check]
 
 
 def task_ids() -> list[str]:
@@ -61,14 +95,12 @@ def one(task_id: str, out_dir: Path, repeat: int, env: dict) -> dict:
     record = {"task_id": task_id, "steps": {}, "ok": False, "seconds": None}
     log_path = out_dir / f"{task_id}.log"
     with log_path.open("w") as log:
-        steps = [
-            ("audit", [sys.executable, str(REPO / "scripts/audit_task.py"),
-                       "--task", task_id, "--repeat", str(repeat)]),
-            ("pack", [sys.executable, str(REPO / "scripts/pack_task.py"), "--task", task_id]),
-            ("l0", [str(VERICAX), "audit", "--task", task_id]),
-            ("check", [sys.executable, str(REPO / "scripts/pack_task.py"),
-                       "--task", task_id, "--check"]),
-        ]
+        task_dir = task_dir_for(task_id)
+        steps = steps_for(
+            task_id, repeat,
+            has_manifest=(task_dir / "resources.sha256").is_file(),
+            l0_passed=validity.reference_selfcheck_state(
+                validity.load_reference_selfcheck(task_dir)) == "pass")
         for name, argv in steps:
             ok, tail = run_step(argv, log, env)
             record["steps"][name] = {"ok": ok, "tail": tail[-200:]}

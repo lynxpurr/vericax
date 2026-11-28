@@ -12,6 +12,7 @@ and never a capability zero.
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import shlex
 from dataclasses import dataclass, field
@@ -23,6 +24,50 @@ SCORE_VM_ROOT = "/home/user/vericax"
 AGENT_ROOT = f"{SCORE_VM_ROOT}/agent"
 EVAL_VM_PATH = f"{SCORE_VM_ROOT}/eval.py"
 DEFAULT_EVAL_TIMEOUT = 600
+
+# Guest RAM of the scoring VM. The agent sandbox keeps the provider default
+# (4G); the verifier re-solves the submitted model and needs more than the
+# agent did: two published B2 episodes lost a direct LU factorisation of a
+# large, legal mesh to a 4G scoring VM and were scored as capability zeros.
+# qemu allocates guest RAM lazily, so a larger limit costs nothing until used.
+DEFAULT_SCORING_RAM = "16G"
+SCORING_RAM_ENV = "VERICAX_SCORING_RAM"
+
+# The verifier template catches every exception and prints "False" (or
+# "0.000000") so that a malformed delivery is a verdict and never a crash.
+# This is its signature for that path.
+EXCEPTION_LINE = "debug: evaluator exception"
+# ... and the part of it that means the verifier's own resources failed.
+RESOURCE_ERROR = re.compile(r"Out of memory|MemoryError|Cannot allocate memory|Error error code \d+")
+
+
+def scoring_ram() -> str:
+    """Guest RAM of the scoring VM; ``VERICAX_SCORING_RAM`` overrides the default."""
+    return os.environ.get(SCORING_RAM_ENV, DEFAULT_SCORING_RAM)
+
+
+def is_resource_failure(stdout: str, stderr: str) -> bool:
+    """True when the verifier's zero came from a failure of its own resources.
+
+    A zero printed after ``debug: evaluator exception`` together with an
+    out-of-memory report or a PETSc error code means the delivery was not
+    evaluated (the scoring VM ran out of RAM on a large mesh). The scorer
+    reports that as ``infra`` so the episode is retried, not counted as a
+    capability zero. Any other exception stays a verdict: a delivery that
+    cannot be read is a rejection.
+    """
+    lines = stdout.strip().splitlines()
+    first = lines[0].strip() if lines else ""
+    if first == "False":
+        zero = True
+    else:
+        try:
+            zero = float(first) == 0.0
+        except ValueError:
+            zero = False
+    if not zero or EXCEPTION_LINE not in stderr:
+        return False
+    return bool(RESOURCE_ERROR.search(stderr.split(EXCEPTION_LINE, 1)[1]))
 
 
 @dataclass
@@ -98,7 +143,8 @@ def run_scoring(
     eval_text, result.pins_baked = bake_pins(eval_text, gold_summary)
     result.verifier_sha256 = hashlib.sha256(eval_text.encode()).hexdigest()
 
-    vm = SandboxVM(snapshot, cache_dir=cache_dir, image_override=image_override)
+    vm = SandboxVM(snapshot, cache_dir=cache_dir, image_override=image_override,
+                   ram=scoring_ram())
     try:
         vm.boot(None)  # clean VM: no task setup, no init files, no verifier yet
         vm.wait_healthy()
@@ -147,6 +193,15 @@ def run_scoring(
             result.infra = True
             result.basis = "infra"
             result.detail = f"verifier exited rc={rc}"
+            return result
+
+        stdout_text, stderr_text = out.decode(errors="ignore"), err.decode(errors="ignore")
+        if is_resource_failure(stdout_text, stderr_text):
+            result.infra = True
+            result.basis = "infra"
+            reason = next((line.strip() for line in stderr_text.splitlines()
+                           if EXCEPTION_LINE in line), "")
+            result.detail = f"verifier resource failure, delivery not evaluated: {reason[:200]}"
             return result
 
         if evaluator_func == "exact_match":

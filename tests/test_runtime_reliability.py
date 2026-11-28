@@ -26,7 +26,8 @@ from unittest import mock
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from vericax import batch, host, lifecycle, proxy, summary as summary_mod  # noqa: E402
+from vericax import batch, host, lifecycle, proxy, scoring  # noqa: E402
+from vericax import summary as summary_mod  # noqa: E402
 from vericax.agent_runner import AgentResult, run_agent  # noqa: E402
 from vericax.sandbox_vm import SandboxUnavailable, SandboxVM  # noqa: E402
 
@@ -578,6 +579,42 @@ class BatchReliabilityTests(unittest.TestCase):
         self.assertEqual(payload["stopped"], "memory_gate")
         self.assertEqual(self.calls, [])
         self.assertEqual(payload["verdict"], "FAIL")
+
+
+class ScoringClassificationTests(unittest.TestCase):
+    """A zero printed after the verifier's own resource error is infra, not a verdict."""
+
+    OOM = ("debug: evaluator exception: error code 55\n"
+           "[0] KSPSolve() at ./src/ksp/ksp/interface/itfunc.c:1070\n"
+           "[0] Out of memory. Allocated: 0, Used by process: 378826752\n"
+           "[0] Memory requested 5784564592\n")
+
+    def test_solver_out_of_memory_is_a_resource_failure(self):
+        # the published B2 case: a direct LU of a large legal mesh in a 4G scoring VM
+        self.assertTrue(scoring.is_resource_failure("False\n", self.OOM))
+        self.assertTrue(scoring.is_resource_failure("0.000000\n", self.OOM))
+        # no zero on stdout: there is no verdict to reclassify
+        self.assertFalse(scoring.is_resource_failure("", self.OOM))
+
+    def test_delivery_errors_stay_verdicts(self):
+        self.assertFalse(scoring.is_resource_failure(
+            "False\n",
+            "debug: evaluator exception: [Errno 2] No such file or directory: 'mesh.msh'\n"))
+        self.assertFalse(scoring.is_resource_failure(
+            "False\n", "debug: evaluator exception: error code 71\n[0] KSPSolve() ...\n"))
+        self.assertFalse(scoring.is_resource_failure(
+            "False\n", "debug: s1 does not match the independent re-solve of mesh.msh\n"))
+
+    def test_nonzero_results_are_never_resource_failures(self):
+        self.assertFalse(scoring.is_resource_failure("True\n", self.OOM))
+        self.assertFalse(scoring.is_resource_failure("0.530000\n", self.OOM))
+
+    def test_scoring_ram_default_and_override(self):
+        with mock.patch.dict(os.environ):
+            os.environ.pop(scoring.SCORING_RAM_ENV, None)
+            self.assertEqual(scoring.scoring_ram(), scoring.DEFAULT_SCORING_RAM)
+            os.environ[scoring.SCORING_RAM_ENV] = "8G"
+            self.assertEqual(scoring.scoring_ram(), "8G")
 
 
 if __name__ == "__main__":

@@ -27,6 +27,7 @@ def _load(name: str, path: Path):
 
 audit_task = _load("audit_task", REPO / "scripts" / "audit_task.py")
 pack_task = _load("pack_task", REPO / "scripts" / "pack_task.py")
+audit_suite = _load("audit_suite", REPO / "scripts" / "audit_suite.py")
 
 
 class ExpectationTests(unittest.TestCase):
@@ -127,6 +128,33 @@ class WorkspaceIsolationTests(unittest.TestCase):
         # never wipe /tmp wholesale: the live desktop session owns sockets/dirs
         self.assertNotIn("rm -rf /tmp;", script)
         self.assertNotIn("rm -rf /tmp ", script)
+
+
+class AuditSuiteOrderTests(unittest.TestCase):
+    """The suite audit picks the step order its gates allow (2026-11-28)."""
+
+    def _names(self, **state):
+        return [name for name, _argv in audit_suite.steps_for("a--b--c--task-0001", 10, **state)]
+
+    def test_regular_reaudit_packs_before_l0(self):
+        self.assertEqual(self._names(has_manifest=True, l0_passed=True),
+                         ["audit", "pack", "l0", "check"])
+
+    def test_new_package_runs_l0_before_the_first_pack(self):
+        # the pack gate refuses a package without a passing record
+        self.assertEqual(self._names(has_manifest=False, l0_passed=False),
+                         ["audit", "l0_first", "pack", "l0", "check"])
+
+    def test_failed_record_with_a_manifest_runs_l0_on_the_packed_tree_first(self):
+        # `vericax audit` refuses a stale manifest, so L0 precedes the audit
+        self.assertEqual(self._names(has_manifest=True, l0_passed=False),
+                         ["l0_first", "audit", "pack", "l0", "check"])
+
+    def test_every_step_is_a_real_command_with_the_task_id(self):
+        for name, argv in audit_suite.steps_for("a--b--c--task-0001", 10,
+                                                has_manifest=False, l0_passed=False):
+            self.assertIn("a--b--c--task-0001", argv)
+            self.assertTrue(Path(argv[0]).is_absolute() or argv[0] == sys.executable, argv)
 
 
 if __name__ == "__main__":
