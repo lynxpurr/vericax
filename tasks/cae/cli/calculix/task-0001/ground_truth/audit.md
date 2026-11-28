@@ -1,6 +1,6 @@
 # Verifier audit record
 
-- date: 2026-11-27
+- date: 2026-11-28
 - task: cae--cli--calculix--task-0001 (evaluator func: exact_match)
 - image: CalculiX-2.21
 - reference submission summary: `-0.05981791, -0.3463916`
@@ -13,6 +13,7 @@
 | P2 robust (gold re-run) | want=True | True | PASS |
 | A1 alternative legal deck | want=True | True | PASS |
 | A2 alternative legal deck (elset cards) | want=True | True | PASS |
+| A3 alternative legal (every spelling at once) | want=True | True | PASS |
 | N1 empty delivery | want=False | False | PASS |
 | N2 fabricated summary | want=False | False | PASS |
 | N3 zero-byte solver output | want=False | False | PASS |

@@ -178,11 +178,88 @@ NEGATIVE_KINDS = {
     "N9 encoded payload": "encoded_payload",
 }
 
+# every legal spelling at once (added 2026-11-28)
+# In B2 the agents wrote decks in spellings the verifiers could not read: GENERATE
+# sets, a boundary row on a node set, two-coordinate node lines, a load on a
+# one-member set, a comma at the end of a data line. The verifier must read them
+# all and the solver must give the reference numbers. The decks below are GOLD's
+# in that spelling (scripts/deck_variants.py, every variant chained), written
+# just before the solver runs.
+
+import re
+
+
+def _in_heredoc(lines, at):
+    """True when line ``at`` sits inside a quoted here-document of the shell script."""
+    delimiter = None
+    for line in lines[:at]:
+        if delimiter is None:
+            found = re.search(r"<<'([A-Za-z_]+)'", line)
+            if found:
+                delimiter = found.group(1)
+        elif line.strip() == delimiter:
+            delimiter = None
+    return delimiter is not None
+
+
+def _re_spelled(gold, decks):
+    """GOLD with its decks overwritten by ``decks`` (file -> text) before the solver runs."""
+    lines = gold.splitlines(keepends=True)
+    at = next(i for i, line in enumerate(lines) if "/usr/bin/ccx" in line)
+    if _in_heredoc(lines, at):          # the solver is started from the generating script
+        block = "".join('Path(%r).write_text("""%s""")\n' % (name, text) for name, text in decks.items())
+    else:
+        block = "".join("cat > %s <<'VCAX_SPELLINGS'\n%sVCAX_SPELLINGS\n" % (name, text)
+                        for name, text in decks.items())
+    return "".join(lines[:at]) + block + "".join(lines[at:])
+
+SPELLING_SOLUTION = r"""*Heading
+VeriCAX task-0012 reconstructed truss
+*Node, NSET=VCAX_ALLNODES
+1, 0.0, 0.0
+2, 1000.0, 0.0
+3, 500.0, 500.0
+*Element, type=T3D2, elset=Bars
+1, 1, 3
+2, 2, 3,
+*Nset, nset=Pin1
+1,
+*Nset, nset=Pin2
+2,
+*Nset, nset=Tip
+3,
+*Nset, nset=AllNodes, GENERATE
+1, 3, 1,
+*Material, name=Steel
+*Elastic
+210000.0, 0.3,
+*Solid Section, elset=Bars, material=Steel
+100.0,
+*Boundary
+Pin1, 1, 2
+Pin2, 1, 2
+AllNodes, 3
+** node sets named by the *Boundary rows
+** sets of one member, named by the load rows
+*Nset, nset=VCAX_L1
+3
+*Step
+*Static
+*Cload
+VCAX_L1, 2, -1000.0
+*Node Print, NSET=Tip
+U,
+*End Step
+"""
+
+SPELLINGS = _re_spelled(GOLD, {'solution.inp': SPELLING_SOLUTION})
+
 CASES = [
     ("P1 positive (gold)", GOLD, ("true",)),
     ("P2 robust (gold re-run)", GOLD, ("true",)),
     ("A1 alternative legal deck", ALT, ("true",)),
     ("A2 alternative legal deck (per-node supports)", ALT2, ("true",)),
+    ("A3 alternative legal (every spelling at once)", SPELLINGS, ("true",)),
     ("N1 empty delivery", "", ("false",)),
     ("N2 area tampered", WRONG_AREA, ("false",)),
     ("N3 load tampered", WRONG_LOAD, ("false",)),

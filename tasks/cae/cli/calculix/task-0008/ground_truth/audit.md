@@ -13,6 +13,7 @@
 | P2 robust (gold re-run) | want=True | True | PASS |
 | A1 alternative legal (OP=MOD) | want=True | True | PASS |
 | A2 alternative legal (OP=NEW, both loads) | want=True | True | PASS |
+| A3 alternative legal (every spelling at once) | want=True | True | PASS |
 | N1 empty delivery | want=False | False | PASS |
 | N2 load reset (FY dropped) | want=False | False | PASS |
 | N3 wrong axial load | want=False | False | PASS |

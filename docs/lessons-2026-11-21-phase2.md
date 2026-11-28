@@ -256,3 +256,40 @@ L0 → check；有 manifest 但记录未通过 → L0 → audit → pack → L0 
 - **审计产物有非确定性字节**:FEniCS 的 `ground_truth/solution.h5` 每次重生成
   sha 会变(大小相同),所以 `resources.sha256`/`tree_version` 会变;pins 与
   summary 不变。发布结果必须带 `tree_version`,不能用旧树的结果比新树。
+
+## 17. 验证器读不懂 agent 实际写出的合法 deck（2026-11-28）
+
+- **症状**：两道新 CalculiX 题审计全过（31/31、25/25）、robust、L0 都过，第一轮校准里 18 份正确
+  deck 有 14 份被判 0；回看已发布的 B2，CalculiX 和 software-selection 两族的 43 个 0 分里 34 个
+  是同一类——agent 自己的求解输出等于参考值，被拒的原因是 deck 检查读不懂它用的写法。
+- **写法**（CalculiX 2.21 都接受，题面都没有限定）：`*ELSET`/`*NSET` 的 `GENERATE` 形式
+  （首、末、增量）；`*BOUNDARY` 行写节点集、省略默认值 0、省略等于首自由度的末自由度；集合定义在
+  `*NODE, NSET=` 上；`*DLOAD` 直接写单元号；载荷除出来之后四舍五入到 8 位有效数字（验证器用
+  1e-9 的**绝对**容差）；节点行只写两个坐标；用 `*DSLOAD` 施加面压力；数据行以逗号结尾再接关键字。
+- **规则早就有，没有落地**：spec/02 §5 写了「等价写法必须都收」和 `equivalent_but_rejected`，
+  但 15 个读 deck 的验证器没有一个实现它，也没有任何测试碰这些写法。审计里的「替代合法」用例是
+  作者想出来的写法（逆序编号、拆 elset 卡），覆盖不到 agent 的写法。
+- **修法：先规范化，再检查**。`scripts/deck_canonical.py` 的 `canonical_deck()` 把这些写法改写成
+  验证器已经认识的形式（展开 `GENERATE`、补第三个坐标、节点集的边界行和载荷行展开成逐成员的行、
+  续行逗号接上、关键字前的逗号去掉），每个读 deck 的验证器在 `inp_blocks()` 开头调用它，原有检查
+  一行不动。这段代码在每个 `eval.py` 里有一份逐字拷贝（评分是带外的，verifier 是单文件），
+  `tests/test_deck_spellings.py` 核对 15 份拷贝与源一致。
+- **测试是机械改写，不靠想象力**：`scripts/deck_variants.py` 对每道题的 gold deck 做 7 种改写，
+  `tests/test_deck_spellings.py` 要求每个验证器的 deck 检查都接受（加固前 63 处拒绝，之后 0），
+  并要求规范化后的改写 deck 与规范化后的 gold 意义相同。每道题的审计多了一个「全部写法一起上」
+  的替代合法用例（A3），所以镜像上的 ccx 也要接受这些写法并给出参考值。
+- **验证**：把 B2 里被 deck 规则拒掉的 38 份冻结 deck 用加固后的验证器重放，38/38 通过 deck
+  检查；B2 里得满分的 68 份 deck，68/68 仍然通过。
+- **同一个教训的另外两面**：(1) `evaluator.stderr` 里的边界/载荷/集合类拒绝原因只是线索，
+  读冻结的 deck、确认它确实违反题面之前，不能记成能力失败——B2 文档曾据此写下「不是验证器
+  缺陷」。(2) 零分有四个来源：做错、太慢（用完活动时间预算，按 spec 记 0）、没收尾、被截断；
+  T2 的四个 0 分 deck 全是对的。
+- **顺带修掉的两处**：`scripts/calibration_report.py` 把用完时间预算的集算成 infra 并从均值里去掉，
+  `scripts/capability_report.py` 两边都不计（spec/03 §2 规定记 0）；adapter profile 里同一个模型
+  的输出上限各栈不同（dsh 声明 32768，openclaw 没声明、落到默认 8192；opencode 也没声明），
+  现在三个 profile 声明相同，`tests/test_adapter_profiles.py` 逐模型核对。
+- **新题怎么用**：deck 类验证器保留 `inp_blocks(text)`；`python3 scripts/inject_deck_canonical.py
+  <task-id>` 把 `scripts/deck_canonical.py` 的内容放进两行标记之间，并让 `inp_blocks` 的第一句是
+  `text = canonical_deck(text)`；在 `tests/test_deck_spellings.py` 的 `REGISTRY` 里登记这道题的
+  deck 检查入口；审计里加一个「全部写法一起上」的替代合法用例。没有 `inp_blocks` 的验证器
+  （自己解析 deck 的）直接进 `REGISTRY`，由同一个测试把关。

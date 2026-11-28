@@ -13,6 +13,7 @@
 | P2 robust (gold re-run) | want=True | True | PASS |
 | A1 alternative legal deck | want=True | True | PASS |
 | A2 alternative legal deck (split prints) | want=True | True | PASS |
+| A3 alternative legal (every spelling at once) | want=True | True | PASS |
 | N1 empty delivery | want=False | False | PASS |
 | N2 section tampered | want=False | False | PASS |
 | N3 load tampered | want=False | False | PASS |

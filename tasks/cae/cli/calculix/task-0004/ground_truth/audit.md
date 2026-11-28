@@ -1,6 +1,6 @@
 # Verifier audit record
 
-- date: 2026-11-27
+- date: 2026-11-28
 - task: cae--cli--calculix--task-0004 (evaluator func: exact_match)
 - image: CalculiX-2.21
 - reference submission summary: `0.004536695, 0.002887301`
@@ -13,6 +13,8 @@
 | P2 robust (gold re-run) | want=True | True | PASS |
 | A1 alternative legal (reversed ids, elset cards) | want=True | True | PASS |
 | A2 alternative legal (explicit elset cards) | want=True | True | PASS |
+| A3 alternative legal (every spelling at once) | want=True | True | PASS |
+| A4 alternative legal (*DSLOAD and the element number for the pressure) | want=True | True | PASS |
 | N1 empty delivery | want=False | False | PASS |
 | N2 pressure tampered | want=False | False | PASS |
 | N3 pressure on outer surface | want=False | False | PASS |
