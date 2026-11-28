@@ -16,3 +16,8 @@ cae--cli--fenics--task-0013
 cae--cli--fenics--task-0014
 cae--cli--fenics--task-0015
 cae--cli--fenics--task-0016
+cae--cli--calculix--task-0013
+cae--cli--calculix--task-0014
+cae--cli--fenics--task-0017
+cae--cli--fenics--task-0019
+cae--cli--fenics--task-0020

@@ -51,6 +51,11 @@
 | `cae--cli--fenics--task-0014` | open-environment | FEniCS 0.10.0.post2 | L1–L3 | 12/12 | `v0.2-cae-cli-25` |
 | `cae--cli--fenics--task-0015` | open-environment | FEniCS 0.10.0.post2 | L1–L3 | 13/13 | `v0.2-cae-cli-25` |
 | `cae--cli--fenics--task-0016` | open-environment | FEniCS 0.10.0.post2 | L1–L3 | 11/11 | `v0.2-cae-cli-25` |
+| `cae--cli--calculix--task-0013` | cross-stage-consistency | CalculiX 2.21 | L1–L5 | 35/35 | `v0.2-cae-cli-25` |
+| `cae--cli--calculix--task-0014` | cross-stage-consistency | CalculiX 2.21 | L1–L5 | 27/27 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0017` | cross-stage-consistency | FEniCS 0.10.0.post2 | L1–L4 | 20/20 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0019` | observation-reconstruct | FEniCS 0.10.0.post2 | L1–L3 | 27/27 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0020` | design-optimization | FEniCS 0.10.0.post2 | L1–L5 | 22/22 | `v0.2-cae-cli-25` |
 | `cae--cli--cross-solver--task-0001` | single-execution (L6 prototype) | CalculiX 2.21 | L1–L3 + L6 | 15/15 | `v0.2-cae-cli-l6-pilot` |
 | `cae--cli--cross-solver--task-0002` | software-selection | CalculiX（*Buckle）| L1–L3 + L6 | 15/15 | `v0.2-cae-cli-merged` |
 | `cae--cli--cross-solver--task-0003` | software-selection | FEniCS（异质模量）| L1–L3 + L6 | 15/15 | `v0.2-cae-cli-merged` |
@@ -64,6 +69,14 @@
 **任务包计数（2026-11-22 校准）**：表内共 **26 个任务包** = 25 道 Phase 2 目标（6/5/4/4/3/3）+ 1 道
 `cross-solver task-0001` L6 原型（capability 如实记为 `single-execution`）。split 文件合计 26 个唯一 id；
 `v0.2-cae-cli-25` 的名字是冻结的 split 版本号，不因多出的原型题改名。
+
+**2026-11-28/29（T1/T2 校准题入库）**：新增 5 题——多步 CalculiX deck 两道（0013 三个静力步、
+0014 频率–静力–屈曲）、更难的 FEniCS 三道（0017 热弹两阶段、0019 双孔板读图重建、0020 椭圆孔双工况优化）。
+各 capability 现有题数：`cross-stage-consistency` 4 → 7，`observation-reconstruct` 3 → 4，
+`design-optimization` 5 → 6。`v0.2-cae-cli-25` 18 → 23 题，任务包 26 → 31（30 道 Phase 2 目标 + 1 道
+L6 原型）；split 版本号不变（按 `splits/README.md` 的流程追加 id）。三栈 × n=3 的校准
+（`--kind test`，不作为能力结果发布）：dsh 与 opencode-bailian 在五道题交付的工件上没有可靠差别；
+见各题提交说明。同日 15 个读 deck 的 verifier 加了规范化拷贝（lessons §17），它们的 `tree_version` 都变了。
 
 ## 3. 求解器矩阵
 

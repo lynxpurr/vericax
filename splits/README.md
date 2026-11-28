@@ -17,18 +17,29 @@ manifest is written and only warned about under `--check`.
 
 ## v0.2-cae-cli-25.txt
 
-Current contents: 18 tasks — `fenics/task-0001`, `calculix/task-0004..0012`,
-`fenics/task-0002..0005`, `fenics/task-0013..0016`. This is the P0-gated
+Current contents: 23 tasks — `fenics/task-0001`, `calculix/task-0004..0014`,
+`fenics/task-0002..0005`, `fenics/task-0013..0017`, `fenics/task-0019..0020`
+(the five tasks added on 2026-11-28 after the T1/T2 calibration:
+`calculix/task-0013`, `calculix/task-0014`, `fenics/task-0017`, `fenics/task-0019`,
+`fenics/task-0020`). This is the P0-gated
 subset described in `docs/spec/10-suite-matrix.md` §7.1. The `-25` in the
 file name is the frozen Phase 2 target label; the suite now has 26 packages
 across four splits: `v0.1-cae-cli-pilot` (3), this one (18),
-`v0.2-cae-cli-l6-pilot` (1) and `v0.2-cae-cli-merged` (4). Do not rename the
-file as the suite grows.
+`v0.2-cae-cli-l6-pilot` (1) and `v0.2-cae-cli-merged` (4) — 31 packages.
+Do not rename the file as the suite grows.
 
-All 26 packages were re-audited on the three self-built images on 2026-11-22
-and again on 2026-11-27 on the rebuilt images (kernel command line
-`clearcpuid=519`); their L0 records carry the matching `image_sha256`
-(spec/10 §3).
+The first 26 packages were re-audited on the three self-built images on
+2026-11-22 and again on 2026-11-27 on the rebuilt images (kernel command line
+`clearcpuid=519`); the five added on 2026-11-28 were audited on the rebuilt
+images. Their L0 records carry the matching `image_sha256` (spec/10 §3).
+
+Every CalculiX verifier normalises the deck before its checks (lesson 17 in
+`docs/lessons-2026-11-21-phase2.md`): a submitted deck may use the `GENERATE`
+form of sets, name a node set in a `*BOUNDARY` or load row, leave out the
+defaults of a `*BOUNDARY` row, write two coordinates for a node on z = 0, and
+end data lines with a comma. `tests/test_deck_spellings.py` re-spells every gold
+deck and requires every verifier to accept it; a new deck verifier needs an
+entry in its `REGISTRY`.
 
 ### Why `calculix/task-0001..0003` are not listed
 
