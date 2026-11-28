@@ -9,7 +9,7 @@ abstract: >-
 type: software
 license: MIT
 version: "0.3.0-alpha"
-date-released: "2026-11-29"
+date-released: "2026-11-28"
 authors:
   - name: "VeriCAx contributors"
 repository-code: "https://github.com/lynxpurr/vericax"
