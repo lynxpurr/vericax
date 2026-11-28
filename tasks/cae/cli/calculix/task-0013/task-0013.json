@@ -1,0 +1,80 @@
+{
+  "id": "cae--cli--calculix--task-0013",
+  "schema_version": "0.1",
+  "snapshot": "CalculiX-2.21",
+  "interface": "cli",
+  "instruction": "Work from a terminal with CalculiX 2.21 (`/usr/bin/ccx`). Units: mm, N, MPa, tonne, so a body force needs an acceleration in mm/s^2.\n\nProblem: a flat rectangular plate, 200 mm long (x) and 100 mm high (y), lies in the plane z = 0, is 2 mm thick and is clamped along x = 0. Build ONE deck, `/home/user/Desktop/plate.inp`, that carries three linear static steps, and run it with `/usr/bin/ccx plate` to produce `/home/user/Desktop/plate.dat`.\n\nModel:\n- material: linear elastic, E = 210000 MPa, nu = 0.3, density 7.85e-9 t/mm^3; exactly one material\n- mesh: 861 nodes at (5*i, 5*j, 0), i = 0..40, j = 0..20; exactly 800 `CPS4` elements, one per 5 x 5 mm cell; node and element numbering are your choice\n- one `*SOLID SECTION` covering every element, with the thickness 2.0 on its data line\n- node sets with these exact names: `CLAMP` (the 21 nodes at x = 0), `FREE` (the 21 nodes at x = 200), `MIDFREE` (the node at (200, 50)), `CENTRE` (the node at (100, 50))\n- boundary conditions: every node of `CLAMP` fixed in dof 1 and dof 2 only (zero); no other boundary condition anywhere, and none added or changed after step 1\n- allowed cards: `*Heading`, `*Node`, `*Element`, `*Nset`, `*Elset`, `*Material`, `*Elastic`, `*Density`, `*Solid Section`, `*Boundary`, `*Step`, `*Static`, `*Dload`, `*Node Print` (plus `*Node File`, `*El File`, `*El Print` if you also want .frd output) and `*End Step`; nothing else. No `*NLGEOM`; no `*CLOAD`.\n\nLoads, all through `*DLOAD` (loads persist from step to step unless you remove them):\n- Step 1: a uniform tensile traction of 100 MPa in +x on the edge x = 200, applied as element face loads (`P1`..`P4` labels) on the correct faces of the rightmost element column only. In CalculiX a positive face pressure acts INTO the element; work out the face label and the sign from your own element node ordering.\n- Step 2: the edge traction removed; instead a uniform body force over the whole plate in -x, applied with the `GRAV` label as `elset, GRAV, g, -1.0, 0.0, 0.0`, with g chosen so that rho*g = 10/200 N/mm^3 (the nominal stress at the clamp is then 10 MPa).\n- Step 3: the step-1 traction and the step-2 body force acting together.\n\nOutput: in every step, `*NODE PRINT` requests must write to `plate.dat` the displacements (`U`) of set `FREE` and the reaction forces (`RF`) of set `CLAMP`.\n\nCalculiX allows at most 16 entries per data line; split long `*Nset`/`*Elset` lists.\n\nWrite `/home/user/Desktop/summary.txt` as exactly one line with four comma-separated numbers, in mm: `ux1, uy1, ux2, ux3`\n- `ux1`, `uy1`: mean ux and mean uy over the 21 nodes of `FREE` at the end of step 1\n- `ux2`: mean ux over `FREE` at the end of step 2\n- `ux3`: mean ux over `FREE` at the end of step 3\n\nThe evaluator re-runs your deck independently with `/usr/bin/ccx`, checks the deck and the reported numbers against that run and against the reaction forces in `plate.dat`, and checks that the three steps are consistent with each other. The reported numbers must come from your own run.",
+  "source": "original",
+  "config": [
+    {
+      "type": "upload_file",
+      "parameters": {
+        "files": [
+          {
+            "local_path": "task-0013/init_file/brief.md",
+            "path": "/home/user/Desktop/brief.md"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_paths": [
+    "/home/user/Desktop/plate.inp",
+    "/home/user/Desktop/plate.dat",
+    "/home/user/Desktop/summary.txt"
+  ],
+  "integrity_policy": {
+    "native_interface_only": true,
+    "allow_native_deck_edit": true,
+    "forbid_gui_control": true,
+    "forbid_third_party_imports": [
+      "numpy",
+      "scipy"
+    ],
+    "forbid_read": [
+      "ground_truth",
+      "evaluator"
+    ]
+  },
+  "evaluator": {
+    "func": "exact_match",
+    "postconfig": [
+      {
+        "type": "upload_file",
+        "parameters": {
+          "files": [
+            {
+              "local_path": "task-0013/eval.py",
+              "path": "/home/user/vericax/eval.py"
+            }
+          ]
+        }
+      }
+    ],
+    "result": {
+      "type": "vm_command_line",
+      "command": "python3 /home/user/vericax/eval.py",
+      "shell": "true"
+    },
+    "expected": {
+      "type": "rule",
+      "rules": {
+        "expected": "True\n"
+      }
+    }
+  },
+  "limits": {
+    "cli_max_steps": 100,
+    "gui_max_steps": null,
+    "active_time_seconds": 1800
+  },
+  "related_apps": [
+    "calculix"
+  ],
+  "capability": "cross-stage-consistency",
+  "splits": [
+    "v0.2-cae-cli-25"
+  ],
+  "possibility_of_env_change": "low",
+  "solver_probe": "/usr/bin/ccx -v 2>&1 | head -5"
+}
