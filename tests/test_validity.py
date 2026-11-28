@@ -259,5 +259,31 @@ class ProxySocketPathTests(unittest.TestCase):
             shutil.rmtree(second.parent, ignore_errors=True)
 
 
+class FirstRunGateTests(unittest.TestCase):
+    """`vericax audit` without a manifest: a first run passes, a passed record does not."""
+
+    def _verify(self, record):
+        with tempfile.TemporaryDirectory() as tmp:
+            task_dir = Path(tmp)
+            (task_dir / "ground_truth").mkdir()
+            if record is not None:
+                (task_dir / "ground_truth" / "reference_selfcheck.json").write_text(record)
+            return lifecycle._verify_task_package(task_dir)
+
+    def test_no_record_is_a_first_run(self):
+        self.assertIsNone(self._verify(None))
+
+    def test_failed_record_does_not_block_the_next_attempt(self):
+        # what a first run that did not pass leaves behind (2026-11-28)
+        self.assertIsNone(self._verify(json.dumps({"performed": True, "passed": False})))
+
+    def test_unreadable_record_is_not_evidence(self):
+        self.assertIsNone(self._verify("{not json"))
+
+    def test_passing_record_without_a_manifest_is_refused(self):
+        with self.assertRaises(SystemExit):
+            self._verify(json.dumps({"performed": True, "passed": True}))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
