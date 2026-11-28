@@ -70,7 +70,7 @@
 `cross-solver task-0001` L6 原型（capability 如实记为 `single-execution`）。split 文件合计 26 个唯一 id；
 `v0.2-cae-cli-25` 的名字是冻结的 split 版本号，不因多出的原型题改名。
 
-**2026-11-28/29（T1/T2 校准题入库）**：新增 5 题——多步 CalculiX deck 两道（0013 三个静力步、
+**2026-11-28（T1/T2 校准题入库）**：新增 5 题——多步 CalculiX deck 两道（0013 三个静力步、
 0014 频率–静力–屈曲）、更难的 FEniCS 三道（0017 热弹两阶段、0019 双孔板读图重建、0020 椭圆孔双工况优化）。
 各 capability 现有题数：`cross-stage-consistency` 4 → 7，`observation-reconstruct` 3 → 4，
 `design-optimization` 5 → 6。`v0.2-cae-cli-25` 18 → 23 题，任务包 26 → 31（30 道 Phase 2 目标 + 1 道
