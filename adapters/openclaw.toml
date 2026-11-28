@@ -25,9 +25,11 @@ working_dir = "/home/user/Desktop"
 
 [output]
 format = "json"
-# The stable --json envelope carries one usage object at the top level.
+# The stable --json envelope carries one usage object at the top level: the usage of the
+# whole session, not of one reply, so the per-reply cost fields stay null.
 cost_path = "usage"
 cost_event_types = []
+cost_granularity = "session"
 
 [state]
 dir = ".openclaw"

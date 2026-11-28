@@ -20,7 +20,11 @@
       },
       "models": {
         "deepseek-v4.1-flash-1017": {
-          "name": "DeepSeek V4.1 Flash (Bailian Token Plan)"
+          "name": "DeepSeek V4.1 Flash (Bailian Token Plan)",
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          }
         }
       }
     }

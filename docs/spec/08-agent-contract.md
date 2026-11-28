@@ -137,6 +137,7 @@ dir = ".dsh"                                     # 每 run 用独立 HOME 隔离
 | `sandbox.shell` | 把栈的 shell 工具指向 `vericax-sh` 的方式（PATH / 配置键 / wrapper） |
 | `sandbox.file_tools` | 原生 read/write/edit 的处理：禁用、代理到 sandbox、或允许本地写（不推荐） |
 | `output.format` / `cost_path` | 输出解析与 token/cost 提取；拿不到就记 `null`。接受的形态：每行一个 JSON 事件（NDJSON），或一个不在独立行上的 JSON 信封（缩进打印，可排在同流的日志行之后，如 openclaw `--json`） |
+| `output.cost_granularity` | 一个 usage 事件描述的是一次模型调用（`call`，默认）还是整个会话（`session`，openclaw `--json`）；`session` 时 cost 里的 `max_output_tokens` / `truncated_replies` 记 `null` |
 | `output.cost_event_types` | 只在这些事件类型上提取 usage（如 pi 的 `message_end`、dsh 的 `status`）。流式 `message_update` 会重复携带 usage，不过滤会把一次调用计成上百次 `llm_calls` |
 | `state.dir` | 每 run 独立状态目录，避免 n 次 run 互相污染 |
 
@@ -152,6 +153,7 @@ dir = ".dsh"                                     # 每 run 用独立 HOME 隔离
 - **A2** 只允许 adapter 文件按栈不同；新增一家栈 = 新增一个 adapter + 一个 conformance 用例。
 - **A3** adapter 必须声明 `file_tools`；`allow_local` 仅用于调试，发布配置不得使用。
 - **A4** adapter 的 `name`/`version` 写入 `summary.json` 的 `agent`；`harness` 记录栈内部框架层及其版本（若产品与框架同版本则同值）。
+- **A5**（2026-11-28）同一个模型在所有 adapter profile 里声明的上下文窗口和输出上限必须相同（dsh：`contextWindow` / `maxTokens`；openclaw：模型条目的 `contextWindow` / `maxTokens`；opencode：`limit.context` / `limit.output`）。不声明时各栈用自己的默认值，一次回复会被截在不同的长度：B2 里 dsh 声明了 32768，openclaw 落到默认的 8192，之后的校准里 openclaw 的 11 个 0 分有 9 个是一次回复停在这个上限。`tests/test_adapter_profiles.py` 逐模型核对。
 
 ## 6. 工件交接与冻结
 

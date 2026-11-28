@@ -265,7 +265,11 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
         return None
     keys = adapter.cost_path.split(".")
     totals = {"llm_calls": 0, "prompt_tokens": 0, "completion_tokens": 0,
-              "reasoning_tokens": 0, "cache_read_tokens": 0, "cache_write_tokens": 0}
+              "reasoning_tokens": 0, "cache_read_tokens": 0, "cache_write_tokens": 0,
+              # per reply: the largest output, and the replies the provider cut at the
+              # output limit. None when one event describes the whole session.
+              "max_output_tokens": None, "truncated_replies": None}
+    per_reply = adapter.cost_granularity != "session"
     usd = 0.0
     seen = False
 
@@ -286,6 +290,7 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
             return
         seen = True
         totals["llm_calls"] += 1
+        reply: dict[str, int] = {}
         aliases = {
             "prompt_tokens": ("input", "input_tokens", "inputTokens", "prompt_tokens"),
             "completion_tokens": ("output", "output_tokens", "outputTokens", "completion_tokens"),
@@ -301,6 +306,19 @@ def _extract_cost(adapter: adapters_mod.Adapter, stdout: str) -> dict | None:
                 value = node.get(candidate)
                 if isinstance(value, (int, float)):
                     totals[field_name] += int(value)
+                    reply[field_name] = int(value)
+                    break
+        if per_reply:
+            largest = reply.get("completion_tokens")
+            if largest is not None and (totals["max_output_tokens"] is None
+                                       or largest > totals["max_output_tokens"]):
+                totals["max_output_tokens"] = largest
+            for source in (event, node):
+                stop = next((source[key] for key in ("stopReason", "finish_reason", "stop_reason")
+                             if isinstance(source, dict) and isinstance(source.get(key), str)), None)
+                if stop is not None:
+                    totals["truncated_replies"] = (totals["truncated_replies"] or 0) + (
+                        1 if stop.lower() in ("length", "max_tokens", "max_output_tokens") else 0)
                     break
         cost_node = node.get("cost")
         if isinstance(cost_node, dict) and isinstance(cost_node.get("total"), (int, float)):

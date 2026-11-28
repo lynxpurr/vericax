@@ -16,7 +16,9 @@
         "models": [
           {
             "id": "deepseek-v4.1-flash-1017",
-            "name": "DeepSeek V4.1 Flash (Bailian Token Plan)"
+            "name": "DeepSeek V4.1 Flash (Bailian Token Plan)",
+            "contextWindow": 131072,
+            "maxTokens": 32768
           }
         ]
       }

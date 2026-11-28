@@ -170,6 +170,40 @@ class CostExtractionTests(unittest.TestCase):
         self.assertIsNone(lifecycle._extract_cost(self._adapter([]), stdout))
         self.assertIsNone(lifecycle._extract_cost(self._adapter([]), "plain text\n"))
 
+    def test_per_reply_fields_follow_the_usage_events(self):
+        # The largest reply, and the replies the provider cut at the output
+        # limit. openclaw lost nine calibration episodes to a reply that
+        # stopped at 8192 tokens; the cost record did not show it.
+        stdout = "\n".join(json.dumps(event) for event in [
+            {"type": "step_end", "usage": {"inputTokens": 10, "outputTokens": 8192}, "stopReason": "length"},
+            {"type": "step_end", "usage": {"inputTokens": 10, "outputTokens": 13471}, "finish_reason": "stop"},
+            {"type": "step_end", "usage": {"inputTokens": 10, "outputTokens": 40}},
+        ])
+        cost = lifecycle._extract_cost(self._adapter([]), stdout)
+        self.assertEqual(cost["max_output_tokens"], 13471)
+        self.assertEqual(cost["truncated_replies"], 1)
+
+    def test_no_stop_reason_leaves_the_truncated_count_null(self):
+        stdout = json.dumps({"type": "status", "usage": {"inputTokens": 10, "outputTokens": 93}})
+        cost = lifecycle._extract_cost(self._adapter([]), stdout)
+        self.assertEqual(cost["max_output_tokens"], 93)
+        self.assertIsNone(cost["truncated_replies"])
+
+    def test_session_envelope_leaves_the_per_reply_fields_null(self):
+        # openclaw --json carries one usage object for the whole session.
+        adapter = adapters.Adapter(name="openclaw-bailian", version="0", command=["openclaw"],
+                                   cost_path="usage", cost_granularity="session")
+        cost = lifecycle._extract_cost(adapter, json.dumps({"usage": {"input": 9, "output": 8192}}))
+        self.assertEqual(cost["completion_tokens"], 8192)
+        self.assertIsNone(cost["max_output_tokens"])
+        self.assertIsNone(cost["truncated_replies"])
+
+    def test_adapters_declare_their_cost_granularity(self):
+        for name, expected in (("openclaw-bailian", "session"), ("openclaw", "session"),
+                               ("dsh", "call"), ("opencode-bailian", "call")):
+            adapter = adapters.load_adapter(REPO / "adapters" / f"{name}.toml")
+            self.assertEqual(adapter.cost_granularity, expected, name)
+
 
 class ReportTests(unittest.TestCase):
     def _row(self, agent, score, kind=None):
