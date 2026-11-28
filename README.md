@@ -17,9 +17,10 @@ The first principle:
 
 ## Status
 
-Alpha, under active development. The v0.2.3-alpha release ships the
+Alpha, under active development. The v0.2.4-alpha release ships the
 v0.2.0-alpha task suite (unchanged) with the current tooling under MIT, on
-rebuilt VM images that fix the sandbox guest panic; B2 capability results are in
+the rebuilt VM images that fix the sandbox guest panic (v0.2.3-alpha; the
+root cause is now documented); B2 capability results are in
 [`docs/results/2026-11-24-b2.md`](docs/results/2026-11-24-b2.md). Current contents:
 
 | Area | State |
@@ -27,7 +28,7 @@ rebuilt VM images that fix the sandbox guest panic; B2 capability results are in
 | Specifications | `docs/spec/00`–`11`; latest calibration 2026-11-22 (capability-run protocol, P4 parallel scheduling, per-episode L6 challenge tokens, P5 stack expansion) |
 | Task packages | 26 packages (25 Phase-2 targets + 1 L6 prototype) across CalculiX, FEniCS and a merged cross-solver image; every package has an audit record and L0 self-check |
 | Default images | three self-built qcow2 (CalculiX 2.21, FEniCS 0.10.0.post2, merged), rebuilt on 2026-11-27 with `clearcpuid=519` on the guest kernel command line; all 26 packages re-audited on them |
-| Tooling | audit harness, package validator, VM probe, dependency resolver, parallel `vericax batch`, `scripts/audit_suite.py`, local CI gate |
+| Tooling | audit harness, package validator, VM probe, dependency resolver, parallel `vericax batch`, `scripts/audit_suite.py`, `scripts/calibration_report.py`, local CI gate |
 | Agent stacks | dsh 0.2.1-rc.5, pi 1.4.0, opencode 1.19.5, hermes 0.21.6, openclaw 2026.9.9; B2 results cover dsh/opencode/openclaw × 22 tasks × n=3 |
 | Runtime | Phase 2 complete: tier-1 scoring, per-episode overlays, 2-VM parallel batches, L6 provenance/challenge binding |
 | Results | [v0.2 B2 capability results](docs/results/2026-11-24-b2.md): 22 tasks × 3 stacks × n=3 on the v0.2.0-alpha suite |
