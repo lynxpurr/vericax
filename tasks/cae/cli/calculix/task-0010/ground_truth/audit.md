@@ -13,6 +13,7 @@
 | P2 robust (gold re-run) | want=True | True | PASS |
 | A1 alternative legal (solid i-fastest, beam reversed) | want=True | True | PASS |
 | A2 alternative legal (solid elset cards) | want=True | True | PASS |
+| A3 alternative legal (every spelling at once) | want=True | True | PASS |
 | N1 empty delivery | want=False | False | PASS |
 | N2 solid load tampered | want=False | False | PASS |
 | N3 beam section tampered | want=False | False | PASS |

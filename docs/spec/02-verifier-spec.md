@@ -125,6 +125,7 @@ EngiWorld 测裸 LLM 时模型看不到 task-root；VeriCAx 的被测 agent 拥�
 
 - 无第三方依赖（标准库 + 被测软件官方 API + Pillow），保证评分容器最小化
 - 单 verifier ≤ 450 行为宜（2026-11-20 由 300 放宽：当时 3 个 CalculiX verifier 为 383–411 行，拆分收益低于改动风险）；超限说明任务该拆分。**例外（2026-11-22）**：`cross-solver/task-0005` 为 454 行，按软约束接受——裁 4 行的收益低于触发该题重新审计/L0 的成本。
+- **例外（2026-11-28）**：读 CalculiX deck 的 15 个 verifier 各带一份逐字相同的 `canonical_deck`（约 160 行，把合法写法规范化后再检查，见 lessons §17），行数因此到 470–614。这段拷贝由 `tests/test_deck_spellings.py` 与 `scripts/deck_canonical.py` 核对，不计入「超限说明任务该拆分」的判断；把 deck 解析做成随包分发的共用模块是后续工作。
 - 每个 verifier 顶部声明实现层：`IMPLEMENTS = ("L1", "L2", "L3", "L5")`
 - 版本随任务包走，`resources.sha256` 覆盖 eval.py 自身
 - **不做语义等价的字面量拒绝**：`valid_input` 只做数学校验（载荷和、边界 DOF、关键字存在），不要求唯一字符串拼写；summary 解析容忍表头/空行；等价写法必须都收。EngiWorld 审计中 task-09（`,,5.0,1.0e-5` vs `1,8,5.0,1.0e-5`）、task-12/18（summary 表头）因此误杀。

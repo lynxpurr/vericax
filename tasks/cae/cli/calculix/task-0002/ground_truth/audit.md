@@ -1,6 +1,6 @@
 # Verifier audit record
 
-- date: 2026-11-27
+- date: 2026-11-28
 - task: cae--cli--calculix--task-0002 (evaluator func: quantified_score)
 - image: CalculiX-2.21
 - reference submission summary: `9.24, 6.68, -0.3455536`
@@ -13,6 +13,7 @@
 | P2 robust (gold re-run) | want>=0.34 | 0.350000 | PASS |
 | A1 alternative legal encoding | want>=0.34 | 0.350000 | PASS |
 | A2 alternative legal encoding (elset cards) | want>=0.34 | 0.350000 | PASS |
+| A3 alternative legal (every spelling at once) | want>=0.34 | 0.350000 | PASS |
 | N1 empty delivery | want<=0.0 | 0.000000 | PASS |
 | N2 deflection-only violation | want<=0.0 | 0.000000 | PASS |
 | N3 strength-only violation | want<=0.0 | 0.000000 | PASS |
