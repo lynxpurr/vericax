@@ -4,6 +4,59 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0-alpha] - 2026-11-29
+
+A measurement-validity release. Five tasks join the suite and the fifteen
+CalculiX deck verifiers accept every legal deck spelling. It publishes no new
+capability number: the B2 table keeps its trees, and a rerun on the hardened
+verifiers follows.
+
+### Added
+- Five calibrated tasks in `v0.2-cae-cli-25` (18 to 23 tasks; 26 to 31
+  packages): `calculix/task-0013` (three static steps in one deck),
+  `calculix/task-0014` (frequency, static and buckling steps in one deck),
+  `fenics/task-0017` (thermo-elastic two-stage analysis), `fenics/task-0019`
+  (a plate with two holes read from an SVG drawing) and `fenics/task-0020`
+  (an elliptical hole under two load cases). Each was calibrated with three
+  stacks and n=3; the record is in the commit message. None of them separates
+  dsh from opencode-bailian on correctness.
+- `scripts/deck_canonical.py`, `scripts/deck_variants.py`,
+  `scripts/inject_deck_canonical.py` and `tests/test_deck_spellings.py`: a
+  deck normaliser that turns the spellings agents write into the ones a
+  verifier reads, seven mechanical re-spellings of every gold deck, and a
+  test that requires every deck verifier to accept each one.
+- `tests/test_adapter_profiles.py`: one set of model limits per model id
+  across the adapter profiles (spec/08 rule A5).
+- The cost record carries `max_output_tokens` and `truncated_replies`; an
+  adapter declares with `output.cost_granularity` whether one usage event is
+  a call or the whole session (openclaw: the session, so both stay `null`).
+
+### Fixed
+- The fifteen CalculiX deck verifiers rejected correct decks on their
+  spelling: `GENERATE` sets, a `*BOUNDARY` row on a node set or without its
+  default value, a set declared on the `*NODE` card, an element number in
+  `*DLOAD`, a load rounded after a division, a node line with two
+  coordinates, `*DSLOAD`. 34 of the 43 zeros in the CalculiX and
+  software-selection cells of B2 were such rejections. Every verifier now
+  normalises the deck before its checks, and every audit has an "every
+  spelling at once" case. The fifteen `tree_version` values change.
+- An episode that used up its active time budget is a scored zero and now
+  counts in `scripts/calibration_report.py` and
+  `scripts/capability_report.py`; one script counted it as infra, the other
+  counted it nowhere.
+- The openclaw and opencode adapter profiles declare the model limits dsh
+  declares (131072 context, 32768 output). openclaw had been cutting a reply
+  at its 8192 default; nine of eleven openclaw zeros in the T1 and T2
+  calibrations ended after such a reply.
+
+### Changed
+- `docs/results/2026-11-24-b2.md`: third correction. The nineteen affected
+  cells are lower bounds until the rerun; four observations that rested on
+  them are withdrawn; the output limit of the run differed between stacks.
+- `docs/lessons-2026-11-21-phase2.md` §17; spec/02 §5 (the copied normaliser
+  and the two CalculiX verifiers are length exceptions), spec/08 rule A5,
+  spec/10 (five tasks, counts per capability), spec/11 (calibration report).
+
 ## [0.2.4-alpha] - 2026-11-28
 
 Tooling and documentation release; the task suite is unchanged (same
