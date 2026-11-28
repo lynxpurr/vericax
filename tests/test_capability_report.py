@@ -145,6 +145,19 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(cell["n"], 1)
         self.assertEqual(cell["infra"], 1)
 
+    def test_time_budget_episode_is_a_scored_zero(self):
+        # spec/03 section 2: an episode that used up its active time budget is
+        # scored 0 on the basis active_time_budget and enters n and the mean.
+        write_episode(self.runs, "a")
+        write_episode(self.runs, "b")
+        write_episode(self.runs, "c", scoring_basis="active_time_budget", score=0.0,
+                      error_category="active_time_budget_exhausted")
+        report = self._report()
+        cell = report["cells"][0]
+        self.assertEqual((cell["n"], cell["infra"]), (3, 0))
+        self.assertAlmostEqual(cell["mean"], 2 / 3)
+        self.assertEqual(cell["errors"], {"active_time_budget_exhausted": 1})
+
     def test_cost_is_na_when_any_episode_lacks_it(self):
         write_episode(self.runs, "a")
         write_episode(self.runs, "b", cost=None)

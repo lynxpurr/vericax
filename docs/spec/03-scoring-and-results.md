@@ -41,8 +41,12 @@
                                  //   artifacts.json manifest（basename 扁平化 + sha256），tarball 仅作归档
   "cost": {"llm_calls": 148, "prompt_tokens": 2190000, "completion_tokens": 475000,
            "reasoning_tokens": 402000, "cache_read_tokens": 0, "cache_write_tokens": 0,
+           "max_output_tokens": 13471, "truncated_replies": 0,
            "usd_estimate": null},   // ▲ token 三分口径实测验证有效；缓存读写单列（2026-11-27），
-                                    //   栈没有上报时为 0；token/题仍是 prompt + completion
+                                    //   栈没有上报时为 0；token/题仍是 prompt + completion。
+                                    //   max_output_tokens / truncated_replies（2026-11-28）：逐次回复里
+                                    //   最大的输出 token 数、被提供方在上限处截断的回复数；事件的粒度是
+                                    //   整个会话（openclaw）或栈不带停止原因时为 null
   "wall_duration_seconds": 4658.2,
   "paused_seconds": 0.0,                             // 暂停去重计账（重叠只算一次）
   "active_duration_seconds": 4658.2,

@@ -51,6 +51,11 @@
 | `cae--cli--fenics--task-0014` | open-environment | FEniCS 0.10.0.post2 | L1–L3 | 12/12 | `v0.2-cae-cli-25` |
 | `cae--cli--fenics--task-0015` | open-environment | FEniCS 0.10.0.post2 | L1–L3 | 13/13 | `v0.2-cae-cli-25` |
 | `cae--cli--fenics--task-0016` | open-environment | FEniCS 0.10.0.post2 | L1–L3 | 11/11 | `v0.2-cae-cli-25` |
+| `cae--cli--calculix--task-0013` | cross-stage-consistency | CalculiX 2.21 | L1–L5 | 35/35 | `v0.2-cae-cli-25` |
+| `cae--cli--calculix--task-0014` | cross-stage-consistency | CalculiX 2.21 | L1–L5 | 27/27 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0017` | cross-stage-consistency | FEniCS 0.10.0.post2 | L1–L4 | 20/20 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0019` | observation-reconstruct | FEniCS 0.10.0.post2 | L1–L3 | 27/27 | `v0.2-cae-cli-25` |
+| `cae--cli--fenics--task-0020` | design-optimization | FEniCS 0.10.0.post2 | L1–L5 | 22/22 | `v0.2-cae-cli-25` |
 | `cae--cli--cross-solver--task-0001` | single-execution (L6 prototype) | CalculiX 2.21 | L1–L3 + L6 | 15/15 | `v0.2-cae-cli-l6-pilot` |
 | `cae--cli--cross-solver--task-0002` | software-selection | CalculiX（*Buckle）| L1–L3 + L6 | 15/15 | `v0.2-cae-cli-merged` |
 | `cae--cli--cross-solver--task-0003` | software-selection | FEniCS（异质模量）| L1–L3 + L6 | 15/15 | `v0.2-cae-cli-merged` |
@@ -64,6 +69,14 @@
 **任务包计数（2026-11-22 校准）**：表内共 **26 个任务包** = 25 道 Phase 2 目标（6/5/4/4/3/3）+ 1 道
 `cross-solver task-0001` L6 原型（capability 如实记为 `single-execution`）。split 文件合计 26 个唯一 id；
 `v0.2-cae-cli-25` 的名字是冻结的 split 版本号，不因多出的原型题改名。
+
+**2026-11-28/29（T1/T2 校准题入库）**：新增 5 题——多步 CalculiX deck 两道（0013 三个静力步、
+0014 频率–静力–屈曲）、更难的 FEniCS 三道（0017 热弹两阶段、0019 双孔板读图重建、0020 椭圆孔双工况优化）。
+各 capability 现有题数：`cross-stage-consistency` 4 → 7，`observation-reconstruct` 3 → 4，
+`design-optimization` 5 → 6。`v0.2-cae-cli-25` 18 → 23 题，任务包 26 → 31（30 道 Phase 2 目标 + 1 道
+L6 原型）；split 版本号不变（按 `splits/README.md` 的流程追加 id）。三栈 × n=3 的校准
+（`--kind test`，不作为能力结果发布）：dsh 与 opencode-bailian 在五道题交付的工件上没有可靠差别；
+见各题提交说明。同日 15 个读 deck 的 verifier 加了规范化拷贝（lessons §17），它们的 `tree_version` 都变了。
 
 ## 3. 求解器矩阵
 
@@ -162,7 +175,7 @@ D5 已定（2026-11-18），执行顺序：
 - **P1 试点制**：先写 5 题（FEniCS `design-optimization` ×2、CalculiX `single-execution` ×3），过同一打包门后再续下一批。
 - **cross-solver 纳入 Phase 2**，但先做 P2 provenance spike；判据不能可复现地判"工件来自指定工具"时，`software-selection` 回落到 v0.5。
 - **D5 自建镜像（P3）与 P1 并行**：越晚换镜像，越多题要重烘 pins、重跑审计。
-- **verifier 软约束放宽到 ≤450 行**（spec/02 §5）；`cross-solver/task-0005` 454 行是已记录的例外。
+- **verifier 软约束放宽到 ≤450 行**（spec/02 §5）；`cross-solver/task-0005` 454 行是已记录的例外。 2026-11-28 起读 deck 的 15 个 verifier 各带一份约 160 行的规范化拷贝，行数 470–614，拷贝不计入（spec/02 §5 的例外）。
 
 **P2 状态（2026-11-20，P3c 后更新）**：L6 判据已写入 spec/02 §1/§2/§6，task schema 增加 `provenance` 块（spec/01，P3c 四题已填写）。原型 `cae--cli--cross-solver--task-0001` 审计 15/15、robust 10/10、L0 pass、fake smoke 1.0；`capability` 如实写 `single-execution`。**真正的 `software-selection` 已于 P3c 验证**：cross-solver task-0002…0005 在 merged image 上完成 L1–L3+L6 全管线（各 audit 15/15、robust 10/10、L0、fake smoke 1.0）。
 

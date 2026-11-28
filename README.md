@@ -17,19 +17,22 @@ The first principle:
 
 ## Status
 
-Alpha, under active development. The v0.2.4-alpha release ships the
-v0.2.0-alpha task suite (unchanged) with the current tooling under MIT, on
-the rebuilt VM images that fix the sandbox guest panic (v0.2.3-alpha; the
-root cause is now documented); B2 capability results are in
-[`docs/results/2026-11-24-b2.md`](docs/results/2026-11-24-b2.md). Current contents:
+Alpha, under active development. The v0.3.0-alpha release ships 31 task
+packages with the current tooling under MIT, on the rebuilt VM images that
+fix the sandbox guest panic (v0.2.3-alpha; the root cause is documented), and
+with verifiers that accept every legal CalculiX deck spelling. B2 capability
+results are in [`docs/results/2026-11-24-b2.md`](docs/results/2026-11-24-b2.md);
+its CalculiX and software-selection cells are lower bounds until the rerun on
+the hardened verifiers (see the third correction in that document). Current contents:
 
 | Area | State |
 |---|---|
-| Specifications | `docs/spec/00`–`11`; latest calibration 2026-11-22 (capability-run protocol, P4 parallel scheduling, per-episode L6 challenge tokens, P5 stack expansion) |
-| Task packages | 26 packages (25 Phase-2 targets + 1 L6 prototype) across CalculiX, FEniCS and a merged cross-solver image; every package has an audit record and L0 self-check |
-| Default images | three self-built qcow2 (CalculiX 2.21, FEniCS 0.10.0.post2, merged), rebuilt on 2026-11-27 with `clearcpuid=519` on the guest kernel command line; all 26 packages re-audited on them |
-| Tooling | audit harness, package validator, VM probe, dependency resolver, parallel `vericax batch`, `scripts/audit_suite.py`, `scripts/calibration_report.py`, local CI gate |
-| Agent stacks | dsh 0.2.1-rc.5, pi 1.4.0, opencode 1.19.5, hermes 0.21.6, openclaw 2026.9.9; B2 results cover dsh/opencode/openclaw × 22 tasks × n=3 |
+| Specifications | `docs/spec/00`–`11`; latest changes 2026-11-28 (deck spelling rule and length exceptions, one model-limit set per model across stacks, five tasks in the suite matrix) |
+| Task packages | 31 packages (30 Phase-2 targets + 1 L6 prototype) across CalculiX, FEniCS and a merged cross-solver image; every package has an audit record and L0 self-check |
+| Default images | three self-built qcow2 (CalculiX 2.21, FEniCS 0.10.0.post2, merged), rebuilt on 2026-11-27 with `clearcpuid=519` on the guest kernel command line; all 31 packages audited on them |
+| Deck verifiers | every CalculiX deck verifier normalises the deck before its checks; `tests/test_deck_spellings.py` re-spells each gold deck seven ways and requires acceptance (lesson 17) |
+| Tooling | audit harness, package validator, VM probe, dependency resolver, parallel `vericax batch`, `scripts/audit_suite.py`, `scripts/calibration_report.py`, deck re-spelling tools, local CI gate |
+| Agent stacks | dsh 0.2.1-rc.5, pi 1.4.0, opencode 1.19.5, hermes 0.21.6, openclaw 2026.9.9; B2 results cover dsh/opencode/openclaw × 22 tasks × n=3; the dsh, opencode and openclaw profiles now declare the same model limits |
 | Runtime | Phase 2 complete: tier-1 scoring, per-episode overlays, 2-VM parallel batches, L6 provenance/challenge binding |
 | Results | [v0.2 B2 capability results](docs/results/2026-11-24-b2.md): 22 tasks × 3 stacks × n=3 on the v0.2.0-alpha suite |
 | CI | GitHub Actions (green on `main` and `develop` since 2026-11-22); `scripts/ci_local.sh` mirrors the workflow offline |
@@ -104,6 +107,7 @@ sibling directory. `vericax.toml` is gitignored.
 - [x] Specifications and the audit protocol
 - [x] Three audited CalculiX pilot tasks covering L1–L5
 - [x] Second solver (FEniCS) and a 26-package suite across two solvers and a merged image
+- [x] Five calibration tasks (multi-step CalculiX decks, harder FEniCS items) with a three-stack n=3 calibration each (2026-11-28)
 - [x] Tier 1 trusted loop: out-of-band verifier execution and the anti-cheat layer as runtime code
 - [x] Five agent stacks and 2-VM parallel scheduling with per-episode challenge binding
 - [x] Public alpha release of the task suite and tooling (2026-11-22; organisation move deferred)

@@ -28,7 +28,7 @@ jobs:
       - name: Offline tests
         run: python -m unittest tests.test_validity tests.test_audit_tooling
           tests.test_capability_report tests.test_runtime_reliability
-          tests.test_calibration_report
+          tests.test_calibration_report tests.test_adapter_profiles tests.test_deck_spellings
 
       - name: Task package validation
         run: |

@@ -23,8 +23,10 @@ working_dir = "/home/user/Desktop"
 
 [output]
 format = "json"
+# One usage object for the whole session (see openclaw.toml): per-reply cost fields stay null.
 cost_path = "usage"
 cost_event_types = []
+cost_granularity = "session"
 
 [state]
 dir = ".openclaw"
