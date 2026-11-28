@@ -7,12 +7,21 @@ both the agent sandbox and the tier-1 scoring instance are booted through it.
 from __future__ import annotations
 
 import base64
+import os
 import shlex
 import sys
+import threading
 import time
 from pathlib import Path
 
 from . import config
+
+# The runtime's docker provider reads the VM's RAM from this variable when it
+# creates the container; it has no constructor argument for it.
+RAM_ENV = "ENGIWORLD_DOCKER_RAM_SIZE"
+# Constructors are serialised because that variable is process-wide and a
+# batch boots VMs from several threads.
+_BOOT_LOCK = threading.Lock()
 
 
 class SandboxBootError(Exception):
@@ -31,10 +40,12 @@ class SandboxVM:
     """One VM boot. Create, ``boot()``, operate, ``close()``. Never reuse."""
 
     def __init__(self, snapshot: str, cache_dir: Path | str,
-                 image_override: str | Path | None = None):
+                 image_override: str | Path | None = None, ram: str | None = None):
         self.snapshot = snapshot
         self.image = config.image_path(snapshot, override=image_override)
         self.cache_dir = Path(cache_dir)
+        # Guest RAM for this boot only, e.g. "16G"; None keeps the provider default.
+        self.ram = ram
         self._env = None
         # Name of the docker container when close() could not confirm removal.
         self.surviving_container: str | None = None
@@ -58,17 +69,27 @@ class SandboxVM:
             from desktop_env.desktop_env import DesktopEnv
         except Exception as exc:  # noqa: BLE001 - infra, not capability
             raise SandboxBootError(f"cannot import runtime DesktopEnv: {exc}") from exc
-        try:
-            self._env = DesktopEnv(
-                provider_name="docker", path_to_vm=str(self.image), os_type="Ubuntu",
-                action_space="pyautogui", require_a11y_tree=False,
-                screen_size=(1920, 1080), headless=True, client_password="",
-                cache_dir=str(self.cache_dir),
-            )
-            self._env.reset(task_config=task_config)
-        except Exception as exc:  # noqa: BLE001
-            self.close()
-            raise SandboxBootError(f"VM boot failed: {exc}") from exc
+        with _BOOT_LOCK:
+            previous = os.environ.get(RAM_ENV)
+            if self.ram:
+                os.environ[RAM_ENV] = self.ram
+            try:
+                self._env = DesktopEnv(
+                    provider_name="docker", path_to_vm=str(self.image), os_type="Ubuntu",
+                    action_space="pyautogui", require_a11y_tree=False,
+                    screen_size=(1920, 1080), headless=True, client_password="",
+                    cache_dir=str(self.cache_dir),
+                )
+                self._env.reset(task_config=task_config)
+            except Exception as exc:  # noqa: BLE001
+                self.close()
+                raise SandboxBootError(f"VM boot failed: {exc}") from exc
+            finally:
+                if self.ram:
+                    if previous is None:
+                        os.environ.pop(RAM_ENV, None)
+                    else:
+                        os.environ[RAM_ENV] = previous
 
     def close(self) -> bool:
         """Stop the VM and confirm that its container is gone.

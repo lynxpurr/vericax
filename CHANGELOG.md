@@ -4,6 +4,44 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4-alpha] - 2026-11-28
+
+Tooling and documentation release; the task suite is unchanged (same
+packages, trees and images as v0.2.3-alpha).
+
+### Fixed
+- A first L0 reference self-check that fails no longer blocks the next
+  attempt. Without a manifest, `vericax audit` now refuses only when a
+  passing L0 record exists; a failed record used to block `vericax audit`
+  and `pack_task.py` until it was deleted by hand.
+- `scripts/audit_suite.py` picks its step order from the package's state: a
+  package without a passing L0 record runs L0 before the first pack and
+  again after it, so the record carries the final `tree_version`.
+- Verifier resource failures are no longer scored as capability zeros. The
+  scoring VM has 16 GB of guest RAM by default (`VERICAX_SCORING_RAM`
+  overrides; the agent sandbox keeps 4 GB), and a zero that the verifier
+  printed after an out-of-memory report or a PETSc error code is recorded as
+  infra. Two native zeros of the published B2 run were such failures:
+  `docs/results/2026-11-24-b2.md` is corrected.
+
+### Added
+- `scripts/calibration_report.py`: per-episode table and task x stack matrix
+  for small calibration batches. With `--worktree`, episodes of a superseded
+  `tree_version` are listed as excluded and left out of the matrix.
+
+### Changed
+- `docs/lessons-2026-11-27-sandbox-loss.md`: the root cause of the sandbox
+  loss, found from inside an untreated guest. `fwupd-refresh.timer` runs
+  fwupd's `fwupd-detect-cet` helper with a shadow stack enabled by the
+  kernel; on a CPU that advertises shadow stacks without the XSAVE state for
+  them the kernel cannot switch the CET user registers between tasks, so the
+  next process on that CPU faults. `clearcpuid=519` makes the kernel refuse
+  shadow stacks altogether.
+- `docs/results/2026-11-24-b2.md`: dsh FEniCS single-execution 0.667 to
+  1.000 and opencode-bailian FEniCS design-optimization 0.912 to 0.994, from
+  a re-score of the stored artifacts with the byte-identical verifier in a
+  16 GB scoring instance, confirmed by a rerun of both cells.
+
 ## [0.2.3-alpha] - 2026-11-27
 
 Image fix release. The three self-built VM images hide the shadow-stack CPU

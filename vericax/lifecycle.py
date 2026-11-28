@@ -98,9 +98,12 @@ def _verify_task_package(task_dir: Path) -> None:
         # Bootstrap: a brand-new task has neither manifest nor L0 record, and
         # the pack gate refuses to write a manifest without a passing L0
         # record, so the first `vericax audit` must be allowed through without
-        # a manifest. Publishing stays gated at pack time.
-        l0 = task_dir / "ground_truth" / pack_task.L0_RECORD
-        if l0.is_file():
+        # a manifest. Publishing stays gated at pack time. A record that did
+        # not pass is no evidence either: it is what a failed first run
+        # leaves behind, and it must not block the next attempt. Only a
+        # passing record without a manifest is a contradiction.
+        if validity.reference_selfcheck_state(
+                validity.load_reference_selfcheck(task_dir)) == "pass":
             raise SystemExit(f"package has no manifest: {task_dir}")
         return
     files = pack_task.package_files(task_dir)

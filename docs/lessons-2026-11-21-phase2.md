@@ -174,6 +174,16 @@ scripts/audit_task.py → vericax audit (bootstrap L0) → pack_task.py
 fake 冒烟必须带 `--payload-dir`（按 `tests/run_acceptance.py:build_payload` 构造）；裸
 `vericax run --adapter fake` 会在 2 秒内 rc=2（payload 未挂载）。
 
+**2026-11-28 修订**：首次 L0 没通过时也会留下记录（`passed: false`），旧规则看到记录就拒绝再跑
+（"package has no manifest"），而 pack 又拒绝未通过的记录——作者只能手删。现在没有 manifest 时，
+只有**通过的**记录才构成矛盾；未通过或读不出的记录不挡路。`scripts/audit_suite.py` 也按包的
+状态选顺序：有 manifest 且记录通过 → audit → pack → L0 → check；新包 → audit → L0 → pack →
+L0 → check；有 manifest 但记录未通过 → L0 → audit → pack → L0 → check。另外两个只在新题上
+出现、审计发现不了的问题：评分是带外的，verifier 只能依赖声明的交付物（L0 是唯一按评分方式
+布置文件的门）；gold 和 verifier 共用求解模板时，审计矩阵只证明两者一致——0019 的模板把厚度
+只乘在载荷项上，参考值大了两倍，26 个用例照样全过，直到校准批里所有 agent 的正确解被拒。
+出 gold 后先和手算估计对照，再跑模型。
+
 ## 14. P4 并行调度与 L6 challenge 绑定（2026-11-22）
 
 - **先修清理顺序再谈并行**：旧 `run_episode` 在 sandbox 还开着时就启动 scoring VM，单 episode

@@ -168,6 +168,14 @@ token/题、$/题、活跃时长中位（覆盖率）、错误分类、model；p
 tree_version。同一 task 内混树或 n<3 时脚本以非零状态退出。原始 `runs/` 保留本地，
 不入库。
 
+### 校准批的报告（2026-11-28）
+
+只对新题跑的小批（`--kind test`，3 栈 × n=3）用 `scripts/calibration_report.py --worktree <repo>
+<batch.json…>` 出报告：逐集一行（评分依据、分数、活跃时长、prompt+completion、缓存读取、
+验证器给 0 的原因、控制台是否有 panic）加 task × stack 矩阵。`--worktree` 指向当前题包所在的
+checkout，`tree_version` 不是该题当前 manifest 的集会被列为 excluded、不进矩阵：题目改过之后
+（修 verifier、改题面），之前的集不再说明当前题目。
+
 ## 9. 风险
 
 | 风险 | 处理 |

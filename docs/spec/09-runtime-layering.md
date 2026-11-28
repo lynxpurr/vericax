@@ -143,6 +143,7 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 - 可写：一个临时 scratch 目录（verifier 可重解开）。
 - 无外网；只保留 runtime 的 controller 控制通道。
 - 环境：`VERICAX_AGENT_ROOT`、`VERICAX_CCX=/usr/bin/ccx`、`VERICAX_TASK_ID`；L6 题另加 `VERICAX_EPISODE_ID`、`VERICAX_CHALLENGE`、`VERICAX_TOOL`（required tool）。merged image 用 task JSON 的 `solver_probes` 记录每个工具的版本，不能只靠一个 `solver_version`。
+- 内存：评分 VM 的 guest 内存默认 16G（`VERICAX_SCORING_RAM` 可改；qemu 按需分配，不用不占），agent sandbox 仍是 provider 默认的 4G。verifier 要把 agent 提交的模型重解一遍，agent 能在 4G 里算完不等于 verifier 的直接求解也能（2026-11-28）。
 
 ### 7.2 执行
 
@@ -184,9 +185,17 @@ Phase 1 用**同镜像**启动一个独立 VM（从同一 qcow2 派生；专用�
 | freeze | 工件缺失/空 | `null`（L1 失败） | score | 是（0/False） |
 | score | scoring 实例启动失败 | `infra_incomplete` | 中止 | 否 |
 | score | verifier 超时/崩溃 | `infra_incomplete` | 中止 | 否 |
+| score | verifier 自身资源不足（评分 VM 内存耗尽；`debug: evaluator exception` 之后是 OOM 或 PETSc 错误码） | `infra_incomplete` | 按 infra 重试（新 episode） | 否 |
 | record | 落盘失败 | `infra_incomplete` | 中止 | 否 |
 
 原则：**能归因到 agent 的，才计分；能归因到基础设施的，一律不计分。**
+
+**verifier 的零分要看来源（2026-11-28）**：verifier 模板把一切异常接住并打印 `False`，这是为了让
+「交付物读不出来」成为一个结论而不是崩溃；但它也把 verifier 自己的资源失败变成了能力 0。
+已发布的 B2 里有两集如此：agent 提交了很大但合法的网格（103,700 和 70,992 个单元），verifier 的
+直接 LU 在 4G 的评分 VM 里申请不到内存，两个 0 被记成了原生结果。现在 scorer 看到模板的异常行
+且随后是 OOM / PETSc 错误码时，把结果记为 infra（交付物没有被评估）；其它异常仍是结论。
+复盘任何 0 分时先读 `logs/evaluator.stderr` 的第一条 `debug:` 行。
 
 **控制通道失联的判定（2026-11-26）**：B2 的 16 次 infra 失败全部是 sandbox 控制通道失联，
 首次错误多出现在 agent 开始后几分钟内，而 agent 会继续跑到 deadline（单个 episode 空转

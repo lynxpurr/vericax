@@ -2,7 +2,8 @@
 
 The "infra" failures of the n>=3 capability run (19 of 217 episodes) were the
 sandbox guest dying in a kernel panic. This file records what the fault is,
-how it was isolated, what fixes it in the images, and what is still unknown.
+how it was isolated, what fixes it in the images, and where the state comes
+from (section 6, added on 2026-11-28).
 Evidence lives in the local run directories; the specs and the image recipes
 carry the requirements.
 
@@ -70,8 +71,9 @@ in `identify_cpu()`:
 
 - Measured with a kernel module: `CR4.CET=1` on all 4 CPUs of our guest,
   `CR4.CET=0` when the CPU feature is hidden.
-- The guest cannot use shadow stacks: XSAVE has no CET state
-  (`Enabled xstate features 0x2e7`), and no process enables them.
+- The XSAVE unit has no CET state (`Enabled xstate features 0x2e7`), so the
+  kernel has no way to save and restore the two user registers between
+  tasks (section 6).
 - Caught in the act by kernel threads reading `IA32_U_CET` and
   `IA32_PL3_SSP` on their CPU every 2 ms and logging every change to the
   serial console: 20 heartbeats of `0/0` on all CPUs, then on CPU 0
@@ -79,8 +81,11 @@ in `identify_cpu()`:
   later.
 
 So the kernel arms CET because the CPU advertises the feature, and a
-shadow-stack state that nothing in the guest set then turns the next
-user-mode `ret` or `call` into a fault.
+shadow-stack state left behind by a guest process (section 6) then turns the
+next user-mode `ret` or `call` of whichever process runs on that CPU into a
+fault. On 2026-11-27 this looked like a state "set from outside the guest":
+no long-lived guest process had shadow stacks, and the process that does
+enable them lives for a few milliseconds.
 
 ## 5. The fix in the images, and its validation
 
@@ -100,18 +105,44 @@ bit 7 and has no name, so the number is the only spelling; the guest prints
 - `nousershstk` does not work: it clears only the synthetic `USER_SHSTK`,
   which `setup_cet()` sets again.
 
-## 6. What is still unknown
+## 6. Root cause (2026-11-28), found from inside the guest
 
-- Where the shadow-stack state at the fault comes from. Nothing in the guest
-  writes those registers, so it is the host or the hypervisor; no host-side
-  tracing was possible.
-- Why a reference image on the same host (kernel 6.8.0-55, older systemd)
-  has not crashed in 8 days.
-- Why PID 1 is the first victim in all 21 console-logged panics, although bystander
-  processes were executing `call`/`ret` on every CPU.
+Found without host privileges, with one untreated VM: kernel threads on two
+CPUs monopolise the CPU and poll the CET registers; threads on the other two
+do the same every 2 ms and write `IA32_U_CET` and `IA32_PL3_SSP` back to zero
+when they change. In 84 minutes the two busy CPUs saw no change; the two idle
+CPUs saw nine, each undone within 6 ms, so the VM stayed alive and could be
+inspected. A control VM on the same image and command line without the
+write-back panicked after 1258 s.
 
-The parameter makes the guest insensitive to the state; it does not remove
-it.
+1. **Trigger.** `fwupd-refresh.timer` starts `fwupd`, which runs
+   `/usr/libexec/fwupd/fwupd-detect-cet`, a small helper that probes whether
+   shadow stacks are enforced: it installs a SIGSEGV handler and executes a
+   `call` whose return address it then discards (`mov rax,[rsp]; add rsp,8;
+   jmp rax`). The helper runs with a shadow stack enabled by the kernel (a
+   kprobe on `shstk_setup` fired 9 to 11 ms before each register change).
+   Starting the service by hand reproduced it four times out of five.
+2. **Leak.** After the helper has run, `IA32_U_CET=1` and its `IA32_PL3_SSP`
+   stay in the CPU, and the next user process on that CPU faults on its first
+   `call` or `ret`: in one event fwupd, systemd-journald, rsyslog's imklog and
+   two apport processes, all at the same address. In an untreated VM the next
+   process is often PID 1, which is the panic.
+3. **Why the registers are not switched.** The CPU (AMD Ryzen 9 PRO 8945HS)
+   sets CPUID 7.0.ECX bit 7 (shadow stack) but reports no CET state in CPUID
+   leaf 0xD: `XCR0 = 0x2e7`. The kernel (6.8) enables user shadow stacks on
+   the strength of the first bit and has no XSAVE component with which to
+   save and restore the two registers between tasks. The same two leaves are
+   read from the host without privileges, so this is the hardware's
+   combination, not something the hypervisor removed.
+
+`clearcpuid=519` removes the first bit; the kernel then refuses shadow stacks
+altogether and the helper cannot arm anything. The fix is therefore complete
+for these images, not a workaround for one trigger.
+
+Not checked: why a reference image on the same host with its own fwupd never
+crashed, and whether a kernel newer than 6.8 refuses shadow stacks on this CPU
+(the host runs 7.0 with the same CPU, fwupd and the timer, and shows no
+process with shadow-stack thread features).
 
 ## 7. Operational lessons
 
