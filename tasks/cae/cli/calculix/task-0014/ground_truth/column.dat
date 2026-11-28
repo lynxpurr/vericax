@@ -1,0 +1,73 @@
+
+                        S T E P       1
+
+
+     E I G E N V A L U E   O U T P U T
+
+ MODE NO    EIGENVALUE                       FREQUENCY   
+                                     REAL PART            IMAGINARY PART
+                           (RAD/TIME)      (CYCLES/TIME     (RAD/TIME)
+
+      1   0.3972515E+04   0.6302789E+02   0.1003120E+02   0.0000000E+00
+      2   0.1587910E+05   0.1260123E+03   0.2005548E+02   0.0000000E+00
+
+     P A R T I C I P A T I O N   F A C T O R S
+
+MODE NO.   X-COMPONENT     Y-COMPONENT     Z-COMPONENT     X-ROTATION      Y-ROTATION      Z-ROTATION
+
+      1   0.1530330E-15  -0.1917637E-07  -0.1116658E+00  -0.4584944E-12   0.8109500E+02  -0.1018135E-07
+      2  -0.3453499E-15   0.1116610E+00  -0.1394649E-10  -0.2897235E-06   0.1016563E-07   0.8109286E+02
+
+     E F F E C T I V E   M O D A L   M A S S
+
+MODE NO.   X-COMPONENT     Y-COMPONENT     Z-COMPONENT     X-ROTATION      Y-ROTATION      Z-ROTATION
+
+      1   0.2341910E-31   0.3677330E-15   0.1246925E-01   0.2102171E-24   0.6576399E+04   0.1036600E-15
+      2   0.1192665E-30   0.1246818E-01   0.1945046E-21   0.8393971E-13   0.1033400E-15   0.6576051E+04
+TOTAL     0.1426856E-30   0.1246818E-01   0.1246925E-01   0.8393971E-13   0.6576399E+04   0.6576051E+04
+
+     T O T A L   E F F E C T I V E   M A S S
+
+MODE NO.   X-COMPONENT     Y-COMPONENT     Z-COMPONENT     X-ROTATION      Y-ROTATION      Z-ROTATION
+
+          0.2004995E-01   0.2007925E-01   0.2005832E-01   0.1326336E+00   0.6778658E+04   0.6778738E+04
+
+
+                        S T E P       2
+
+
+                                INCREMENT     1
+
+
+ displacements (vx,vy,vz) for set TIP and time  0.1000000E+01
+
+        21 -1.653439E-05 -7.563743E-16 -4.051110E-15
+
+                        S T E P       3
+
+
+ displacements (vx,vy,vz) for set TIP and time  0.1000000E+01
+
+        21 -1.653439E-05 -7.563743E-16 -4.051110E-15
+
+     B U C K L I N G   F A C T O R   O U T P U T
+
+ MODE NO       BUCKLING
+                FACTOR
+
+      1   0.1791706E+04
+      2   0.7164112E+04
+
+                    E I G E N V A L U E    N U M B E R     1
+
+
+ displacements (vx,vy,vz) for set TIP and time  0.1000000E+01
+
+        21 -5.828051E-12 -2.811919E-07  6.725966E-01
+
+                    E I G E N V A L U E    N U M B E R     2
+
+
+ displacements (vx,vy,vz) for set TIP and time  0.1000000E+01
+
+        21  1.388554E-12 -3.363484E-01 -4.381938E-07

@@ -26,8 +26,8 @@ root cause is now documented); B2 capability results are in
 | Area | State |
 |---|---|
 | Specifications | `docs/spec/00`–`11`; latest calibration 2026-11-22 (capability-run protocol, P4 parallel scheduling, per-episode L6 challenge tokens, P5 stack expansion) |
-| Task packages | 26 packages (25 Phase-2 targets + 1 L6 prototype) across CalculiX, FEniCS and a merged cross-solver image; every package has an audit record and L0 self-check |
-| Default images | three self-built qcow2 (CalculiX 2.21, FEniCS 0.10.0.post2, merged), rebuilt on 2026-11-27 with `clearcpuid=519` on the guest kernel command line; all 26 packages re-audited on them |
+| Task packages | 31 packages (30 Phase-2 targets + 1 L6 prototype) across CalculiX, FEniCS and a merged cross-solver image; every package has an audit record and L0 self-check |
+| Default images | three self-built qcow2 (CalculiX 2.21, FEniCS 0.10.0.post2, merged), rebuilt on 2026-11-27 with `clearcpuid=519` on the guest kernel command line; all 31 packages audited on them |
 | Tooling | audit harness, package validator, VM probe, dependency resolver, parallel `vericax batch`, `scripts/audit_suite.py`, `scripts/calibration_report.py`, local CI gate |
 | Agent stacks | dsh 0.2.1-rc.5, pi 1.4.0, opencode 1.19.5, hermes 0.21.6, openclaw 2026.9.9; B2 results cover dsh/opencode/openclaw × 22 tasks × n=3 |
 | Runtime | Phase 2 complete: tier-1 scoring, per-episode overlays, 2-VM parallel batches, L6 provenance/challenge binding |
@@ -104,6 +104,7 @@ sibling directory. `vericax.toml` is gitignored.
 - [x] Specifications and the audit protocol
 - [x] Three audited CalculiX pilot tasks covering L1–L5
 - [x] Second solver (FEniCS) and a 26-package suite across two solvers and a merged image
+- [x] Five calibration tasks (multi-step CalculiX decks, harder FEniCS items) with a three-stack n=3 calibration each (2026-11-28)
 - [x] Tier 1 trusted loop: out-of-band verifier execution and the anti-cheat layer as runtime code
 - [x] Five agent stacks and 2-VM parallel scheduling with per-episode challenge binding
 - [x] Public alpha release of the task suite and tooling (2026-11-22; organisation move deferred)
